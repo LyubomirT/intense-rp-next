@@ -140,8 +140,17 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                     if interrupted():
                         return safe_interrupt_response()
 
-                    closing = deepseek.get_closing_symbol(last_text) if last_text else "Error receiving response."
-                    yield response_utils.create_response_streaming(closing)
+                    final_text = deepseek.wait_for_response_completion(driver)
+                    if final_text and final_text != last_text:
+                        # Send any remaining content that wasn't captured during streaming
+                        diff = final_text[len(last_text):] if final_text.startswith(last_text) else final_text
+                        if diff:
+                            yield response_utils.create_response_streaming(diff)
+                    
+                    closing = deepseek.get_closing_symbol(final_text) if final_text else ""
+                    if closing:
+                        yield response_utils.create_response_streaming(closing)
+                    
                     show_message("[color:white]- [color:green]Completed.")
                 except GeneratorExit:
                     deepseek.new_chat(driver)
@@ -153,23 +162,12 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                     yield response_utils.create_response_streaming("Error receiving response.")
             return Response(streaming_response(), content_type="text/event-stream")
         else:
-            while deepseek.is_response_generating(driver):
-                if interrupted():
-                    break
-                
-                new_text = deepseek.get_last_message(driver)
-                if new_text and not initial_text:
-                    initial_text = new_text
-                
-                if new_text and new_text.startswith(initial_text):
-                    last_text = new_text
-                
-                time.sleep(0.2)
+            final_text = deepseek.wait_for_response_completion(driver)
             
             if interrupted():
                 return safe_interrupt_response()
             
-            response = (last_text + deepseek.get_closing_symbol(last_text)) if last_text else "Error receiving response."
+            response = (final_text + deepseek.get_closing_symbol(final_text)) if final_text else "Error receiving response."
             show_message("[color:white]- [color:green]Completed.")
             return response_utils.create_response_jsonify(response)
     

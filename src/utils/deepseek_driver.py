@@ -208,6 +208,8 @@ def get_closing_symbol(text: str) -> str:
 
 def get_last_message(driver: Driver) -> Optional[str]:
     try:
+        time.sleep(0.1)
+        
         messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
         
         if messages:
@@ -263,6 +265,39 @@ def active_generate_response(driver: Driver) -> bool:
     except Exception as e:
         print(f"Error generating response: {e}")
         return False
+
+def wait_for_response_completion(driver: Driver, max_wait_time: float = 5.0) -> str:
+    """
+    Wait for response to be completely finished and content to stabilize.
+    This fixes the race condition where button state changes before content is fully rendered.
+    """
+    try:
+        while is_response_generating(driver):
+            time.sleep(0.1)
+        
+        last_content = None
+        stable_count = 0
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_time:
+            current_content = get_last_message(driver)
+            
+            if current_content == last_content:
+                stable_count += 1
+                # Content has been stable for multiple checks
+                if stable_count >= 3:
+                    return current_content or ""
+            else:
+                stable_count = 0
+                last_content = current_content
+            
+            time.sleep(0.2)
+        
+        return last_content or ""
+        
+    except Exception as e:
+        print(f"Error waiting for response completion: {e}")
+        return get_last_message(driver) or ""
 
 def is_response_generating(driver: Driver) -> bool:
     try:
