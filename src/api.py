@@ -5,7 +5,6 @@ import utils.deepseek_driver as deepseek
 import socket, time, threading
 from typing import Generator
 from waitress import serve
-import re
 
 app = Flask(__name__)
 driver = None
@@ -81,76 +80,6 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
         deepseek.new_chat(driver)
         return response_utils.create_response("", streaming)
 
-    def has_incomplete_preserved_tags(text: str) -> bool:
-        """Check if text contains incomplete preserved tags that should be buffered"""
-        if not text:
-            return False
-            
-        preserve_tags = deepseek.get_preserve_tags_from_config()
-        if not preserve_tags:
-            return False
-            
-        for tag in preserve_tags:
-            # Check for incomplete opening tags: <tag or <tag>...content without closing
-            incomplete_opening = rf'<{re.escape(tag)}(?!\w)(?:>(?:(?!</{re.escape(tag)}(?!\w)>).)*)?$'
-            if re.search(incomplete_opening, text, re.DOTALL):
-                return True
-                
-            # Check for incomplete closing tags: </tag or </ta
-            incomplete_closing = rf'</{re.escape(tag)[:i]}$' 
-            for i in range(1, len(tag) + 1):
-                if text.endswith(f'</{tag[:i]}'):
-                    return True
-                    
-        return False
-
-    def extract_complete_content(text: str) -> tuple[str, str]:
-        """
-        Extract complete content that can be safely sent, and buffer incomplete tags.
-        Returns (safe_content, buffered_content)
-        """
-        if not text:
-            return "", ""
-            
-        preserve_tags = deepseek.get_preserve_tags_from_config()
-        if not preserve_tags:
-            return text, ""
-            
-        # Find the last safe position to cut the text
-        # We need to ensure we don't cut in the middle of a preserved tag
-        
-        safe_pos = len(text)
-        
-        for tag in preserve_tags:
-            # Look for incomplete patterns near the end
-            
-            # Pattern 1: Text ending with incomplete opening tag like "<test" or "<test>"
-            incomplete_opening_match = re.search(rf'<{re.escape(tag)}(?!\w)(?:>(?:(?!</{re.escape(tag)}(?!\w)>).)*)?$', text, re.DOTALL)
-            if incomplete_opening_match:
-                safe_pos = min(safe_pos, incomplete_opening_match.start())
-                
-            # Pattern 2: Text ending with incomplete closing tag like "</" or "</test"
-            for i in range(1, len(tag) + 2):  # +2 to include "</" case
-                if i == 1 and text.endswith('</'):
-                    safe_pos = min(safe_pos, len(text) - 2)
-                elif i <= len(tag) and text.endswith(f'</{tag[:i]}'):
-                    safe_pos = min(safe_pos, len(text) - len(f'</{tag[:i]}'))
-                    
-            # Pattern 3: Complete opening tag but content might be incomplete
-            # Look for <tag>...content without matching </tag>
-            tag_pattern = rf'<{re.escape(tag)}(?!\w)>((?:(?!</{re.escape(tag)}(?!\w)>).)*?)$'
-            incomplete_content_match = re.search(tag_pattern, text, re.DOTALL)
-            if incomplete_content_match:
-                # Check if this might be an incomplete tag (no closing tag found)
-                remaining_text = text[incomplete_content_match.start():]
-                if f'</{tag}>' not in remaining_text:
-                    safe_pos = min(safe_pos, incomplete_content_match.start())
-        
-        if safe_pos < len(text):
-            return text[:safe_pos], text[safe_pos:]
-        else:
-            return text, ""
-
     try:
         if not selenium.current_page(driver, "https://chat.deepseek.com"):
             show_message("[color:white]- [color:red]You must be on the DeepSeek website.")
@@ -188,11 +117,10 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
         show_message("[color:white]- [color:cyan]Awaiting response.")
         initial_text = ""
         last_text = ""
-        content_buffer = ""  # Buffer for incomplete tags
 
         if streaming:
             def streaming_response() -> Generator[str, None, None]:
-                nonlocal initial_text, last_text, content_buffer
+                nonlocal initial_text, last_text
                 try:
                     while deepseek.is_response_generating(driver):
                         if interrupted():
@@ -203,42 +131,24 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                             initial_text = new_text
                         
                         if new_text and new_text != last_text and new_text.startswith(initial_text):
-                            # Calculate the new content that arrived
-                            full_diff = new_text[len(last_text):]
-                            
-                            # Add new content to buffer
-                            buffered_content = content_buffer + full_diff
-                            
-                            # Extract what we can safely send vs what to keep buffered
-                            safe_content, remaining_buffer = extract_complete_content(buffered_content)
-                            
-                            # Update states
+                            diff = new_text[len(last_text):]
                             last_text = new_text
-                            content_buffer = remaining_buffer
-                            
-                            # Send the safe content if any
-                            if safe_content:
-                                yield response_utils.create_response_streaming(safe_content)
+                            yield response_utils.create_response_streaming(diff)
                         
                         time.sleep(0.2)
 
                     if interrupted():
                         return safe_interrupt_response()
 
-                    # Final processing - get the complete response and send any remaining buffered content
+                    # Final processing - get the complete response
                     final_text = deepseek.wait_for_response_completion(driver)
                     
                     if final_text:
-                        # Calculate any final content that wasn't captured during streaming
+                        # Send any remaining content
                         if final_text != last_text:
                             final_diff = final_text[len(last_text):] if final_text.startswith(last_text) else final_text
-                            final_content = content_buffer + final_diff
-                        else:
-                            final_content = content_buffer
-                        
-                        # Send any remaining content (should be complete now)
-                        if final_content:
-                            yield response_utils.create_response_streaming(final_content)
+                            if final_diff:
+                                yield response_utils.create_response_streaming(final_diff)
                     
                     # Send closing symbol if needed
                     closing = deepseek.get_closing_symbol(final_text) if final_text else ""
