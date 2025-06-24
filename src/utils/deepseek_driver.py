@@ -206,7 +206,7 @@ def get_closing_symbol(text: str) -> str:
     except Exception:
         return ""
 
-def _get_preserve_tags_from_config() -> list:
+def get_preserve_tags_from_config() -> list:
     """Get the list of tags to preserve from the API config"""
     try:
         # Import api module to access the global config
@@ -245,38 +245,41 @@ def get_last_message(driver: Driver) -> Optional[str]:
             last_message_html = _remove_em_inside_strong(last_message_html)
 
             # Get custom tags to preserve from config
-            preserve_tags = _get_preserve_tags_from_config()
+            preserve_tags = get_preserve_tags_from_config()
             
-            print(f"Preserving tags: {preserve_tags}")  # Debug logging
+            print(f"[DEBUG] Preserving tags: {preserve_tags}")
+            print(f"[DEBUG] Raw HTML snippet (first 300 chars): {last_message_html[:300]}...")
             
             # STEP 1: Extract and preserve custom tags BEFORE BeautifulSoup processing
             custom_tag_placeholders = {}
             processed_message = last_message_html
             
             if preserve_tags:
-                print(f"Looking for tags: {preserve_tags}")  # Debug logging
-                print(f"HTML snippet: {last_message_html[:200]}...")  # Debug logging
+                print(f"[DEBUG] Starting tag preservation for: {preserve_tags}")
                 
                 # DeepSeek handles custom tags in two ways:
-                # 1. In regular text: <span class="ds-markdown-html"><test></span>Testing<span class="ds-markdown-html"></test></span>
+                # 1. In regular text: <span class="ds-markdown-html">&lt;test&gt;</span>Testing<span class="ds-markdown-html">&lt;/test&gt;</span>
                 # 2. In code blocks: <test>Testing</test> (just HTML entities)
                 
                 for tag in preserve_tags:
-                    # Pattern 1: Escaped HTML tags wrapped in spans (regular text)
-                    escaped_span_pattern = rf'<span class="ds-markdown-html"><{re.escape(tag)}></span>(.*?)<span class="ds-markdown-html"></{re.escape(tag)}></span>'
+                    print(f"[DEBUG] Processing tag: '{tag}'")
                     
-                    # Pattern 2: Plain HTML entities (code blocks)
-                    escaped_entity_pattern = rf'<{re.escape(tag)}>(.*?)</{re.escape(tag)}>'
+                    # FIXED: Match HTML entities in spans (&lt; instead of <)
+                    # Pattern 1: HTML entities wrapped in spans (regular text)
+                    escaped_span_pattern = rf'<span class="ds-markdown-html">&lt;{re.escape(tag)}(?!\w)&gt;</span>(.*?)<span class="ds-markdown-html">&lt;/{re.escape(tag)}(?!\w)&gt;</span>'
                     
-                    print(f"Looking for span pattern: {escaped_span_pattern}")  # Debug logging
-                    print(f"Looking for entity pattern: {escaped_entity_pattern}")  # Debug logging
+                    # Pattern 2: Plain HTML entities (code blocks) - after entity conversion
+                    escaped_entity_pattern = rf'<{re.escape(tag)}(?!\w)>(.*?)</{re.escape(tag)}(?!\w)>'
+                    
+                    print(f"[DEBUG] Span pattern: {escaped_span_pattern}")
+                    print(f"[DEBUG] Entity pattern: {escaped_entity_pattern}")
                     
                     def replace_span_func(match):
                         content = match.group(1)
                         original_tag = f"<{tag}>{content}</{tag}>"
                         placeholder = f"___PRESERVE_{tag.upper()}_{len(custom_tag_placeholders)}___"
                         custom_tag_placeholders[placeholder] = original_tag
-                        print(f"Found span-wrapped '{tag}' tag: content='{content}' -> {placeholder}")  # Debug logging
+                        print(f"[DEBUG] Found span-wrapped '{tag}' tag: content='{content}' -> {placeholder}")
                         return placeholder
                     
                     def replace_entity_func(match):
@@ -284,35 +287,63 @@ def get_last_message(driver: Driver) -> Optional[str]:
                         original_tag = f"<{tag}>{content}</{tag}>"
                         placeholder = f"___PRESERVE_{tag.upper()}_{len(custom_tag_placeholders)}___"
                         custom_tag_placeholders[placeholder] = original_tag
-                        print(f"Found entity-escaped '{tag}' tag: content='{content}' -> {placeholder}")  # Debug logging
+                        print(f"[DEBUG] Found entity-escaped '{tag}' tag: content='{content}' -> {placeholder}")
                         return placeholder
                     
                     # Replace span-wrapped tags (regular text)
+                    before_span_count = len(custom_tag_placeholders)
                     processed_message = re.sub(escaped_span_pattern, replace_span_func, processed_message, flags=re.DOTALL | re.IGNORECASE)
+                    after_span_count = len(custom_tag_placeholders)
+                    print(f"[DEBUG] Span replacement for '{tag}': {after_span_count - before_span_count} matches")
+                    
+                    # Don't apply entity pattern yet - wait until after HTML entity conversion
+                    
+                print(f"[DEBUG] Total tags extracted from spans: {len(custom_tag_placeholders)}")
+                print(f"[DEBUG] Message after span processing (first 300 chars): {processed_message[:300]}...")
+
+            # STEP 2: FIXED HTML entity conversion (was completely wrong before)
+            print(f"[DEBUG] Converting HTML entities...")
+            processed_message = re.sub(r'&amp;', '&', processed_message)
+            processed_message = re.sub(r'&lt;', '<', processed_message)
+            processed_message = re.sub(r'&gt;', '>', processed_message)
+            processed_message = re.sub(r'&nbsp;', ' ', processed_message)
+            processed_message = re.sub(r'&quot;', '"', processed_message)
+            
+            print(f"[DEBUG] Message after entity conversion (first 300 chars): {processed_message[:300]}...")
+            
+            # STEP 2.5: Now apply entity pattern for code blocks (after entity conversion)
+            if preserve_tags:
+                for tag in preserve_tags:
+                    escaped_entity_pattern = rf'<{re.escape(tag)}(?!\w)>(.*?)</{re.escape(tag)}(?!\w)>'
+                    
+                    def replace_entity_func(match):
+                        content = match.group(1)
+                        original_tag = f"<{tag}>{content}</{tag}>"
+                        placeholder = f"___PRESERVE_{tag.upper()}_{len(custom_tag_placeholders)}___"
+                        custom_tag_placeholders[placeholder] = original_tag
+                        print(f"[DEBUG] Found entity-escaped '{tag}' tag: content='{content}' -> {placeholder}")
+                        return placeholder
                     
                     # Replace entity-escaped tags (code blocks)
+                    before_entity_count = len(custom_tag_placeholders)
                     processed_message = re.sub(escaped_entity_pattern, replace_entity_func, processed_message, flags=re.DOTALL | re.IGNORECASE)
-                    
-                print(f"Extracted {len(custom_tag_placeholders)} custom tags")  # Debug logging
-                print(f"Processed message snippet: {processed_message[:200]}...")  # Debug logging
-
-            # Handle HTML entities
-            processed_message = re.sub(r'&', '&', processed_message)
-            processed_message = re.sub(r'<', '<', processed_message)
-            processed_message = re.sub(r'>', '>', processed_message)
-            processed_message = re.sub(r' ', ' ', processed_message)
-            processed_message = re.sub(r'"', '"', processed_message)
+                    after_entity_count = len(custom_tag_placeholders)
+                    print(f"[DEBUG] Entity replacement for '{tag}': {after_entity_count - before_entity_count} matches")
             
-            # STEP 2: Process with BeautifulSoup (custom tags are now safe as placeholders)
+            print(f"[DEBUG] Total preserved tags: {len(custom_tag_placeholders)}")
+            print(f"[DEBUG] Preserved tags map: {custom_tag_placeholders}")
+            print(f"[DEBUG] Message after all tag extraction (first 300 chars): {processed_message[:300]}...")
+            
+            # STEP 3: Process with BeautifulSoup (custom tags are now safe as placeholders)
             soup = BeautifulSoup(processed_message, 'html.parser')
             
             # Remove unwanted tags completely
             for tag in soup(['script', 'style', 'meta', 'link']):
                 tag.decompose()
             
-            # STEP 2.1: Convert DeepSeek code blocks to Markdown before removing UI elements
+            # STEP 3.1: Convert DeepSeek code blocks to Markdown before removing UI elements
             code_blocks = soup.find_all('div', class_='md-code-block')
-            print(f"Found {len(code_blocks)} code blocks to convert")  # Debug logging
+            print(f"[DEBUG] Found {len(code_blocks)} code blocks to convert")
             
             for code_block in code_blocks:
                 try:
@@ -328,18 +359,18 @@ def get_last_message(driver: Driver) -> Optional[str]:
                         # Create Markdown code block
                         if language and language.lower() not in ['text', '']:
                             markdown_code = f"\n```{language}\n{code_content}\n```\n"
-                            print(f"Converting to {language} code block, content: {code_content[:50]}...")
+                            print(f"[DEBUG] Converting to {language} code block, content: {code_content[:50]}...")
                         else:
                             markdown_code = f"\n```\n{code_content}\n```\n"
-                            print(f"Converting to plain code block, content: {code_content[:50]}...")
+                            print(f"[DEBUG] Converting to plain code block, content: {code_content[:50]}...")
                         
                         # Replace the entire code block with Markdown
                         code_block.replace_with(markdown_code)
                         
-                        print(f"Converted code block: language='{language}', content length={len(code_content)}")  # Debug logging
+                        print(f"[DEBUG] Converted code block: language='{language}', content length={len(code_content)}")
                     
                 except Exception as e:
-                    print(f"Error converting code block: {e}")
+                    print(f"[DEBUG] Error converting code block: {e}")
                     # If conversion fails, just remove the code block wrapper
                     pre_tag = code_block.find('pre')
                     if pre_tag:
@@ -347,24 +378,24 @@ def get_last_message(driver: Driver) -> Optional[str]:
             
             # Remove remaining DeepSeek UI elements (after code block conversion)
             ui_selectors = [
-                '.md-code-block-banner',           # Code block header with buttons
-                '.code-info-button-text',          # Button text ("Copy", "Download")
-                '.ds-button',                      # DeepSeek buttons
-                '.d813de27',                       # Code block UI elements (language labels)
-                '.efa13877',                       # More UI elements
-                '.d2a24f03',                       # UI container elements
-                '[role="button"]',                 # Any button elements
-                '.ds-button__icon',                # Button icons
-                '.ds-icon'                         # Icons
+                '.md-code-block-banner',
+                '.code-info-button-text',
+                '.ds-button',
+                '.d813de27',
+                '.efa13877',
+                '.d2a24f03',
+                '[role="button"]',
+                '.ds-button__icon',
+                '.ds-icon'
             ]
             
             for selector in ui_selectors:
                 for element in soup.select(selector):
                     element.decompose()
                     
-            print(f"Removed DeepSeek UI elements")  # Debug logging
+            print(f"[DEBUG] Removed DeepSeek UI elements")
             
-            # STEP 2.2: Convert other HTML elements to Markdown
+            # STEP 3.2: Convert other HTML elements to Markdown
             # Convert headers
             for i in range(1, 7):  # h1 to h6
                 for header in soup.find_all(f'h{i}'):
@@ -390,7 +421,6 @@ def get_last_message(driver: Driver) -> Optional[str]:
             # Convert blockquotes
             for quote in soup.find_all('blockquote'):
                 quote_text = quote.get_text().strip()
-                # Add > to each line
                 quote_lines = quote_text.split('\n')
                 markdown_quote = '\n'.join(f"> {line}" for line in quote_lines)
                 quote.replace_with(f"\n{markdown_quote}\n")
@@ -399,10 +429,10 @@ def get_last_message(driver: Driver) -> Optional[str]:
             for hr in soup.find_all('hr'):
                 hr.replace_with("\n---\n")
             
-            print(f"Converted HTML elements to Markdown")  # Debug logging
+            print(f"[DEBUG] Converted HTML elements to Markdown")
             
-            # STEP 2.3: Handle remaining HTML elements
-            # Handle line breaks (but be careful not to interfere with code blocks)
+            # STEP 3.3: Handle remaining HTML elements
+            # Handle line breaks
             for br in soup.find_all('br'):
                 br.replace_with('\n')
             
@@ -434,7 +464,7 @@ def get_last_message(driver: Driver) -> Optional[str]:
             # Convert formatting tags to markdown
             # Handle inline code first (single backticks)
             inline_code_elements = soup.find_all('code')
-            print(f"Found {len(inline_code_elements)} inline code elements")  # Debug logging
+            print(f"[DEBUG] Found {len(inline_code_elements)} inline code elements")
             
             for code in inline_code_elements:
                 # Make sure this isn't part of a code block we already converted
@@ -446,11 +476,11 @@ def get_last_message(driver: Driver) -> Optional[str]:
                         if '\n' in text_content and len(text_content.strip().split('\n')) > 1:
                             # Multi-line code, use code block format
                             code.replace_with(f"\n```\n{text_content.strip()}\n```\n")
-                            print(f"Converted multi-line inline code to block: {text_content[:30]}...")
+                            print(f"[DEBUG] Converted multi-line inline code to block: {text_content[:30]}...")
                         else:
                             # Single line, use inline format
                             code.replace_with(f"`{text_content}`")
-                            print(f"Converted inline code: {text_content[:30]}...")
+                            print(f"[DEBUG] Converted inline code: {text_content[:30]}...")
             
             # Handle bold and italic formatting
             for strong in soup.find_all(['strong', 'b']):
@@ -486,7 +516,7 @@ def get_last_message(driver: Driver) -> Optional[str]:
                         table.replace_with('\n' + '\n'.join(markdown_table) + '\n')
                         
                 except Exception as e:
-                    print(f"Error converting table: {e}")
+                    print(f"[DEBUG] Error converting table: {e}")
                     # Fallback: just unwrap the table
                     table.unwrap()
             
@@ -496,18 +526,27 @@ def get_last_message(driver: Driver) -> Optional[str]:
                 for tag in soup.find_all(tag_name):
                     tag.unwrap()
             
-            print(f"Processed remaining HTML elements")  # Debug logging
+            print(f"[DEBUG] Processed remaining HTML elements")
             
-            # Get the processed result
+            # Get the processed result from BeautifulSoup
             result = soup.get_text()
+            print(f"[DEBUG] Result after BeautifulSoup processing (first 300 chars): {result[:300]}...")
             
-            # STEP 3: Restore custom tags
-            for placeholder, original_tag in custom_tag_placeholders.items():
-                result = result.replace(placeholder, original_tag)
-                print(f"Restored '{placeholder}' back to '{original_tag}'")  # Debug logging
+            # STEP 4: Restore custom tags
+            if custom_tag_placeholders:
+                print(f"[DEBUG] Restoring {len(custom_tag_placeholders)} custom tags...")
+                for placeholder, original_tag in custom_tag_placeholders.items():
+                    if placeholder in result:
+                        result = result.replace(placeholder, original_tag)
+                        print(f"[DEBUG] Restored '{placeholder}' back to '{original_tag}'")
+                    else:
+                        print(f"[DEBUG] WARNING: Placeholder '{placeholder}' not found in result!")
+                        
+                print(f"[DEBUG] Restored all custom tags")
+            else:
+                print(f"[DEBUG] No custom tags to restore")
                 
-            print(f"Restored {len(custom_tag_placeholders)} custom tags")  # Debug logging
-            print(f"Final result snippet: {result[:200]}...")  # Debug logging
+            print(f"[DEBUG] Final result after tag restoration (first 300 chars): {result[:300]}...")
             
             # Final cleanup - fix spacing and formatting for Markdown
             result = re.sub(r'\n{3,}', '\n\n', result)  # Limit consecutive newlines
@@ -526,14 +565,20 @@ def get_last_message(driver: Driver) -> Optional[str]:
             
             # Clean up any extra whitespace
             result = result.strip()
+            
+            print(f"[DEBUG] Final cleaned result length: {len(result)}")
+            print(f"[DEBUG] Final result (first 200 chars): {result[:200]}...")
 
             return result
 
         else:
+            print(f"[DEBUG] No messages found")
             return None
     
     except Exception as e:
         print(f"Error when extracting the last response: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # =============================================================================================================================
