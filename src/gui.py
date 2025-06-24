@@ -35,6 +35,9 @@ original_config = {
             "search": False
         }
     },
+    "tag_preservation": {
+        "preserve_tags": []  # Empty list by default
+    },
     "logging": {
         "enabled": False,
         "max_file_size": 1048576,  # 1MB in bytes
@@ -146,9 +149,9 @@ def open_config_window() -> None:
             visible=True,
             title="Settings",
             width=750,
-            height=550,
+            height=600,  # Increased height to accommodate new section
             min_width=650,
-            min_height=500,
+            min_height=550,  # Increased min height
             icon=icon_path
         )
         config_window.transient(root)
@@ -172,6 +175,31 @@ def open_config_window() -> None:
         deepseek_frame.create_switch(id="text_file", label_text="Text file:", default_value=deepseek_model["text_file"], row=4, row_grid=True)
         deepseek_frame.create_switch(id="deepthink", label_text="Deepthink:", default_value=deepseek_model["deepthink"], row=5, row_grid=True)
         deepseek_frame.create_switch(id="search", label_text="Search:", default_value=deepseek_model["search"], row=6, row_grid=True)
+        
+        # Create Tag Preservation Settings section
+        tag_preservation_config = config["tag_preservation"]
+        tag_preservation_frame = config_window.create_section_frame(
+            id="tag_preservation_frame",
+            title="Tag Preservation",
+            bg_color=("white", "gray20")
+        )
+        
+        tag_preservation_frame.create_title(id="tag_preservation_settings", text="Tag Preservation Settings", row=0, row_grid=True)
+        
+        explanation_text = (
+            "Specify custom HTML tags that should be preserved in DeepSeek responses. "
+            "These tags will not be stripped during text processing. "
+            "Useful for memory enhancement tools like st-memory-enhancement that use custom tags like <tableEdit>."
+        )
+        
+        tag_preservation_frame.create_tag_list(
+            id="preserve_tags", 
+            label_text="Custom tags to preserve:", 
+            default_value=tag_preservation_config["preserve_tags"],
+            explanation_text=explanation_text,
+            row=1, 
+            row_grid=True
+        )
         
         # Create Logging Settings section
         logging_config = config["logging"]
@@ -207,7 +235,7 @@ def open_config_window() -> None:
         save_button = gui_builder.ctk.CTkButton(
             button_container, 
             text="Save", 
-            command=lambda: save_config(config_window, deepseek_frame, logging_frame, advanced_frame),
+            command=lambda: save_config(config_window, deepseek_frame, tag_preservation_frame, logging_frame, advanced_frame),
             width=80
         )
         save_button.grid(row=0, column=0, padx=5, pady=5, sticky="e")
@@ -230,6 +258,7 @@ def open_config_window() -> None:
 def save_config(
         config_window: gui_builder.ConfigWindow,
         deepseek_frame: gui_builder.ConfigFrame,
+        tag_preservation_frame: gui_builder.ConfigFrame,
         logging_frame: gui_builder.ConfigFrame,
         advanced_frame: gui_builder.ConfigFrame
     ) -> None:
@@ -293,6 +322,11 @@ def save_config(
         for key in deepseek_model:
             deepseek_model[key] = deepseek_frame.get_widget_value(key)
         
+        # Save tag preservation settings
+        preserve_tags_widget = tag_preservation_frame.get_widget("preserve_tags")
+        if preserve_tags_widget:
+            config["tag_preservation"]["preserve_tags"] = preserve_tags_widget.get()
+        
         config["logging"]["enabled"] = logging_frame.get_widget_value("enabled")
         config["logging"]["max_file_size"] = max_file_size_bytes
         config["logging"]["max_files"] = max_files_int
@@ -306,6 +340,7 @@ def save_config(
         
         config_window.destroy()
         print("The config window was closed successfully.")
+        print(f"Tag preservation enabled for: {config['tag_preservation']['preserve_tags']}")
     except Exception as e:
         print(f"Error saving config: {e}")
 
@@ -436,6 +471,14 @@ def create_gui() -> None:
         print("Main window created.")
         print(f"Executable path: {storage_manager.get_executable_path()}")
         print(f"Base path: {storage_manager.get_base_path()}")
+        
+        # Log current tag preservation settings
+        preserve_tags = config.get("tag_preservation", {}).get("preserve_tags", [])
+        if preserve_tags:
+            print(f"Tag preservation enabled for: {preserve_tags}")
+        else:
+            print("No custom tags configured for preservation.")
+        
         root.mainloop()
     except Exception as e:
         print(f"Error creating GUI: {e}")

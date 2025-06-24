@@ -161,6 +161,170 @@ class CustomTextbox(ctk.CTkTextbox):
         self.see("end")
 
 # =============================================================================================================================
+# Tag List Widget
+# =============================================================================================================================
+
+class TagListWidget(ctk.CTkFrame):
+    def __init__(self, parent, label_text: str = "Tags:", explanation_text: str = "", **kwargs):
+        super().__init__(parent, **kwargs)
+        
+        self.label_text = label_text
+        self.explanation_text = explanation_text
+        self.tags = []
+        self.tag_frames = []
+        
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        # Configure grid for full width layout
+        self.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+        
+        # Label at the top
+        self.label = ctk.CTkLabel(self, text=self.label_text, anchor="w")
+        self.label.grid(row=0, column=0, padx=UIConstants.PADDING_LARGE, pady=(8, 4), sticky="ew")
+        
+        # Main content frame below the label (full width)
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.content_frame.grid(row=1, column=0, padx=UIConstants.PADDING_LARGE, pady=(0, 8), sticky="ew")
+        self.content_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+        
+        # Add tag section
+        self.add_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        self.add_frame.grid(row=0, column=0, sticky="ew", pady=(0, UIConstants.PADDING_MEDIUM))
+        self.add_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+        
+        self.entry = ctk.CTkEntry(
+            self.add_frame,
+            placeholder_text="Enter tag name (e.g., tableEdit, memoryUpdate)",
+            border_color="gray",
+            height=32
+        )
+        self.entry.grid(row=0, column=0, padx=(0, UIConstants.PADDING_MEDIUM), sticky="ew")
+        self.entry.bind("<Return>", lambda e: self._add_tag())
+        
+        self.add_button = ctk.CTkButton(
+            self.add_frame,
+            text="Add Tag",
+            width=80,
+            height=32,
+            command=self._add_tag
+        )
+        self.add_button.grid(row=0, column=1, sticky="e")
+        
+        # Tags container with better styling
+        self.tags_container = ctk.CTkFrame(
+            self.content_frame, 
+            fg_color=("gray92", "gray18"),
+            corner_radius=8,
+            border_width=1,
+            border_color=("gray80", "gray30")
+        )
+        self.tags_container.grid(row=1, column=0, sticky="ew")
+        self.tags_container.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+        
+        # Explanation label (shown when empty)
+        self.explanation_label = ctk.CTkLabel(
+            self.tags_container,
+            text=self.explanation_text,
+            font=("Arial", 11),
+            text_color=("gray50", "gray50"),
+            wraplength=400,
+            justify="left"
+        )
+        
+        self._update_display()
+    
+    def _add_tag(self):
+        tag_text = self.entry.get().strip()
+        if tag_text and tag_text not in self.tags:
+            # Validate tag name (basic validation)
+            if re.match(r'^[a-zA-Z][a-zA-Z0-9_-]*$', tag_text):
+                self.tags.append(tag_text)
+                self.entry.delete(0, 'end')
+                self._update_display()
+            else:
+                # Flash the entry red for invalid input
+                original_color = self.entry.cget("border_color")
+                self.entry.configure(border_color="red")
+                self.after(1000, lambda: self.entry.configure(border_color=original_color))
+    
+    def _remove_tag(self, tag: str):
+        if tag in self.tags:
+            self.tags.remove(tag)
+            self._update_display()
+    
+    def _update_display(self):
+        # Clear existing tag frames
+        for frame in self.tag_frames:
+            frame.destroy()
+        self.tag_frames.clear()
+        
+        if not self.tags:
+            # Show explanation when empty
+            self.explanation_label.grid(row=0, column=0, padx=UIConstants.PADDING_LARGE, pady=UIConstants.PADDING_LARGE, sticky="ew")
+        else:
+            # Hide explanation
+            self.explanation_label.grid_remove()
+            
+            # Create tag frames with improved styling and vertical padding
+            for i, tag in enumerate(self.tags):
+                # Calculate padding for first and last items to add vertical breathing room
+                top_padding = UIConstants.PADDING_MEDIUM if i == 0 else UIConstants.PADDING_SMALL//2
+                bottom_padding = UIConstants.PADDING_MEDIUM if i == len(self.tags) - 1 else UIConstants.PADDING_SMALL//2
+                
+                tag_frame = ctk.CTkFrame(
+                    self.tags_container, 
+                    fg_color=("white", "gray25"),
+                    corner_radius=6,
+                    border_width=1,
+                    border_color=("gray70", "gray40")
+                )
+                tag_frame.grid(
+                    row=i, 
+                    column=0, 
+                    padx=UIConstants.PADDING_MEDIUM, 
+                    pady=(top_padding, bottom_padding), 
+                    sticky="ew"
+                )
+                tag_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+                
+                # Tag label with better styling
+                tag_label = ctk.CTkLabel(
+                    tag_frame,
+                    text=f"<{tag}>",
+                    font=("Consolas", 12, "bold"),  # Monospace font for tags
+                    text_color=("#2563eb", "#60a5fa"),  # Blue color for tags
+                    anchor="w"
+                )
+                tag_label.grid(row=0, column=0, padx=UIConstants.PADDING_MEDIUM, pady=UIConstants.PADDING_MEDIUM, sticky="ew")
+                
+                # Improved delete button
+                delete_button = ctk.CTkButton(
+                    tag_frame,
+                    text="Remove",
+                    width=70,
+                    height=28,
+                    font=("Arial", 10),
+                    fg_color=("#dc2626", "#ef4444"),  # Red colors
+                    hover_color=("#b91c1c", "#dc2626"),
+                    text_color="white",
+                    corner_radius=4,
+                    command=lambda t=tag: self._remove_tag(t)
+                )
+                delete_button.grid(row=0, column=1, padx=(0, UIConstants.PADDING_MEDIUM), pady=UIConstants.PADDING_MEDIUM)
+                
+                self.tag_frames.append(tag_frame)
+    
+    def get(self) -> List[str]:
+        """Get the current list of tags"""
+        return self.tags.copy()
+    
+    def set(self, tags: List[str]) -> None:
+        """Set the list of tags"""
+        self.tags = [tag for tag in tags if tag and isinstance(tag, str)]
+        self._update_display()
+
+# =============================================================================================================================
 # Root Window
 # =============================================================================================================================
 
@@ -328,6 +492,31 @@ class ConfigFrame(ctk.CTkFrame):
 
         _save_widget(self, id, menu)
         return menu
+    
+    def create_tag_list(
+        self, 
+        id: str, 
+        label_text: str, 
+        default_value: List[str], 
+        explanation_text: str = "",
+        row: int = 0, 
+        row_grid: bool = False
+    ) -> TagListWidget:
+        """Create a tag list widget for managing custom tags"""
+        tag_widget = TagListWidget(
+            self,
+            label_text=label_text,
+            explanation_text=explanation_text,
+            fg_color="transparent"
+        )
+        tag_widget.grid(row=row, column=0, columnspan=2, padx=0, pady=8, sticky="ew")
+        tag_widget.set(default_value)
+
+        if row_grid:
+            _set_row_grid(self, row)
+
+        _save_widget(self, id, tag_widget)
+        return tag_widget
     
     def create_button(self, id: str, text: str, command: Optional[Callable] = None, row: int = 0, column: int = 0, row_grid: bool = False) -> ctk.CTkButton:        
         button = ctk.CTkButton(self, text=text, command=command)
