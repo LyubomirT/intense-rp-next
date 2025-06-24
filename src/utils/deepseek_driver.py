@@ -258,15 +258,15 @@ def get_last_message(driver: Driver) -> Optional[str]:
                 print(f"HTML snippet: {last_message_html[:200]}...")  # Debug logging
                 
                 # DeepSeek handles custom tags in two ways:
-                # 1. In regular text: <span class="ds-markdown-html">&lt;test&gt;</span>Testing<span class="ds-markdown-html">&lt;/test&gt;</span>
-                # 2. In code blocks: &lt;test&gt;Testing&lt;/test&gt; (just HTML entities)
+                # 1. In regular text: <span class="ds-markdown-html"><test></span>Testing<span class="ds-markdown-html"></test></span>
+                # 2. In code blocks: <test>Testing</test> (just HTML entities)
                 
                 for tag in preserve_tags:
                     # Pattern 1: Escaped HTML tags wrapped in spans (regular text)
-                    escaped_span_pattern = rf'<span class="ds-markdown-html">&lt;{re.escape(tag)}&gt;</span>(.*?)<span class="ds-markdown-html">&lt;/{re.escape(tag)}&gt;</span>'
+                    escaped_span_pattern = rf'<span class="ds-markdown-html"><{re.escape(tag)}></span>(.*?)<span class="ds-markdown-html"></{re.escape(tag)}></span>'
                     
                     # Pattern 2: Plain HTML entities (code blocks)
-                    escaped_entity_pattern = rf'&lt;{re.escape(tag)}&gt;(.*?)&lt;/{re.escape(tag)}&gt;'
+                    escaped_entity_pattern = rf'<{re.escape(tag)}>(.*?)</{re.escape(tag)}>'
                     
                     print(f"Looking for span pattern: {escaped_span_pattern}")  # Debug logging
                     print(f"Looking for entity pattern: {escaped_entity_pattern}")  # Debug logging
@@ -297,11 +297,11 @@ def get_last_message(driver: Driver) -> Optional[str]:
                 print(f"Processed message snippet: {processed_message[:200]}...")  # Debug logging
 
             # Handle HTML entities
-            processed_message = re.sub(r'&amp;', '&', processed_message)
-            processed_message = re.sub(r'&lt;', '<', processed_message)
-            processed_message = re.sub(r'&gt;', '>', processed_message)
-            processed_message = re.sub(r'&nbsp;', ' ', processed_message)
-            processed_message = re.sub(r'&quot;', '"', processed_message)
+            processed_message = re.sub(r'&', '&', processed_message)
+            processed_message = re.sub(r'<', '<', processed_message)
+            processed_message = re.sub(r'>', '>', processed_message)
+            processed_message = re.sub(r' ', ' ', processed_message)
+            processed_message = re.sub(r'"', '"', processed_message)
             
             # STEP 2: Process with BeautifulSoup (custom tags are now safe as placeholders)
             soup = BeautifulSoup(processed_message, 'html.parser')
@@ -312,6 +312,8 @@ def get_last_message(driver: Driver) -> Optional[str]:
             
             # STEP 2.1: Convert DeepSeek code blocks to Markdown before removing UI elements
             code_blocks = soup.find_all('div', class_='md-code-block')
+            print(f"Found {len(code_blocks)} code blocks to convert")  # Debug logging
+            
             for code_block in code_blocks:
                 try:
                     # Extract language from the UI element
@@ -324,10 +326,12 @@ def get_last_message(driver: Driver) -> Optional[str]:
                         code_content = pre_tag.get_text().strip()
                         
                         # Create Markdown code block
-                        if language and language.lower() != 'text':
+                        if language and language.lower() not in ['text', '']:
                             markdown_code = f"\n```{language}\n{code_content}\n```\n"
+                            print(f"Converting to {language} code block, content: {code_content[:50]}...")
                         else:
                             markdown_code = f"\n```\n{code_content}\n```\n"
+                            print(f"Converting to plain code block, content: {code_content[:50]}...")
                         
                         # Replace the entire code block with Markdown
                         code_block.replace_with(markdown_code)
@@ -428,6 +432,27 @@ def get_last_message(driver: Driver) -> Optional[str]:
                 p.insert_after('\n\n')
                     
             # Convert formatting tags to markdown
+            # Handle inline code first (single backticks)
+            inline_code_elements = soup.find_all('code')
+            print(f"Found {len(inline_code_elements)} inline code elements")  # Debug logging
+            
+            for code in inline_code_elements:
+                # Make sure this isn't part of a code block we already converted
+                parent_code_block = code.find_parent('div', class_='md-code-block')
+                if not parent_code_block:  # Only process if not inside a code block
+                    text_content = code.get_text()
+                    if text_content.strip():
+                        # Check if it's likely a multi-line code (contains newlines)
+                        if '\n' in text_content and len(text_content.strip().split('\n')) > 1:
+                            # Multi-line code, use code block format
+                            code.replace_with(f"\n```\n{text_content.strip()}\n```\n")
+                            print(f"Converted multi-line inline code to block: {text_content[:30]}...")
+                        else:
+                            # Single line, use inline format
+                            code.replace_with(f"`{text_content}`")
+                            print(f"Converted inline code: {text_content[:30]}...")
+            
+            # Handle bold and italic formatting
             for strong in soup.find_all(['strong', 'b']):
                 text_content = strong.get_text()
                 if text_content.strip():
@@ -437,11 +462,6 @@ def get_last_message(driver: Driver) -> Optional[str]:
                 text_content = em.get_text()
                 if text_content.strip():
                     em.replace_with(f"*{text_content}*")
-                
-            for code in soup.find_all('code'):
-                text_content = code.get_text()
-                if text_content.strip():
-                    code.replace_with(f"`{text_content}`")
             
             # Convert tables to basic Markdown (simplified)
             for table in soup.find_all('table'):
@@ -479,7 +499,7 @@ def get_last_message(driver: Driver) -> Optional[str]:
             print(f"Processed remaining HTML elements")  # Debug logging
             
             # Get the processed result
-            result = soup.get_text()  # Back to get_text() since we want clean text
+            result = soup.get_text()
             
             # STEP 3: Restore custom tags
             for placeholder, original_tag in custom_tag_placeholders.items():
@@ -492,73 +512,11 @@ def get_last_message(driver: Driver) -> Optional[str]:
             # Final cleanup - fix spacing and formatting for Markdown
             result = re.sub(r'\n{3,}', '\n\n', result)  # Limit consecutive newlines
             result = re.sub(r'\*{3,}', '**', result)    # Fix multiple asterisks (preserve ** for bold)
-            result = re.sub(r'`{2,}', '`', result)      # Fix multiple backticks
+            # Fix multiple backticks but preserve triple backticks for code blocks
+            result = re.sub(r'`{4,}', '```', result)    # Fix 4+ backticks to triple
+            result = re.sub(r'(?<!`)`{2}(?!`)', '`', result)  # Fix double backticks to single (but not triple)
             result = re.sub(r'^[\s]*\n', '', result)    # Remove leading empty lines
-            result = re.sub(r'\n[\s]*
-            
-            # Clean up any extra whitespace
-            result = result.strip()
-
-            return result
-
-        else:
-            return None
-    
-    except Exception as e:
-        print(f"Error when extracting the last response: {e}")
-        return None
-
-# =============================================================================================================================
-# Bot response generation
-# =============================================================================================================================
-
-def active_generate_response(driver: Driver) -> bool:
-    try:
-        button = driver.wait_for_element_present("//div[@role='button' and contains(@class, '_7436101')]//div[contains(@class, '_480132b')]", by="xpath", timeout=60)
-        return button
-    except Exception as e:
-        print(f"Error generating response: {e}")
-        return False
-
-def wait_for_response_completion(driver: Driver, max_wait_time: float = 5.0) -> str:
-    """
-    Wait for response to be completely finished and content to stabilize.
-    This fixes the race condition where button state changes before content is fully rendered.
-    """
-    try:
-        while is_response_generating(driver):
-            time.sleep(0.1)
-        
-        last_content = None
-        stable_count = 0
-        start_time = time.time()
-        
-        while time.time() - start_time < max_wait_time:
-            current_content = get_last_message(driver)
-            
-            if current_content == last_content:
-                stable_count += 1
-                # Content has been stable for multiple checks
-                if stable_count >= 3:
-                    return current_content or ""
-            else:
-                stable_count = 0
-                last_content = current_content
-            
-            time.sleep(0.2)
-        
-        return last_content or ""
-        
-    except Exception as e:
-        print(f"Error waiting for response completion: {e}")
-        return get_last_message(driver) or ""
-
-def is_response_generating(driver: Driver) -> bool:
-    try:
-        button = driver.find_element("xpath", "//div[@role='button' and contains(@class, '_7436101')]")
-        return button.get_attribute("aria-disabled") == "false"
-    except Exception:
-        return False, '', result)    # Remove trailing empty lines
+            result = re.sub(r'\n[\s]*$', '', result)    # Remove trailing empty lines
             
             # Clean up Markdown formatting issues
             result = re.sub(r'\n\s*\n\s*```', '\n\n```', result)  # Fix code block spacing
