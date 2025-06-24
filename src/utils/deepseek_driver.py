@@ -218,16 +218,22 @@ def get_last_message(driver: Driver) -> Optional[str]:
             # Clean up the HTML first
             last_message_html = _remove_em_inside_strong(last_message_html)
             
-            # Convert HTML entities
-            processed_message = last_message_html
-            processed_message = re.sub(r'&amp;', '&', processed_message)
-            processed_message = re.sub(r'&lt;', '<', processed_message)
-            processed_message = re.sub(r'&gt;', '>', processed_message)
-            processed_message = re.sub(r'&nbsp;', ' ', processed_message)
-            processed_message = re.sub(r'&quot;', '"', processed_message)
-            
             # Process with BeautifulSoup
-            soup = BeautifulSoup(processed_message, 'html.parser')
+            soup = BeautifulSoup(last_message_html, 'html.parser')
+            
+            # Handle ds-markdown-html spans FIRST - these contain user's XML/HTML tags
+            # We need to preserve their content and convert entities
+            for span in soup.find_all('span', class_='ds-markdown-html'):
+                # Get the text content which has HTML entities
+                content = span.get_text()
+                # Convert HTML entities to actual characters
+                content = content.replace('&lt;', '<')
+                content = content.replace('&gt;', '>')
+                content = content.replace('&amp;', '&')
+                content = content.replace('&nbsp;', ' ')
+                content = content.replace('&quot;', '"')
+                # Replace the span with just its decoded content
+                span.replace_with(content)
             
             # Remove unwanted tags completely
             for tag in soup(['script', 'style', 'meta', 'link']):
@@ -397,14 +403,24 @@ def get_last_message(driver: Driver) -> Optional[str]:
                     # Fallback: just unwrap the table
                     table.unwrap()
             
-            # Unwrap remaining formatting tags
-            formatting_tags = ['span', 'div']
-            for tag_name in formatting_tags:
-                for tag in soup.find_all(tag_name):
-                    tag.unwrap()
+            # Unwrap remaining formatting tags (but not the ones we already processed)
+            for span in soup.find_all('span'):
+                # Only unwrap if it's not a special span we want to keep
+                if 'ds-markdown-html' not in span.get('class', []):
+                    span.unwrap()
+                    
+            for div in soup.find_all('div'):
+                div.unwrap()
             
             # Get the processed result from BeautifulSoup
             result = soup.get_text()
+            
+            # Final entity conversion in case any were missed
+            result = result.replace('&lt;', '<')
+            result = result.replace('&gt;', '>')
+            result = result.replace('&amp;', '&')
+            result = result.replace('&nbsp;', ' ')
+            result = result.replace('&quot;', '"')
             
             # Final cleanup - fix spacing and formatting for Markdown
             result = re.sub(r'\n{3,}', '\n\n', result)  # Limit consecutive newlines
