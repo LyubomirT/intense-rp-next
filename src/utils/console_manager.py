@@ -75,16 +75,16 @@ class ConsoleColorPalettes:
     def get_palette(cls, name: str) -> Dict[str, str]:
         """Get palette by name"""
         palettes = {
-            "Modern": cls.MODERN,
-            "Classic": cls.CLASSIC,
-            "Bright": cls.BRIGHT
+            "Modern (Redesigned)": cls.MODERN,
+            "Classic (OG IntenseRP)": cls.CLASSIC,
+            "Bright (New Palette)": cls.BRIGHT
         }
         return palettes.get(name, cls.MODERN)
     
     @classmethod
     def get_palette_names(cls) -> list[str]:
         """Get list of available palette names"""
-        return ["Modern", "Classic", "Bright"]
+        return ["Modern (Redesigned)", "Classic (OG IntenseRP)", "Bright (New Palette)"]
 
 
 class ConsoleSettings:
