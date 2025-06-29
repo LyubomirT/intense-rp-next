@@ -1,50 +1,23 @@
 import threading, webbrowser, api, sys, re, platform, tkinter as tk
 import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
-import utils.storage_manager as storage
 import utils.process_manager as process
 import utils.gui_builder as gui_builder
-import utils.logging_manager as logging_manager
 import utils.console_manager as console_manager
 from packaging import version
 from core import get_state_manager, StateEvent
+
+# New modular config system imports
+from config.config_manager import ConfigManager
+from config.config_ui_generator import ConfigUIGenerator
 
 __version__ = "2.7.0"
 
 # Local GUI state (not shared across modules)
 root = None
 storage_manager = None
+config_manager = None
 icon_path = None
-
-# Original config template
-original_config = {
-    "browser": "Chrome",
-    "model": "DeepSeek",
-    "check_version": True,
-    "show_ip": False,
-    "show_console": False,
-    "models": {
-        "deepseek": {
-            "email": "",
-            "password": "",
-            "auto_login": False,
-            "text_file": False,
-            "deepthink": False,
-            "search": False
-        }
-    },
-    "console": {
-        "font_family": "Consolas",
-        "font_size": 12,
-        "color_palette": "Modern",
-        "word_wrap": True
-    },
-    "logging": {
-        "enabled": False,
-        "max_file_size": 1048576,  # 1MB in bytes
-        "max_files": 10
-    }
-}
 
 # =============================================================================================================================
 # Modal Window Management
@@ -118,7 +91,7 @@ def create_console_window() -> None:
     try:
         # Initialize console manager
         console_mgr = console_manager.ConsoleManager(state, storage_manager)
-        console_mgr.initialize(state.config, icon_path)
+        console_mgr.initialize(config_manager.get_all(), icon_path)
         
         # Store console manager in state
         state.console_manager = console_mgr
@@ -139,10 +112,11 @@ def start_services() -> None:
         print(f"Error starting services: {e}")
 
 # =============================================================================================================================
-# Config Window
+# Config Window - Now Using Modular System
 # =============================================================================================================================
 
 def on_console_toggle(value: bool) -> None:
+    """Handle console window toggle"""
     state = get_state_manager()
     
     try:
@@ -151,27 +125,14 @@ def on_console_toggle(value: bool) -> None:
     except Exception as e:
         print(f"Error when toggling console visibility: {e}")
 
-def on_console_settings_change(console_frame) -> None:
-    """Handle console settings changes and apply them immediately"""
+def preview_console_changes() -> None:
+    """Preview console settings changes"""
     state = get_state_manager()
     
     try:
         if hasattr(state, 'console_manager') and state.console_manager:
-            # Get current values from UI
-            font_family = console_frame.get_widget_value("font_family")
-            font_size = int(console_frame.get_widget_value("font_size"))
-            color_palette = console_frame.get_widget_value("color_palette")
-            word_wrap = console_frame.get_widget_value("word_wrap")
-            
-            # Create new settings
-            new_settings = console_manager.ConsoleSettings({
-                "console": {
-                    "font_family": font_family,
-                    "font_size": font_size,
-                    "color_palette": color_palette,
-                    "word_wrap": word_wrap
-                }
-            })
+            # Get current values from config manager
+            new_settings = console_manager.ConsoleSettings(config_manager.get_all())
             
             # Apply settings
             state.console_manager.update_settings(new_settings)
@@ -179,272 +140,33 @@ def on_console_settings_change(console_frame) -> None:
     except Exception as e:
         print(f"Error applying console settings: {e}")
 
-def format_file_size(size_bytes: int) -> str:
-    """Convert bytes to human readable format"""
-    if size_bytes >= 1024 * 1024:
-        return f"{size_bytes // (1024 * 1024)} MB"
-    elif size_bytes >= 1024:
-        return f"{size_bytes // 1024} KB"
-    else:
-        return f"{size_bytes} B"
-
-def parse_file_size(size_str: str) -> int:
-    """Convert human readable size to bytes"""
-    try:
-        size_str = size_str.strip().upper()
-        if size_str.endswith('MB'):
-            return int(float(size_str[:-2].strip()) * 1024 * 1024)
-        elif size_str.endswith('KB'):
-            return int(float(size_str[:-2].strip()) * 1024)
-        elif size_str.endswith('B'):
-            return int(size_str[:-1].strip())
-        else:
-            # Assume bytes if no unit
-            return int(size_str)
-    except (ValueError, IndexError):
-        return 1048576  # Default 1MB
-
 def open_config_window() -> None:
-    global root
+    """Open configuration window using the new modular system"""
+    global root, config_manager
     state = get_state_manager()
     
     try:
-        config_window = gui_builder.ConfigWindow()
-        config_window.create(
-            visible=True,
-            title="Settings",
-            width=750,
-            height=500,
-            min_width=650,
-            min_height=450,
-            icon=icon_path
-        )
-        make_window_modal(config_window, root)
-        config_window.center(root)
-
-        state.config_window = config_window
-        config = state.config
-
-        # Create DeepSeek Settings section
-        deepseek_model = config["models"]["deepseek"]
-        deepseek_frame = config_window.create_section_frame(
-            id="deepseek_frame",
-            title="DeepSeek Settings",
-            bg_color=("white", "gray20")
-        )
-
-        deepseek_frame.create_title(id="deepseek_settings", text="DeepSeek Settings", row=0, row_grid=True)
-        deepseek_frame.create_entry(id="email", label_text="Email:", default_value=deepseek_model["email"], row=1, row_grid=True)
-        deepseek_frame.create_password(id="password", label_text="Password:", default_value=deepseek_model["password"], row=2, row_grid=True)
-        deepseek_frame.create_switch(id="auto_login", label_text="Auto login:", default_value=deepseek_model["auto_login"], row=3, row_grid=True)
-        deepseek_frame.create_switch(id="text_file", label_text="Text file:", default_value=deepseek_model["text_file"], row=4, row_grid=True)
-        deepseek_frame.create_switch(id="deepthink", label_text="Deepthink:", default_value=deepseek_model["deepthink"], row=5, row_grid=True)
-        deepseek_frame.create_switch(id="search", label_text="Search:", default_value=deepseek_model["search"], row=6, row_grid=True)
-        
-        # Create Console Settings section (NEW)
-        console_config = config.get("console", {})
-        console_frame = config_window.create_section_frame(
-            id="console_frame",
-            title="Console Settings",
-            bg_color=("white", "gray20")
-        )
-        
-        console_frame.create_title(id="console_settings", text="Console Settings", row=0, row_grid=True)
-        console_frame.create_option_menu(
-            id="font_family", 
-            label_text="Font Family:", 
-            default_value=console_config.get("font_family", "Consolas"),
-            options=console_manager.ConsoleSettings.FONT_FAMILIES,
-            row=1, row_grid=True
-        )
-        console_frame.create_option_menu(
-            id="font_size",
-            label_text="Font Size:",
-            default_value=str(console_config.get("font_size", 12)),
-            options=[str(size) for size in console_manager.ConsoleSettings.FONT_SIZES],
-            row=2, row_grid=True
-        )
-        console_frame.create_option_menu(
-            id="color_palette",
-            label_text="Color Palette:",
-            default_value=console_config.get("color_palette", "Modern"),
-            options=console_manager.ConsoleColorPalettes.get_palette_names(),
-            row=3, row_grid=True
-        )
-        console_frame.create_switch(
-            id="word_wrap",
-            label_text="Word Wrap:",
-            default_value=console_config.get("word_wrap", True),
-            row=4, row_grid=True
-        )
-        
-        # Add preview button for console settings
-        console_frame.create_button(
-            id="preview_console",
-            text="Preview Changes",
-            command=lambda: on_console_settings_change(console_frame),
-            row=5, row_grid=True
-        )
-        
-        # Create Logging Settings section
-        logging_config = config["logging"]
-        logging_frame = config_window.create_section_frame(
-            id="logging_frame",
-            title="Logging Settings",
-            bg_color=("white", "gray20")
-        )
-        
-        logging_frame.create_title(id="logging_settings", text="Logging Settings", row=0, row_grid=True)
-        logging_frame.create_switch(id="enabled", label_text="Store logfiles:", default_value=logging_config["enabled"], row=1, row_grid=True)
-        logging_frame.create_entry(id="max_file_size", label_text="Max file size:", default_value=format_file_size(logging_config["max_file_size"]), row=2, row_grid=True)
-        logging_frame.create_entry(id="max_files", label_text="Max files:", default_value=str(logging_config["max_files"]), row=3, row_grid=True)
-        
-        # Create Advanced Settings section
-        advanced_frame = config_window.create_section_frame(
-            id="advanced_frame",
-            title="Advanced Settings",
-            bg_color=("white", "gray20")
-        )
-
-        advanced_frame.create_title(id="advanced_settings", text="Advanced Settings", row=0, row_grid=True)
-        advanced_frame.create_option_menu(id="browser", label_text="Browser:", default_value=config["browser"], options=["Chrome", "Firefox", "Edge", "Safari"], row=1, row_grid=True)
-        advanced_frame.create_switch(id="check_version", label_text="Check version at startup:", default_value=config["check_version"], row=2, row_grid=True)
-        advanced_frame.create_switch(id="show_console", label_text="Show Console:", default_value=config["show_console"], command=on_console_toggle, row=3, row_grid=True)
-        advanced_frame.create_switch(id="show_ip", label_text="Show IP:", default_value=config["show_ip"], row=4, row_grid=True)
-        
-        # Create button section
-        button_container = config_window.create_button_section()
-        button_container.grid_columnconfigure(0, weight=1)
-        button_container.grid_columnconfigure(1, weight=1)
-
-        save_button = gui_builder.ctk.CTkButton(
-            button_container, 
-            text="Save", 
-            command=lambda: save_config(config_window, deepseek_frame, console_frame, logging_frame, advanced_frame),
-            width=80
-        )
-        save_button.grid(row=0, column=0, padx=5, pady=5, sticky="e")
-
-        cancel_button = gui_builder.ctk.CTkButton(
-            button_container, 
-            text="Cancel", 
-            command=config_window.destroy,
-            width=80
-        )
-        cancel_button.grid(row=0, column=1, padx=5, pady=5, sticky="w")
-
-        # Set initial active section
-        config_window.set_active_section("deepseek_frame")
-
-        print("Settings window created with sidebar navigation.")
-    except Exception as e:
-        print(f"Error opening config window: {e}")
-
-def save_config(
-        config_window: gui_builder.ConfigWindow,
-        deepseek_frame: gui_builder.ConfigFrame,
-        console_frame: gui_builder.ConfigFrame,
-        logging_frame: gui_builder.ConfigFrame,
-        advanced_frame: gui_builder.ConfigFrame
-    ) -> None:
-    try:
-        global original_config
-        state = get_state_manager()
-        
-        email_entry = deepseek_frame.get_widget("email")
-        password_entry = deepseek_frame.get_widget("password")
-        auto_login = deepseek_frame.get_widget_value("auto_login")
-        
-        def is_valid_email(email: str) -> bool:
-            return re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", email) is not None
-        
-        def is_valid_password(password: str, min_length: int = 6) -> bool:
-            return len(password.strip()) >= min_length
-        
-        def set_entry_style(entry, valid: bool) -> None:
-            entry.configure(border_color="gray" if valid else "red")
-        
-        # Validate email/password if auto_login is enabled
-        if auto_login:
-            valid_email = is_valid_email(email_entry.get())
-            set_entry_style(email_entry, valid_email)
-            
-            valid_password = is_valid_password(password_entry.get())
-            set_entry_style(password_entry, valid_password)
-
-            if not valid_email or not valid_password:
-                return
-        else:
-            set_entry_style(email_entry, True)
-            set_entry_style(password_entry, True)
-
-        # Validate logging settings
-        max_file_size_entry = logging_frame.get_widget("max_file_size")
-        max_files_entry = logging_frame.get_widget("max_files")
-        
-        try:
-            max_file_size_bytes = parse_file_size(max_file_size_entry.get())
-            set_entry_style(max_file_size_entry, True)
-        except:
-            set_entry_style(max_file_size_entry, False)
-            return
-            
-        try:
-            max_files_int = int(max_files_entry.get().strip())
-            if max_files_int < 1 or max_files_int > 100:
-                raise ValueError()
-            set_entry_style(max_files_entry, True)
-        except:
-            set_entry_style(max_files_entry, False)
-            return
-
-        # Build new configuration
-        new_config = {
-            "browser": advanced_frame.get_widget_value("browser"),
-            "check_version": advanced_frame.get_widget_value("check_version"),
-            "show_console": advanced_frame.get_widget_value("show_console"),
-            "show_ip": advanced_frame.get_widget_value("show_ip"),
-            "models": {
-                "deepseek": {
-                    "email": deepseek_frame.get_widget_value("email"),
-                    "password": deepseek_frame.get_widget_value("password"),
-                    "auto_login": deepseek_frame.get_widget_value("auto_login"),
-                    "text_file": deepseek_frame.get_widget_value("text_file"),
-                    "deepthink": deepseek_frame.get_widget_value("deepthink"),
-                    "search": deepseek_frame.get_widget_value("search")
-                }
-            },
-            "console": {
-                "font_family": console_frame.get_widget_value("font_family"),
-                "font_size": int(console_frame.get_widget_value("font_size")),
-                "color_palette": console_frame.get_widget_value("color_palette"),
-                "word_wrap": console_frame.get_widget_value("word_wrap")
-            },
-            "logging": {
-                "enabled": logging_frame.get_widget_value("enabled"),
-                "max_file_size": max_file_size_bytes,
-                "max_files": max_files_int
-            }
+        # Set up command handlers for special actions
+        command_handlers = {
+            'on_console_toggle': on_console_toggle,
+            'preview_console_changes': preview_console_changes,
         }
         
-        # Save configuration
-        storage_manager.save_config(path_root="executable", sub_path="save", new=new_config, original=original_config)
-        state.set_config(new_config)
+        # Create UI generator
+        ui_generator = ConfigUIGenerator(config_manager, command_handlers)
         
-        # Update console settings if console manager exists
-        if hasattr(state, 'console_manager') and state.console_manager:
-            console_settings = console_manager.ConsoleSettings(new_config)
-            state.console_manager.update_settings(console_settings)
+        # Create and show window
+        config_window = ui_generator.create_config_window(icon_path)
+        make_window_modal(config_window, root)
+        config_window.center(root)
         
-        # Reinitialize logging with new settings
-        if state.logging_manager:
-            state.logging_manager.initialize(new_config)
+        # Store in state for reference
+        state.config_window = config_window
         
-        config_window.destroy()
-        print("The config window was closed successfully.")
+        print("Settings window created with new modular system.")
+        
     except Exception as e:
-        print(f"Error saving config: {e}")
-
+        print(f"Error opening config window: {e}")
 
 # =============================================================================================================================
 # Credits
@@ -527,12 +249,19 @@ def on_close_root() -> None:
         print(f"Error closing root: {e}")
 
 def create_gui() -> None:
-    global __version__, root, storage_manager, icon_path
+    global __version__, root, storage_manager, config_manager, icon_path
     state = get_state_manager()
     
     try:
-        # Initialize local managers
+        # Initialize storage manager and config system
+        import utils.storage_manager as storage
+        import utils.logging_manager as logging_manager
+        
         storage_manager = storage.StorageManager()
+        
+        # Initialize new config system
+        config_manager = ConfigManager(storage_manager)
+        
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
         icon_path = storage_manager.get_existing_path(path_root="base", relative_path="icon.ico")
 
@@ -569,27 +298,27 @@ def create_gui() -> None:
         # Update state with UI components
         state.textbox = textbox
         
-        # Load and set configuration FIRST
-        config = storage_manager.load_config(path_root="executable", sub_path="save", original=original_config)
-        state.set_config(config)
+        # Set configuration in state manager (for backward compatibility)
+        config_data = config_manager.get_all()
+        state.set_config(config_data)
         
-        # Create console window AFTER config is loaded
+        # Create console window after config is loaded
         create_console_window()
         
         # Initialize logging
-        logging_manager_instance.initialize(config)
+        logging_manager_instance.initialize(config_data)
         
-        if config["check_version"]:
+        if config_manager.get("check_version", True):
             current_version = version.parse(__version__)
             last_version = storage_manager.get_latest_version()
             if last_version and version.parse(last_version) > current_version:
                 root.after(200, lambda: create_update_window(last_version))
         
         # Show console if configured to do so
-        if config["show_console"] and hasattr(state, 'console_manager') and state.console_manager:
+        if config_manager.get("show_console", False) and hasattr(state, 'console_manager') and state.console_manager:
             root.after(100, lambda: state.console_manager.show(True, root, center=True))
         
-        print("Main window created.")
+        print("Main window created with new modular config system.")
         print(f"Executable path: {storage_manager.get_executable_path()}")
         print(f"Base path: {storage_manager.get_base_path()}")
         

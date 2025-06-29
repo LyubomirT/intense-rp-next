@@ -33,8 +33,8 @@ class StateManager:
         self._console_window = None
         self._config_window = None
         
-        # Application state
-        self._config = {}
+        # Application state - now just a reference to external config manager
+        self._config_manager = None
         self._logging_manager = None
         
         # Runtime state
@@ -150,53 +150,45 @@ class StateManager:
         with self._lock:
             self._config_window = value
     
-    # Configuration management
+    # Configuration management - now delegated to ConfigManager
+    def set_config_manager(self, config_manager) -> None:
+        """Set the external config manager"""
+        with self._lock:
+            self._config_manager = config_manager
+    
     @property
     def config(self) -> Dict[str, Any]:
-        with self._lock:
-            return self._config.copy()  # Return copy to prevent external mutation
+        """Get configuration (backward compatibility)"""
+        if self._config_manager:
+            return self._config_manager.get_all()
+        return {}
     
     def update_config(self, new_config: Dict[str, Any]) -> None:
-        """Update configuration and notify observers"""
-        with self._lock:
-            self._config.update(new_config)
-            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config.copy())
+        """Update configuration and notify observers (backward compatibility)"""
+        if self._config_manager:
+            for key, value in new_config.items():
+                self._config_manager.set(key, value)
+            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config_manager.get_all())
     
     def set_config(self, config: Dict[str, Any]) -> None:
-        """Replace entire configuration"""
-        with self._lock:
-            self._config = config.copy()
-            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config.copy())
+        """Replace entire configuration (backward compatibility)"""
+        if self._config_manager:
+            # Clear and rebuild config
+            for key, value in config.items():
+                self._config_manager.set(key, value)
+            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config_manager.get_all())
     
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get a specific config value with dotted notation (e.g., 'models.deepseek.email')"""
-        with self._lock:
-            keys = key.split('.')
-            value = self._config
-            
-            for k in keys:
-                if isinstance(value, dict) and k in value:
-                    value = value[k]
-                else:
-                    return default
-            
-            return value
+        if self._config_manager:
+            return self._config_manager.get(key, default)
+        return default
     
     def set_config_value(self, key: str, value: Any) -> None:
         """Set a specific config value with dotted notation"""
-        with self._lock:
-            keys = key.split('.')
-            config_ref = self._config
-            
-            # Navigate to the parent dict
-            for k in keys[:-1]:
-                if k not in config_ref or not isinstance(config_ref[k], dict):
-                    config_ref[k] = {}
-                config_ref = config_ref[k]
-            
-            # Set the final value
-            config_ref[keys[-1]] = value
-            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config.copy())
+        if self._config_manager:
+            self._config_manager.set(key, value)
+            self._notify_observers(StateEvent.CONFIG_UPDATED, self._config_manager.get_all())
     
     # Logging manager
     @property
@@ -283,13 +275,21 @@ class StateManager:
     def get_state_summary(self) -> Dict[str, Any]:
         """Get a summary of current state for debugging"""
         with self._lock:
+            config_summary = {}
+            if self._config_manager:
+                try:
+                    config_summary = self._config_manager.get_config_summary()
+                except Exception:
+                    config_summary = {"error": "Failed to get config summary"}
+            
             return {
                 'has_driver': self._driver is not None,
                 'driver_id': self._last_driver,
                 'response_id': self._last_response,
                 'has_textbox': self._textbox is not None,
                 'has_console_manager': self._console_manager is not None,
-                'has_config': bool(self._config),
+                'has_config_manager': self._config_manager is not None,
+                'config_summary': config_summary,
                 'is_running': self._is_running,
                 'observer_count': len(self._observers)
             }

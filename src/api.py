@@ -257,22 +257,29 @@ def run_services() -> None:
         current_driver_id = state.increment_driver_id()
         close_selenium()
 
+        # Get config using the new system (backward compatible)
         config = state.config
-        state.driver = selenium.initialize_webdriver(config.get("browser"), "https://chat.deepseek.com/sign_in")
+        browser = state.get_config_value("browser", "Chrome")
+        
+        state.driver = selenium.initialize_webdriver(browser, "https://chat.deepseek.com/sign_in")
         
         if state.driver:
             threading.Thread(target=monitor_driver, args=(current_driver_id,), daemon=True).start()
 
-            ds_config = config.get("models", {}).get("deepseek", {})
-            if ds_config.get("auto_login"):
-                deepseek.login(state.driver, ds_config.get("email"), ds_config.get("password"))
+            # Get DeepSeek config using new system
+            auto_login = state.get_config_value("models.deepseek.auto_login", False)
+            if auto_login:
+                email = state.get_config_value("models.deepseek.email", "")
+                password = state.get_config_value("models.deepseek.password", "")
+                deepseek.login(state.driver, email, password)
 
             state.clear_messages()
             state.show_message("[color:red]API IS NOW ACTIVE!")
             state.show_message("[color:cyan]WELCOME TO INTENSE RP API")
             state.show_message("[color:yellow]URL 1: [color:white]http://127.0.0.1:5000/")
 
-            if config.get("show_ip"):
+            # Check show_ip setting using new system
+            if state.get_config_value("show_ip", False):
                 ip = socket.gethostbyname(socket.gethostname())
                 state.show_message(f"[color:yellow]URL 2: [color:white]http://{ip}:5000/")
 
