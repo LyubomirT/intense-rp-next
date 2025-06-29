@@ -12,22 +12,23 @@ class CharacterProcessor(BaseProcessor):
         return True
     
     def process(self, request: ChatRequest) -> ChatRequest:
-        """Process character information and format messages"""
+        """Process character information and format messages using original logic"""
         
-        # Clean up duplicate system messages
+        # Clean up duplicate system messages first
         self._cleanup_duplicate_system_messages(request)
         
-        # Extract character info
-        character_info = self._extract_character_info(request)
+        # Use the original approach: combine all messages, then process the combined string
+        combined_content = self._combine_messages(request)
         
-        # Format messages with character names
-        self._format_messages_with_names(request, character_info)
+        # Extract character info from combined content
+        character_info = self._extract_character_info_from_combined(combined_content)
         
-        # Clean up content
-        self._cleanup_content(request)
+        # Process the combined content (like original logic)
+        processed_content = self._process_combined_content(combined_content, character_info, request)
         
-        # Replace template variables
-        self._replace_template_variables(request)
+        # Store the processed content back - we'll let the formatter handle this
+        # For now, store in a special attribute
+        request._processed_content = processed_content
         
         return request
     
@@ -40,61 +41,49 @@ class CharacterProcessor(BaseProcessor):
             messages[-2].role == MessageRole.SYSTEM):
             messages.pop(-2)
     
-    def _extract_character_info(self, request: ChatRequest) -> CharacterInfo:
-        """Extract character and user names from messages"""
+    def _combine_messages(self, request: ChatRequest) -> str:
+        """Combine messages like the original code did"""
+        formatted_messages = [f"{msg.role.value}: {msg.content}" for msg in request.messages]
+        return "\n\n".join(formatted_messages)
+    
+    def _extract_character_info_from_combined(self, content: str) -> CharacterInfo:
+        """Extract character info from combined content (original approach)"""
         character_info = CharacterInfo()
         
-        # Combine all message content to search for names
-        all_content = "\n\n".join([
-            f"{msg.role.value}: {msg.content}" for msg in request.messages
-        ])
+        character_match = re.search(r'DATA1:\s*"([^"]*)"', content)
+        user_match = re.search(r'DATA2:\s*"([^"]*)"', content)
         
-        character_info.extract_names_from_content(all_content)
+        if character_match:
+            character_info.character_name = character_match.group(1)
+        if user_match:
+            character_info.user_name = user_match.group(1)
+            
         return character_info
     
-    def _format_messages_with_names(self, request: ChatRequest, character_info: CharacterInfo) -> None:
-        """Replace generic role names with character names"""
-        for message in request.messages:
-            # Replace system prefix
-            if message.content.startswith("system: "):
-                message.content = message.content.replace("system: ", "", 1)
-            
-            # Replace role names in content
-            message.content = message.content.replace("assistant:", f"{character_info.character_name}:")
-            message.content = message.content.replace("user:", f"{character_info.user_name}:")
-    
-    def _cleanup_content(self, request: ChatRequest) -> None:
-        """Remove unwanted markers and clean up formatting"""
-        cleanup_patterns = [
-            (r"({{r1}}|\[r1\]|\(r1\))", ""),  # Remove r1 markers
-            (r"({{search}}|\[search\])", ""),  # Remove search markers
-            (r'DATA1:\s*"[^"]*"', ""),        # Remove DATA1 definitions
-            (r'DATA2:\s*"[^"]*"', ""),        # Remove DATA2 definitions
-            (r"\n{3,}", "\n\n"),              # Reduce multiple newlines
-        ]
+    def _process_combined_content(self, content: str, character_info: CharacterInfo, request: ChatRequest) -> str:
+        """Process combined content using original logic"""
         
-        for message in request.messages:
-            content = message.content
-            
-            for pattern, replacement in cleanup_patterns:
-                content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
-            
-            message.content = content.strip()
-    
-    def _replace_template_variables(self, request: ChatRequest) -> None:
-        """Replace template variables with actual values"""
-        replacements = {
-            "{{temperature}}": str(request.temperature),
-            "{{max_tokens}}": str(request.max_tokens),
-        }
+        # Remove DATA1 and DATA2 lines
+        content = re.sub(r'DATA1:\s*"[^"]*"', "", content)
+        content = re.sub(r'DATA2:\s*"[^"]*"', "", content)
         
-        for message in request.messages:
-            content = message.content
-            
-            for template, value in replacements.items():
-                content = content.replace(template, value)
-            
-            message.content = content
+        # Remove other markers
+        content = re.sub(r"({{r1}}|\[r1\]|\(r1\))", "", content, flags=re.IGNORECASE)
+        content = re.sub(r"({{search}}|\[search\])", "", content, flags=re.IGNORECASE)
+        
+        # Replace role names (original logic)
+        content = content.replace("system: ", "")
+        content = content.replace("assistant:", f"{character_info.character_name}:")
+        content = content.replace("user:", f"{character_info.user_name}:")
+        
+        # Replace template variables
+        content = content.replace("{{temperature}}", str(request.temperature))
+        content = content.replace("{{max_tokens}}", str(request.max_tokens))
+        
+        # Clean up extra newlines
+        content = re.sub(r"\n{3,}", "\n\n", content)
+        
+        return content.strip()
 
 
 class MessageFormatter:
@@ -103,6 +92,12 @@ class MessageFormatter:
     @staticmethod
     def format_for_api(request: ChatRequest) -> str:
         """Format messages for API consumption"""
+        
+        # If we have processed content, use it directly
+        if hasattr(request, '_processed_content'):
+            return f"[Important Information]\n{request._processed_content}"
+        
+        # Fallback to individual message processing
         formatted_messages = []
         
         for message in request.messages:
