@@ -1,77 +1,58 @@
+"""
+Simplified response utilities that delegate to the new pipeline system.
+This file maintains backward compatibility while using the new architecture.
+"""
+
 from flask import jsonify, Response
-import re, time, json
+import time, json
+from typing import Dict, Any, Optional
+from pipeline.message_pipeline import MessagePipeline, process_character_data, get_streaming_setting, get_deepseek_settings
 
-__version__ = "2.0.0"
+__version__ = "2.7.0"
 
-# =============================================================================================================================
-# Character Processing
-# =============================================================================================================================
+# Global pipeline instance for backward compatibility
+_pipeline_instance: Optional[MessagePipeline] = None
 
-def process_character(put_data: dict) -> str | None:
-    try:
-        messages = put_data.get("messages", [])
-        temperature = put_data.get("temperature", 1)
-        max_tokens = put_data.get("max_tokens", 300)
-
-        if len(messages) >= 2 and messages[-1].get("role") == "system" and messages[-2].get("role") == "system":
-            messages.pop(-2)
-
-        formatted_messages = [f"{msg.get('role', '')}: {msg.get('content', '')}" for msg in messages]
-        character_info = "\n\n".join(formatted_messages)
-
-        character_name_match = re.search(r'DATA1:\s*"([^"]*)"', character_info)
-        user_name_match = re.search(r'DATA2:\s*"([^"]*)"', character_info)
-
-        character_name = character_name_match.group(1) if character_name_match else "Character"
-        user_name = user_name_match.group(1) if user_name_match else "User"
-
-        character_info = re.sub(r"({{r1}}|\[r1\]|\(r1\))", "", character_info, flags=re.IGNORECASE)
-        character_info = re.sub(r"({{search}}|\[search\])", "", character_info, flags=re.IGNORECASE)
-        character_info = re.sub(r'DATA1:\s*"[^"]*"', "", character_info)
-        character_info = re.sub(r'DATA2:\s*"[^"]*"', "", character_info)
-        
-        character_info = character_info.replace("system: ", "")
-        character_info = character_info.replace("assistant:", f"{character_name}:")
-        character_info = character_info.replace("user:", f"{user_name}:")
-        
-        character_info = character_info.replace("{{temperature}}", str(temperature))
-        character_info = character_info.replace("{{max_tokens}}", str(max_tokens))
+def get_pipeline(config: Optional[Dict[str, Any]] = None) -> MessagePipeline:
+    """Get or create pipeline instance"""
+    global _pipeline_instance
     
-        character_info = re.sub(r"\n{3,}", "\n\n", character_info)
-
-        return f"[Important Information]\n{character_info.strip()}"
-    except Exception as e:
-        print(f"Error processing character info: {e}")
-        return None
+    if _pipeline_instance is None or config is not None:
+        _pipeline_instance = MessagePipeline(config)
+    
+    return _pipeline_instance
 
 # =============================================================================================================================
-# Response Settings
+# Legacy Functions for Backward Compatibility
 # =============================================================================================================================
+
+def process_character(put_data: dict, config: Optional[Dict[str, Any]] = None) -> str | None:
+    """
+    Legacy character processing function that delegates to the new pipeline.
+    Maintains backward compatibility.
+    """
+    return process_character_data(put_data, config)
 
 def get_streaming(put_data: dict) -> bool:
-    return bool(put_data.get("stream", False))
-
-# =============================================================================================================================
-# DeepSeek Settings
-# =============================================================================================================================
-
-def _has_marker_in_user_message(messages: list, marker_pattern: str) -> bool:
-    if len(messages) >= 2 and messages[-2].get("role") == "user":
-        content = messages[-2].get("content", "")
-        return re.search(marker_pattern, content, re.IGNORECASE) is not None
-    return False
+    """Get streaming setting from request data"""
+    return get_streaming_setting(put_data)
 
 def get_deepseek_deepthink(put_data: dict) -> bool:
-    return _has_marker_in_user_message(put_data.get("messages", []), r"({{r1}}|\[r1\]|\(r1\))")
+    """Get DeepSeek deepthink setting from request data"""
+    settings = get_deepseek_settings(put_data)
+    return settings.get('deepthink', False)
 
 def get_deepseek_search(put_data: dict) -> bool:
-    return _has_marker_in_user_message(put_data.get("messages", []), r"({{search}}|\[search\])")
+    """Get DeepSeek search setting from request data"""
+    settings = get_deepseek_settings(put_data)
+    return settings.get('search', False)
 
 # =============================================================================================================================
-# AI Model
+# Response Creation Functions
 # =============================================================================================================================
 
 def get_model() -> Response:
+    """Get model information response"""
     global __version__
     return jsonify({
         "object": "list",
@@ -82,11 +63,8 @@ def get_model() -> Response:
         }]
     })
 
-# =============================================================================================================================
-# Response System
-# =============================================================================================================================
-
 def create_response_jsonify(text: str) -> Response:
+    """Create JSON response"""
     global __version__
     return jsonify({
         "id": "chatcmpl-intenserp",
@@ -101,17 +79,54 @@ def create_response_jsonify(text: str) -> Response:
     })
 
 def create_response_streaming(text: str) -> str:
+    """Create streaming response chunk"""
     global __version__
     return "data: " + json.dumps({
-                    "id": "chatcmpl-intenserp",
-                    "object": "chat.completion.chunk",
-                    "created": int(time.time() * 1000),
-                    "model": f"rp-intense-{__version__}",
-                    "choices": [{"index": 0, "delta": {"content": text}}]
-                }) + "\n\n"
+        "id": "chatcmpl-intenserp",
+        "object": "chat.completion.chunk",
+        "created": int(time.time() * 1000),
+        "model": f"rp-intense-{__version__}",
+        "choices": [{"index": 0, "delta": {"content": text}}]
+    }) + "\n\n"
 
 def create_response(text: str, streaming: bool) -> Response:
+    """Create appropriate response based on streaming setting"""
     if streaming:
         return Response(create_response_streaming(text), content_type="text/event-stream")
-    
     return create_response_jsonify(text)
+
+# =============================================================================================================================
+# Content Processing Functions
+# =============================================================================================================================
+
+def process_html_content(html_content: str, config: Optional[Dict[str, Any]] = None) -> str:
+    """Process HTML content to clean markdown using the pipeline"""
+    pipeline = get_pipeline(config)
+    return pipeline.process_response_content(html_content)
+
+def get_closing_symbol(text: str, config: Optional[Dict[str, Any]] = None) -> str:
+    """Get closing symbol for text if needed"""
+    pipeline = get_pipeline(config)
+    return pipeline.get_closing_symbol(text)
+
+# =============================================================================================================================
+# Utility Functions
+# =============================================================================================================================
+
+def update_pipeline_config(config: Dict[str, Any]) -> None:
+    """Update the global pipeline configuration"""
+    global _pipeline_instance
+    if _pipeline_instance:
+        _pipeline_instance.update_config(config)
+    else:
+        _pipeline_instance = MessagePipeline(config)
+
+def get_pipeline_info() -> Dict[str, Any]:
+    """Get information about the current pipeline"""
+    pipeline = get_pipeline()
+    return pipeline.get_pipeline_info()
+
+def reset_pipeline() -> None:
+    """Reset the global pipeline instance"""
+    global _pipeline_instance
+    _pipeline_instance = None

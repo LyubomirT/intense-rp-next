@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request, Response
-import utils.response_utils as response_utils
 import utils.webdriver_utils as selenium
 import utils.deepseek_driver as deepseek
-import socket, time, threading
+import socket, time, threading, json
 from typing import Generator
 from waitress import serve
 from core import get_state_manager, StateEvent
+from pipeline.message_pipeline import MessagePipeline, ProcessingError
 
 app = Flask(__name__)
 
@@ -19,7 +19,7 @@ def model() -> Response:
     state.show_message("\n[color:purple]API CONNECTION:")
     try:
         state.show_message("[color:white]- [color:green]Successful connection.")
-        return response_utils.get_model()
+        return get_model_response()
     except Exception as e:
         state.show_message("[color:white]- [color:red]Error connecting.")
         print(f"Error connecting to API: {e}")
@@ -35,16 +35,20 @@ def bot_response() -> Response:
             print("Error: Empty data was received.")
             return jsonify({}), 503
 
-        character_info = response_utils.process_character(data)
-        streaming = response_utils.get_streaming(data)
+        # Initialize message pipeline with current config
+        pipeline = MessagePipeline(state.config)
+        
+        # Process the request
+        try:
+            processed_request = pipeline.process_request(data)
+            formatted_message = pipeline.format_for_api(processed_request)
+        except ProcessingError as e:
+            print(f"Error processing request: {e}")
+            return jsonify({}), 503
 
-        config = state.config
-        deepseek_cfg = config.get("models", {}).get("deepseek", {})
-        deepthink = response_utils.get_deepseek_deepthink(data) or deepseek_cfg.get("deepthink", False)
-        search = response_utils.get_deepseek_search(data) or deepseek_cfg.get("search", False)
-        text_file = deepseek_cfg.get("text_file", False)
+        streaming = processed_request.stream
 
-        if not character_info:
+        if not formatted_message:
             print("Error: Data could not be processed.")
             return jsonify({}), 503
         if not state.driver:
@@ -56,12 +60,28 @@ def bot_response() -> Response:
         state.show_message(f"\n[color:purple]GENERATING RESPONSE {current_message}:")
         state.show_message("[color:white]- [color:green]Character data has been received.")
         
-        return deepseek_response(current_message, character_info, streaming, deepthink, search, text_file)
+        return deepseek_response(
+            current_message, 
+            formatted_message, 
+            streaming, 
+            processed_request.use_deepthink,
+            processed_request.use_search,
+            processed_request.use_text_file,
+            pipeline
+        )
     except Exception as e:
         print(f"Error receiving JSON from Sillytavern: {e}")
         return jsonify({}), 500
 
-def deepseek_response(current_id: int, character_info: dict, streaming: bool, deepthink: bool, search: bool, text_file: bool) -> Response:
+def deepseek_response(
+    current_id: int, 
+    formatted_message: str, 
+    streaming: bool, 
+    deepthink: bool, 
+    search: bool, 
+    text_file: bool,
+    pipeline: MessagePipeline
+) -> Response:
     state = get_state_manager()
 
     def client_disconnected() -> bool:
@@ -75,16 +95,16 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
 
     def safe_interrupt_response() -> Response:
         deepseek.new_chat(state.driver)
-        return response_utils.create_response("", streaming)
+        return create_response("", streaming, pipeline)
 
     try:
         if not selenium.current_page(state.driver, "https://chat.deepseek.com"):
             state.show_message("[color:white]- [color:red]You must be on the DeepSeek website.")
-            return response_utils.create_response("You must be on the DeepSeek website.", streaming)
+            return create_response("You must be on the DeepSeek website.", streaming, pipeline)
 
         if selenium.current_page(state.driver, "https://chat.deepseek.com/sign_in"):
             state.show_message("[color:white]- [color:red]You must be logged into DeepSeek.")
-            return response_utils.create_response("You must be logged into DeepSeek.", streaming)
+            return create_response("You must be logged into DeepSeek.", streaming, pipeline)
 
         if interrupted():
             return safe_interrupt_response()
@@ -95,9 +115,9 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
         if interrupted():
             return safe_interrupt_response()
 
-        if not deepseek.send_chat_message(state.driver, character_info, text_file):
+        if not deepseek.send_chat_message(state.driver, formatted_message, text_file):
             state.show_message("[color:white]- [color:red]Could not paste prompt.")
-            return response_utils.create_response("Could not paste prompt.", streaming)
+            return create_response("Could not paste prompt.", streaming, pipeline)
 
         state.show_message("[color:white]- [color:green]Prompt pasted and sent.")
 
@@ -106,7 +126,7 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
 
         if not deepseek.active_generate_response(state.driver):
             state.show_message("[color:white]- [color:red]No response generated.")
-            return response_utils.create_response("No response generated.", streaming)
+            return create_response("No response generated.", streaming, pipeline)
 
         if interrupted():
             return safe_interrupt_response()
@@ -123,14 +143,14 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                         if interrupted():
                             break
 
-                        new_text = deepseek.get_last_message(state.driver)
+                        new_text = deepseek.get_last_message(state.driver, pipeline)
                         if new_text and not initial_text:
                             initial_text = new_text
                         
                         if new_text and new_text != last_text and new_text.startswith(initial_text):
                             diff = new_text[len(last_text):]
                             last_text = new_text
-                            yield response_utils.create_response_streaming(diff)
+                            yield create_response_streaming(diff, pipeline)
                         
                         time.sleep(0.2)
 
@@ -138,19 +158,19 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                         return safe_interrupt_response()
 
                     # Final processing - get the complete response
-                    final_text = deepseek.wait_for_response_completion(state.driver)
+                    final_text = deepseek.wait_for_response_completion(state.driver, pipeline)
                     
                     if final_text:
                         # Send any remaining content
                         if final_text != last_text:
                             final_diff = final_text[len(last_text):] if final_text.startswith(last_text) else final_text
                             if final_diff:
-                                yield response_utils.create_response_streaming(final_diff)
+                                yield create_response_streaming(final_diff, pipeline)
                     
                     # Send closing symbol if needed
-                    closing = deepseek.get_closing_symbol(final_text) if final_text else ""
+                    closing = pipeline.get_closing_symbol(final_text) if final_text else ""
                     if closing:
-                        yield response_utils.create_response_streaming(closing)
+                        yield create_response_streaming(closing, pipeline)
                     
                     state.show_message("[color:white]- [color:green]Completed.")
                 except GeneratorExit:
@@ -160,22 +180,70 @@ def deepseek_response(current_id: int, character_info: dict, streaming: bool, de
                     deepseek.new_chat(state.driver)
                     print(f"Streaming error: {e}")
                     state.show_message("[color:white]- [color:red]Unknown error occurred.")
-                    yield response_utils.create_response_streaming("Error receiving response.")
+                    yield create_response_streaming("Error receiving response.", pipeline)
             return Response(streaming_response(), content_type="text/event-stream")
         else:
-            final_text = deepseek.wait_for_response_completion(state.driver)
+            final_text = deepseek.wait_for_response_completion(state.driver, pipeline)
             
             if interrupted():
                 return safe_interrupt_response()
             
-            response = (final_text + deepseek.get_closing_symbol(final_text)) if final_text else "Error receiving response."
+            response_text = final_text if final_text else "Error receiving response."
+            closing = pipeline.get_closing_symbol(final_text) if final_text else ""
+            response = response_text + closing
+            
             state.show_message("[color:white]- [color:green]Completed.")
-            return response_utils.create_response_jsonify(response)
+            return create_response_jsonify(response, pipeline)
     
     except Exception as e:
         print(f"Error generating response: {e}")
         state.show_message("[color:white]- [color:red]Unknown error occurred.")
-        return response_utils.create_response("Error receiving response.", streaming)
+        return create_response("Error receiving response.", streaming, pipeline)
+
+# =============================================================================================================================
+# Response Creation Functions
+# =============================================================================================================================
+
+def get_model_response() -> Response:
+    """Get model information response"""
+    return jsonify({
+        "object": "list",
+        "data": [{
+            "id": "rp-intense-2.7.0",
+            "object": "model",
+            "created": int(time.time() * 1000)
+        }]
+    })
+
+def create_response_jsonify(text: str, pipeline: MessagePipeline) -> Response:
+    """Create JSON response"""
+    return jsonify({
+        "id": "chatcmpl-intenserp",
+        "object": "chat.completion",
+        "created": int(time.time() * 1000),
+        "model": "rp-intense-2.7.0",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": text},
+            "finish_reason": "stop"
+        }]
+    })
+
+def create_response_streaming(text: str, pipeline: MessagePipeline) -> str:
+    """Create streaming response chunk"""
+    return "data: " + json.dumps({
+        "id": "chatcmpl-intenserp",
+        "object": "chat.completion.chunk",
+        "created": int(time.time() * 1000),
+        "model": "rp-intense-2.7.0",
+        "choices": [{"index": 0, "delta": {"content": text}}]
+    }) + "\n\n"
+
+def create_response(text: str, streaming: bool, pipeline: MessagePipeline) -> Response:
+    """Create appropriate response based on streaming setting"""
+    if streaming:
+        return Response(create_response_streaming(text, pipeline), content_type="text/event-stream")
+    return create_response_jsonify(text, pipeline)
 
 # =============================================================================================================================
 # Selenium Actions

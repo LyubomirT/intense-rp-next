@@ -1,8 +1,7 @@
 from selenium.webdriver.common.keys import Keys
 from seleniumbase import Driver
-from bs4 import BeautifulSoup
 from typing import Optional
-import re, time
+import time
 
 manager = None
 
@@ -64,15 +63,15 @@ def _set_button_state(driver: Driver, xpath: str, activate: bool) -> None:
     except Exception as e:
         print(f"Error setting button state: {e}")
 
-def configure_chat(driver: Driver, r1: bool, search: bool) -> None:
+def configure_chat(driver: Driver, deepthink: bool, search: bool) -> None:
     global manager
-    if manager.get_temp_files():
+    if manager and manager.get_temp_files():
         manager.delete_file("temp", manager.get_last_temp_file())
     
     _close_sidebar(driver)
     new_chat(driver)
     _check_and_reload_page(driver)
-    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and contains(., 'R1')]", r1)
+    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and contains(., 'R1')]", deepthink)
     _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and not(contains(., 'R1'))]", search)
 
 # =============================================================================================================================
@@ -150,63 +149,8 @@ def send_chat_message(driver: Driver, text: str, text_file: bool) -> bool:
 # HTML extraction and processing
 # =============================================================================================================================
 
-def _remove_em_inside_strong(html: str) -> str:
-    try:
-        result = []
-        inside_strong = False
-        i = 0
-        while i < len(html):
-            if html[i:i+8] == "<strong>":
-                inside_strong = True
-                result.append("<strong>")
-                i += 8
-            elif html[i:i+9] == "</strong>":
-                inside_strong = False
-                result.append("</strong>")
-                i += 9
-            elif html[i:i+4] == "<em>" and inside_strong:
-                i += 4
-            elif html[i:i+5] == "</em>" and inside_strong:
-                i += 5
-            else:
-                result.append(html[i])
-                i += 1
-        return "".join(result)
-    except Exception as e:
-        print(f"Error when editing html: {e}")
-        return html
-
-def get_closing_symbol(text: str) -> str:
-    try:
-        if not text:
-            return ""
-        
-        text = text.strip()
-        analysis_text = text.split("\n")[-1].strip()
-        
-        if re.search(r'(?:"\.?$|\*\.?$)', analysis_text):
-            return ""
-        
-        current_symbol = None
-        opposite_chars = {
-            '"': ['*'],
-            '*': ['"']
-        }
-        
-        for char in analysis_text:
-            if char in ['"', '*']:
-                if current_symbol is None:
-                    current_symbol = char
-                elif char == current_symbol:
-                    current_symbol = None
-                elif char in opposite_chars[current_symbol]:
-                    current_symbol = char
-        
-        return current_symbol if current_symbol else ""
-    except Exception:
-        return ""
-
-def get_last_message(driver: Driver) -> Optional[str]:
+def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
+    """Get the last message from the chat, optionally using pipeline for processing"""
     try:
         time.sleep(0.1)
         
@@ -215,239 +159,45 @@ def get_last_message(driver: Driver) -> Optional[str]:
         if messages:
             last_message_html = messages[-1].get_attribute("innerHTML")
             
-            # Clean up the HTML first
-            last_message_html = _remove_em_inside_strong(last_message_html)
-            
-            # Process with BeautifulSoup
-            soup = BeautifulSoup(last_message_html, 'html.parser')
-            
-            # Handle ds-markdown-html spans FIRST - these contain user's XML/HTML tags
-            # We need to preserve their content and convert entities
-            for span in soup.find_all('span', class_='ds-markdown-html'):
-                # Get the text content which has HTML entities
-                content = span.get_text()
-                # Convert HTML entities to actual characters
-                content = content.replace('&lt;', '<')
-                content = content.replace('&gt;', '>')
-                content = content.replace('&amp;', '&')
-                content = content.replace('&nbsp;', ' ')
-                content = content.replace('&quot;', '"')
-                # Replace the span with just its decoded content
-                span.replace_with(content)
-            
-            # Remove unwanted tags completely
-            for tag in soup(['script', 'style', 'meta', 'link']):
-                tag.decompose()
-            
-            # Convert DeepSeek code blocks to Markdown before removing UI elements
-            code_blocks = soup.find_all('div', class_='md-code-block')
-            
-            for code_block in code_blocks:
-                try:
-                    # Extract language from the UI element
-                    language_elem = code_block.find('span', class_='d813de27')
-                    language = language_elem.get_text().strip() if language_elem else ''
-                    
-                    # Extract code content from <pre> tag
-                    pre_tag = code_block.find('pre')
-                    if pre_tag:
-                        code_content = pre_tag.get_text().strip()
-                        
-                        # Create Markdown code block
-                        if language and language.lower() not in ['text', '']:
-                            markdown_code = f"\n```{language}\n{code_content}\n```\n"
-                        else:
-                            markdown_code = f"\n```\n{code_content}\n```\n"
-                        
-                        # Replace the entire code block with Markdown
-                        code_block.replace_with(markdown_code)
-                    
-                except Exception as e:
-                    # If conversion fails, just remove the code block wrapper
-                    pre_tag = code_block.find('pre')
-                    if pre_tag:
-                        code_block.replace_with(f"\n```\n{pre_tag.get_text()}\n```\n")
-            
-            # Remove remaining DeepSeek UI elements (after code block conversion)
-            ui_selectors = [
-                '.md-code-block-banner',
-                '.code-info-button-text',
-                '.ds-button',
-                '.d813de27',
-                '.efa13877',
-                '.d2a24f03',
-                '[role="button"]',
-                '.ds-button__icon',
-                '.ds-icon'
-            ]
-            
-            for selector in ui_selectors:
-                for element in soup.select(selector):
-                    element.decompose()
-            
-            # Convert other HTML elements to Markdown
-            # Convert headers
-            for i in range(1, 7):  # h1 to h6
-                for header in soup.find_all(f'h{i}'):
-                    header_text = header.get_text()
-                    markdown_header = f"\n{'#' * i} {header_text}\n"
-                    header.replace_with(markdown_header)
-            
-            # Convert links
-            for link in soup.find_all('a', href=True):
-                link_text = link.get_text()
-                link_url = link.get('href')
-                if link_text and link_url:
-                    markdown_link = f"[{link_text}]({link_url})"
-                    link.replace_with(markdown_link)
-            
-            # Convert images
-            for img in soup.find_all('img', src=True):
-                alt_text = img.get('alt', '')
-                img_url = img.get('src')
-                markdown_img = f"![{alt_text}]({img_url})"
-                img.replace_with(markdown_img)
-            
-            # Convert blockquotes
-            for quote in soup.find_all('blockquote'):
-                quote_text = quote.get_text().strip()
-                quote_lines = quote_text.split('\n')
-                markdown_quote = '\n'.join(f"> {line}" for line in quote_lines)
-                quote.replace_with(f"\n{markdown_quote}\n")
-            
-            # Convert horizontal rules
-            for hr in soup.find_all('hr'):
-                hr.replace_with("\n---\n")
-            
-            # Handle line breaks
-            for br in soup.find_all('br'):
-                br.replace_with('\n')
-            
-            # Handle list items with proper Markdown formatting
-            for ul in soup.find_all('ul'):
-                list_items = ul.find_all('li')
-                markdown_list = []
-                for li in list_items:
-                    item_text = li.get_text().strip()
-                    markdown_list.append(f"- {item_text}")
-                ul.replace_with('\n' + '\n'.join(markdown_list) + '\n')
-            
-            for ol in soup.find_all('ol'):
-                list_items = ol.find_all('li')
-                markdown_list = []
-                for i, li in enumerate(list_items, 1):
-                    item_text = li.get_text().strip()
-                    markdown_list.append(f"{i}. {item_text}")
-                ol.replace_with('\n' + '\n'.join(markdown_list) + '\n')
-            
-            # Remove any remaining li tags that weren't in ul/ol
-            for li in soup.find_all('li'):
-                li.replace_with(f"- {li.get_text()}")
-                
-            # Handle paragraphs - add spacing
-            for p in soup.find_all('p'):
-                p.insert_after('\n\n')
-                    
-            # Convert formatting tags to markdown
-            # Handle inline code first (single backticks)
-            inline_code_elements = soup.find_all('code')
-            
-            for code in inline_code_elements:
-                # Make sure this isn't part of a code block we already converted
-                parent_code_block = code.find_parent('div', class_='md-code-block')
-                if not parent_code_block:  # Only process if not inside a code block
-                    text_content = code.get_text()
-                    if text_content.strip():
-                        # Check if it's likely a multi-line code (contains newlines)
-                        if '\n' in text_content and len(text_content.strip().split('\n')) > 1:
-                            # Multi-line code, use code block format
-                            code.replace_with(f"\n```\n{text_content.strip()}\n```\n")
-                        else:
-                            # Single line, use inline format
-                            code.replace_with(f"`{text_content}`")
-            
-            # Handle bold and italic formatting
-            for strong in soup.find_all(['strong', 'b']):
-                text_content = strong.get_text()
-                if text_content.strip():
-                    strong.replace_with(f"**{text_content}**")
-            
-            for em in soup.find_all(['em', 'i']):
-                text_content = em.get_text()
-                if text_content.strip():
-                    em.replace_with(f"*{text_content}*")
-            
-            # Convert tables to basic Markdown (simplified)
-            for table in soup.find_all('table'):
-                try:
-                    rows = table.find_all('tr')
-                    if rows:
-                        markdown_table = []
-                        
-                        # Header row
-                        header_row = rows[0]
-                        headers = [th.get_text().strip() for th in header_row.find_all(['th', 'td'])]
-                        if headers:
-                            markdown_table.append('| ' + ' | '.join(headers) + ' |')
-                            markdown_table.append('| ' + ' | '.join(['---'] * len(headers)) + ' |')
-                        
-                        # Data rows
-                        for row in rows[1:]:
-                            cells = [td.get_text().strip() for td in row.find_all(['td', 'th'])]
-                            if cells:
-                                markdown_table.append('| ' + ' | '.join(cells) + ' |')
-                        
-                        table.replace_with('\n' + '\n'.join(markdown_table) + '\n')
-                        
-                except Exception as e:
-                    # Fallback: just unwrap the table
-                    table.unwrap()
-            
-            # Unwrap remaining formatting tags (but not the ones we already processed)
-            for span in soup.find_all('span'):
-                # Only unwrap if it's not a special span we want to keep
-                if 'ds-markdown-html' not in span.get('class', []):
-                    span.unwrap()
-                    
-            for div in soup.find_all('div'):
-                div.unwrap()
-            
-            # Get the processed result from BeautifulSoup
-            result = soup.get_text()
-            
-            # Final entity conversion in case any were missed
-            result = result.replace('&lt;', '<')
-            result = result.replace('&gt;', '>')
-            result = result.replace('&amp;', '&')
-            result = result.replace('&nbsp;', ' ')
-            result = result.replace('&quot;', '"')
-            
-            # Final cleanup - fix spacing and formatting for Markdown
-            result = re.sub(r'\n{3,}', '\n\n', result)  # Limit consecutive newlines
-            result = re.sub(r'\*{3,}', '**', result)    # Fix multiple asterisks (preserve ** for bold)
-            # Fix multiple backticks but preserve triple backticks for code blocks
-            result = re.sub(r'`{4,}', '```', result)    # Fix 4+ backticks to triple
-            result = re.sub(r'(?<!`)`{2}(?!`)', '`', result)  # Fix double backticks to single (but not triple)
-            result = re.sub(r'^[\s]*\n', '', result)    # Remove leading empty lines
-            result = re.sub(r'\n[\s]*$', '', result)    # Remove trailing empty lines
-            
-            # Clean up Markdown formatting issues
-            result = re.sub(r'\n\s*\n\s*```', '\n\n```', result)  # Fix code block spacing
-            result = re.sub(r'```\s*\n\s*\n', '```\n', result)    # Fix code block spacing
-            result = re.sub(r'\n\s*\n\s*#', '\n\n#', result)      # Fix header spacing
-            result = re.sub(r'\n\s*\n\s*-', '\n\n-', result)      # Fix list spacing
-            
-            # Clean up any extra whitespace
-            result = result.strip()
-
-            return result
-
-        else:
-            return None
+            # Use pipeline content processor if available, otherwise return raw HTML
+            if pipeline and hasattr(pipeline, 'process_response_content'):
+                return pipeline.process_response_content(last_message_html)
+            else:
+                # Fallback to basic processing if no pipeline
+                return _basic_html_cleanup(last_message_html)
+        
+        return None
     
     except Exception as e:
         print(f"Error when extracting the last response: {e}")
         return None
+
+def _basic_html_cleanup(html: str) -> str:
+    """Basic HTML cleanup for fallback scenarios"""
+    try:
+        from bs4 import BeautifulSoup
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Remove scripts and styles
+        for tag in soup(['script', 'style']):
+            tag.decompose()
+        
+        # Get text content
+        text = soup.get_text()
+        
+        # Basic cleanup
+        text = text.replace('&lt;', '<')
+        text = text.replace('&gt;', '>')
+        text = text.replace('&amp;', '&')
+        text = text.replace('&nbsp;', ' ')
+        text = text.replace('&quot;', '"')
+        
+        return text.strip()
+        
+    except Exception:
+        # Ultimate fallback - return as is
+        return html
 
 # =============================================================================================================================
 # Bot response generation
@@ -461,7 +211,7 @@ def active_generate_response(driver: Driver) -> bool:
         print(f"Error generating response: {e}")
         return False
 
-def wait_for_response_completion(driver: Driver, max_wait_time: float = 5.0) -> str:
+def wait_for_response_completion(driver: Driver, pipeline=None, max_wait_time: float = 5.0) -> str:
     """
     Wait for response to be completely finished and content to stabilize.
     This fixes the race condition where button state changes before content is fully rendered.
@@ -475,7 +225,7 @@ def wait_for_response_completion(driver: Driver, max_wait_time: float = 5.0) -> 
         start_time = time.time()
         
         while time.time() - start_time < max_wait_time:
-            current_content = get_last_message(driver)
+            current_content = get_last_message(driver, pipeline)
             
             if current_content == last_content:
                 stable_count += 1
@@ -492,7 +242,7 @@ def wait_for_response_completion(driver: Driver, max_wait_time: float = 5.0) -> 
         
     except Exception as e:
         print(f"Error waiting for response completion: {e}")
-        return get_last_message(driver) or ""
+        return get_last_message(driver, pipeline) or ""
 
 def is_response_generating(driver: Driver) -> bool:
     try:
