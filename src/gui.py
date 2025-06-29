@@ -6,19 +6,16 @@ import utils.process_manager as process
 import utils.gui_builder as gui_builder
 import utils.logging_manager as logging_manager
 from packaging import version
+from core import get_state_manager, StateEvent
 
 __version__ = "2.7.0"
 
+# Local GUI state (not shared across modules)
 root = None
 storage_manager = None
-logging_manager_instance = None
 icon_path = None
 
-console_window = None
-console_textbox = None
-textbox = None
-
-config = {}
+# Original config template
 original_config = {
     "browser": "Chrome",
     "model": "DeepSeek",
@@ -42,9 +39,6 @@ original_config = {
     }
 }
 
-# Global reference to config window for sidebar navigation
-config_window = None
-
 # =============================================================================================================================
 # Console Window
 # =============================================================================================================================
@@ -64,7 +58,8 @@ class ConsoleRedirector:
         pass
 
 def create_console_window() -> None:
-    global console_window, console_textbox
+    state = get_state_manager()
+    
     try:
         console_window = gui_builder.ConsoleWindow()
         console_window.create(
@@ -79,6 +74,9 @@ def create_console_window() -> None:
         console_window.protocol("WM_DELETE_WINDOW", lambda: None)
         console_textbox = console_window.create_textbox("console_window")
         
+        # Update state
+        state.console_window = console_window
+        
         try:
             sys.stdout = ConsoleRedirector(console_textbox.add)
             sys.stderr = ConsoleRedirector(console_textbox.add)
@@ -91,15 +89,15 @@ def create_console_window() -> None:
         print(f"Error creating console window: {e}")
 
 def start_services() -> None:
+    state = get_state_manager()
+    
     try:
-        textbox.clear()
-        textbox.colored_add("[color:green]Please wait...")
-        api.config = config
-        api.logging_manager = logging_manager_instance
+        state.clear_messages()
+        state.show_message("[color:green]Please wait...")
         threading.Thread(target=api.run_services, daemon=True).start()
     except Exception as e:
-        textbox.clear()
-        textbox.colored_add("[color:red]Selenium failed to start.")
+        state.clear_messages()
+        state.show_message("[color:red]Selenium failed to start.")
         print(f"Error starting services: {e}")
 
 # =============================================================================================================================
@@ -107,9 +105,11 @@ def start_services() -> None:
 # =============================================================================================================================
 
 def on_console_toggle(value: bool) -> None:
+    state = get_state_manager()
+    
     try:
-        if console_window:
-            console_window.show(show=value, root=root, center=True)
+        if state.console_window:
+            state.console_window.show(show=value, root=root, center=True)
     except Exception as e:
         print(f"Error when toggling console visibility: {e}")
 
@@ -139,16 +139,18 @@ def parse_file_size(size_str: str) -> int:
         return 1048576  # Default 1MB
 
 def open_config_window() -> None:
-    global root, config_window
+    global root
+    state = get_state_manager()
+    
     try:
         config_window = gui_builder.ConfigWindow()
         config_window.create(
             visible=True,
             title="Settings",
             width=750,
-            height=500,  # Reduced height since we removed tag preservation
+            height=500,
             min_width=650,
-            min_height=450,  # Reduced min height
+            min_height=450,
             icon=icon_path
         )
         config_window.transient(root)
@@ -156,6 +158,12 @@ def open_config_window() -> None:
         config_window.focus_force()
         config_window.lift()
         config_window.center(root)
+
+        # Update state
+        state.config_window = config_window
+
+        # Get current config
+        config = state.config
 
         # Create DeepSeek Settings section
         deepseek_model = config["models"]["deepseek"]
@@ -234,7 +242,8 @@ def save_config(
         advanced_frame: gui_builder.ConfigFrame
     ) -> None:
     try:
-        global original_config, config, logging_manager_instance
+        global original_config
+        state = get_state_manager()
         
         email_entry = deepseek_frame.get_widget("email")
         password_entry = deepseek_frame.get_widget("password")
@@ -283,26 +292,36 @@ def save_config(
             set_entry_style(max_files_entry, False)
             return
 
+        # Build new configuration
+        new_config = {
+            "browser": advanced_frame.get_widget_value("browser"),
+            "check_version": advanced_frame.get_widget_value("check_version"),
+            "show_console": advanced_frame.get_widget_value("show_console"),
+            "show_ip": advanced_frame.get_widget_value("show_ip"),
+            "models": {
+                "deepseek": {
+                    "email": deepseek_frame.get_widget_value("email"),
+                    "password": deepseek_frame.get_widget_value("password"),
+                    "auto_login": deepseek_frame.get_widget_value("auto_login"),
+                    "text_file": deepseek_frame.get_widget_value("text_file"),
+                    "deepthink": deepseek_frame.get_widget_value("deepthink"),
+                    "search": deepseek_frame.get_widget_value("search")
+                }
+            },
+            "logging": {
+                "enabled": logging_frame.get_widget_value("enabled"),
+                "max_file_size": max_file_size_bytes,
+                "max_files": max_files_int
+            }
+        }
+        
         # Save configuration
-        config["browser"] = advanced_frame.get_widget_value("browser")
-        config["check_version"] = advanced_frame.get_widget_value("check_version")
-        config["show_console"] = advanced_frame.get_widget_value("show_console")
-        config["show_ip"] = advanced_frame.get_widget_value("show_ip")
-        
-        deepseek_model = config["models"]["deepseek"]
-        for key in deepseek_model:
-            deepseek_model[key] = deepseek_frame.get_widget_value(key)
-        
-        config["logging"]["enabled"] = logging_frame.get_widget_value("enabled")
-        config["logging"]["max_file_size"] = max_file_size_bytes
-        config["logging"]["max_files"] = max_files_int
-        
-        storage_manager.save_config(path_root="executable", sub_path="save", new=config, original=original_config)
-        api.config = config
+        storage_manager.save_config(path_root="executable", sub_path="save", new=new_config, original=original_config)
+        state.set_config(new_config)
         
         # Reinitialize logging with new settings
-        if logging_manager_instance:
-            logging_manager_instance.initialize(config)
+        if state.logging_manager:
+            state.logging_manager.initialize(new_config)
         
         config_window.destroy()
         print("The config window was closed successfully.")
@@ -365,6 +384,8 @@ def open_github(update_window: gui_builder.UpdateWindow) -> None:
 
 def on_close_root() -> None:
     global root, storage_manager
+    state = get_state_manager()
+    
     try:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
@@ -385,12 +406,19 @@ def on_close_root() -> None:
         print(f"Error closing root: {e}")
 
 def create_gui() -> None:
-    global __version__, root, storage_manager, logging_manager_instance, original_config, config, icon_path, textbox, console_window
+    global __version__, root, storage_manager, icon_path
+    state = get_state_manager()
+    
     try:
+        # Initialize local managers
         storage_manager = storage.StorageManager()
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
         icon_path = storage_manager.get_existing_path(path_root="base", relative_path="icon.ico")
 
+        # Set up state manager
+        state.logging_manager = logging_manager_instance
+
+        # Configure external dependencies
         deepseek.manager = storage_manager
         response_utils.__version__ = __version__
         
@@ -416,10 +444,15 @@ def create_gui() -> None:
         root.create_button(id="credits", text="Credits", command=open_credits, row=4)
         
         textbox.add_colors()
-        api.textbox = textbox
+        
+        # Update state with UI components
+        state.textbox = textbox
         
         create_console_window()
+        
+        # Load and set configuration
         config = storage_manager.load_config(path_root="executable", sub_path="save", original=original_config)
+        state.set_config(config)
         
         # Initialize logging
         logging_manager_instance.initialize(config)
@@ -430,8 +463,8 @@ def create_gui() -> None:
             if last_version and version.parse(last_version) > current_version:
                 root.after(200, lambda: create_update_window(last_version))
         
-        if console_window and config["show_console"]:
-            root.after(100, lambda: console_window.show(show=config["show_console"], root=root, center=True))
+        if state.console_window and config["show_console"]:
+            root.after(100, lambda: state.console_window.show(show=config["show_console"], root=root, center=True))
         
         print("Main window created.")
         print(f"Executable path: {storage_manager.get_executable_path()}")
