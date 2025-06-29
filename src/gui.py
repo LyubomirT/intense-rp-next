@@ -5,6 +5,7 @@ import utils.storage_manager as storage
 import utils.process_manager as process
 import utils.gui_builder as gui_builder
 import utils.logging_manager as logging_manager
+import utils.console_manager as console_manager
 from packaging import version
 from core import get_state_manager, StateEvent
 
@@ -31,6 +32,12 @@ original_config = {
             "deepthink": False,
             "search": False
         }
+    },
+    "console": {
+        "font_family": "Consolas",
+        "font_size": 12,
+        "color_palette": "Modern",
+        "word_wrap": True
     },
     "logging": {
         "enabled": False,
@@ -66,27 +73,33 @@ def make_window_modal(window, parent_window):
                 window.focus_force()
                 window.lift()
         
+        binding_id = parent_window.bind("<FocusIn>", on_parent_focus)
+        
+        # Store the binding ID and parent for cleanup
+        setattr(window, '_parent_focus_binding_id', binding_id)
+        setattr(window, '_parent_window', parent_window)
+
         # UNFORTUNATELY, this also means that all of the normal built-in modal behaviors
         # ... now must be written manually. Tell Microsoft I want to have my cake and eat it too.
         #                                                                           - Lyubomir
         #
         #
         # If you're reading this, it's likely I've been hunted down by Microsoft for this comment.
-        parent_window.bind("<FocusIn>", on_parent_focus)
-        
-        # Store the binding so we can clean it up later
-        setattr(window, '_parent_focus_binding', on_parent_focus)
-        setattr(window, '_parent_window', parent_window)
         
         # Override destroy to clean up bindings
         original_destroy = window.destroy
         def cleanup_and_destroy():
             try:
-                if hasattr(window, '_parent_window') and hasattr(window, '_parent_focus_binding'):
-                    getattr(window, '_parent_window').unbind("<FocusIn>", getattr(window, '_parent_focus_binding'))
+                if hasattr(window, '_parent_window') and hasattr(window, '_parent_focus_binding_id'):
+                    parent = getattr(window, '_parent_window')
+                    binding_id = getattr(window, '_parent_focus_binding_id')
+                    
+                    if parent.winfo_exists():
+                        parent.unbind("<FocusIn>", binding_id)
             except (AttributeError, tk.TclError):
                 pass
-            original_destroy()
+            finally:
+                original_destroy()
         
         window.destroy = cleanup_and_destroy
     
@@ -98,49 +111,18 @@ def make_window_modal(window, parent_window):
 # Console Window
 # =============================================================================================================================
 
-class ConsoleRedirector:
-    def __init__(self, callback):
-        self.callback = callback
-
-    def write(self, text):
-        if text and text.strip():
-            try:
-                self.callback(text.rstrip('\n')) 
-            except Exception:
-                pass
-    
-    def flush(self):
-        pass
-
 def create_console_window() -> None:
+    """Create console window using the new console manager"""
     state = get_state_manager()
     
     try:
-        console_window = gui_builder.ConsoleWindow()
-        console_window.create(
-            visible=False,
-            title="Console Output",
-            width=700,
-            height=400,
-            min_width=400,
-            min_height=250,
-            icon=icon_path
-        )
-        console_window.protocol("WM_DELETE_WINDOW", lambda: None)
-        console_textbox = console_window.create_textbox("console_window")
+        # Initialize console manager
+        console_mgr = console_manager.ConsoleManager(state, storage_manager)
+        console_mgr.initialize(state.config, icon_path)
         
-        # Update state
-        state.console_window = console_window
+        # Store console manager in state
+        state.console_manager = console_mgr
         
-        try:
-            # Use colored_add for console output to support color formatting
-            sys.stdout = ConsoleRedirector(console_textbox.colored_add)
-            sys.stderr = ConsoleRedirector(lambda text: console_textbox.colored_add(f"[color:red]{text}"))
-        except Exception:
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
-
-        print("[color:green]Console window created and ready.")
     except Exception as e:
         print(f"Error creating console window: {e}")
 
@@ -164,10 +146,38 @@ def on_console_toggle(value: bool) -> None:
     state = get_state_manager()
     
     try:
-        if state.console_window:
-            state.console_window.show(show=value, root=root, center=True)
+        if hasattr(state, 'console_manager') and state.console_manager:
+            state.console_manager.show(value, root, center=True)
     except Exception as e:
         print(f"Error when toggling console visibility: {e}")
+
+def on_console_settings_change(console_frame) -> None:
+    """Handle console settings changes and apply them immediately"""
+    state = get_state_manager()
+    
+    try:
+        if hasattr(state, 'console_manager') and state.console_manager:
+            # Get current values from UI
+            font_family = console_frame.get_widget_value("font_family")
+            font_size = int(console_frame.get_widget_value("font_size"))
+            color_palette = console_frame.get_widget_value("color_palette")
+            word_wrap = console_frame.get_widget_value("word_wrap")
+            
+            # Create new settings
+            new_settings = console_manager.ConsoleSettings({
+                "console": {
+                    "font_family": font_family,
+                    "font_size": font_size,
+                    "color_palette": color_palette,
+                    "word_wrap": word_wrap
+                }
+            })
+            
+            # Apply settings
+            state.console_manager.update_settings(new_settings)
+            
+    except Exception as e:
+        print(f"Error applying console settings: {e}")
 
 def format_file_size(size_bytes: int) -> str:
     """Convert bytes to human readable format"""
@@ -209,14 +219,10 @@ def open_config_window() -> None:
             min_height=450,
             icon=icon_path
         )
-        # Use cross-platform modal approach that preserves Mica on Windows
         make_window_modal(config_window, root)
         config_window.center(root)
 
-        # Update state
         state.config_window = config_window
-
-        # Get current config
         config = state.config
 
         # Create DeepSeek Settings section
@@ -234,6 +240,51 @@ def open_config_window() -> None:
         deepseek_frame.create_switch(id="text_file", label_text="Text file:", default_value=deepseek_model["text_file"], row=4, row_grid=True)
         deepseek_frame.create_switch(id="deepthink", label_text="Deepthink:", default_value=deepseek_model["deepthink"], row=5, row_grid=True)
         deepseek_frame.create_switch(id="search", label_text="Search:", default_value=deepseek_model["search"], row=6, row_grid=True)
+        
+        # Create Console Settings section (NEW)
+        console_config = config.get("console", {})
+        console_frame = config_window.create_section_frame(
+            id="console_frame",
+            title="Console Settings",
+            bg_color=("white", "gray20")
+        )
+        
+        console_frame.create_title(id="console_settings", text="Console Settings", row=0, row_grid=True)
+        console_frame.create_option_menu(
+            id="font_family", 
+            label_text="Font Family:", 
+            default_value=console_config.get("font_family", "Consolas"),
+            options=console_manager.ConsoleSettings.FONT_FAMILIES,
+            row=1, row_grid=True
+        )
+        console_frame.create_option_menu(
+            id="font_size",
+            label_text="Font Size:",
+            default_value=str(console_config.get("font_size", 12)),
+            options=[str(size) for size in console_manager.ConsoleSettings.FONT_SIZES],
+            row=2, row_grid=True
+        )
+        console_frame.create_option_menu(
+            id="color_palette",
+            label_text="Color Palette:",
+            default_value=console_config.get("color_palette", "Modern"),
+            options=console_manager.ConsoleColorPalettes.get_palette_names(),
+            row=3, row_grid=True
+        )
+        console_frame.create_switch(
+            id="word_wrap",
+            label_text="Word Wrap:",
+            default_value=console_config.get("word_wrap", True),
+            row=4, row_grid=True
+        )
+        
+        # Add preview button for console settings
+        console_frame.create_button(
+            id="preview_console",
+            text="Preview Changes",
+            command=lambda: on_console_settings_change(console_frame),
+            row=5, row_grid=True
+        )
         
         # Create Logging Settings section
         logging_config = config["logging"]
@@ -269,7 +320,7 @@ def open_config_window() -> None:
         save_button = gui_builder.ctk.CTkButton(
             button_container, 
             text="Save", 
-            command=lambda: save_config(config_window, deepseek_frame, logging_frame, advanced_frame),
+            command=lambda: save_config(config_window, deepseek_frame, console_frame, logging_frame, advanced_frame),
             width=80
         )
         save_button.grid(row=0, column=0, padx=5, pady=5, sticky="e")
@@ -292,6 +343,7 @@ def open_config_window() -> None:
 def save_config(
         config_window: gui_builder.ConfigWindow,
         deepseek_frame: gui_builder.ConfigFrame,
+        console_frame: gui_builder.ConfigFrame,
         logging_frame: gui_builder.ConfigFrame,
         advanced_frame: gui_builder.ConfigFrame
     ) -> None:
@@ -362,6 +414,12 @@ def save_config(
                     "search": deepseek_frame.get_widget_value("search")
                 }
             },
+            "console": {
+                "font_family": console_frame.get_widget_value("font_family"),
+                "font_size": int(console_frame.get_widget_value("font_size")),
+                "color_palette": console_frame.get_widget_value("color_palette"),
+                "word_wrap": console_frame.get_widget_value("word_wrap")
+            },
             "logging": {
                 "enabled": logging_frame.get_widget_value("enabled"),
                 "max_file_size": max_file_size_bytes,
@@ -373,6 +431,11 @@ def save_config(
         storage_manager.save_config(path_root="executable", sub_path="save", new=new_config, original=original_config)
         state.set_config(new_config)
         
+        # Update console settings if console manager exists
+        if hasattr(state, 'console_manager') and state.console_manager:
+            console_settings = console_manager.ConsoleSettings(new_config)
+            state.console_manager.update_settings(console_settings)
+        
         # Reinitialize logging with new settings
         if state.logging_manager:
             state.logging_manager.initialize(new_config)
@@ -381,6 +444,7 @@ def save_config(
         print("The config window was closed successfully.")
     except Exception as e:
         print(f"Error saving config: {e}")
+
 
 # =============================================================================================================================
 # Credits
@@ -439,8 +503,13 @@ def on_close_root() -> None:
     state = get_state_manager()
     
     try:
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
+        # Restore console streams using console manager
+        if hasattr(state, 'console_manager') and state.console_manager:
+            state.console_manager.cleanup()
+        else:
+            # Fallback to manual restoration
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
 
         api.close_selenium()
         process.kill_driver_processes()
@@ -500,11 +569,12 @@ def create_gui() -> None:
         # Update state with UI components
         state.textbox = textbox
         
-        create_console_window()
-        
-        # Load and set configuration
+        # Load and set configuration FIRST
         config = storage_manager.load_config(path_root="executable", sub_path="save", original=original_config)
         state.set_config(config)
+        
+        # Create console window AFTER config is loaded
+        create_console_window()
         
         # Initialize logging
         logging_manager_instance.initialize(config)
@@ -515,8 +585,9 @@ def create_gui() -> None:
             if last_version and version.parse(last_version) > current_version:
                 root.after(200, lambda: create_update_window(last_version))
         
-        if state.console_window and config["show_console"]:
-            root.after(100, lambda: state.console_window.show(show=config["show_console"], root=root, center=True))
+        # Show console if configured to do so
+        if config["show_console"] and hasattr(state, 'console_manager') and state.console_manager:
+            root.after(100, lambda: state.console_manager.show(True, root, center=True))
         
         print("Main window created.")
         print(f"Executable path: {storage_manager.get_executable_path()}")

@@ -208,6 +208,16 @@ class StateManager:
     def logging_manager(self, value):
         with self._lock:
             self._logging_manager = value
+
+    @property
+    def console_manager(self):
+        with self._lock:
+            return self._console_manager
+    
+    @console_manager.setter
+    def console_manager(self, value):
+        with self._lock:
+            self._console_manager = value
     
     # Application lifecycle
     @property
@@ -222,14 +232,21 @@ class StateManager:
     
     # Utility methods
     def show_message(self, text: str) -> None:
-        """Show message in textbox if available"""
+        """Show message in textbox and console if available"""
         textbox = self.textbox
         logging_manager = self.logging_manager
+        console_manager = self.console_manager
         
         try:
+            # Show in main textbox
             if textbox:
                 textbox.colored_add(text)
             
+            # Show in console if it exists and is different from main textbox
+            if console_manager and console_manager.console_textbox and console_manager.console_textbox != textbox:
+                console_manager.add_message(text)
+            
+            # Log to file
             if logging_manager:
                 logging_manager.log_message(text)
                 
@@ -238,11 +255,16 @@ class StateManager:
             print(f"Error showing message: {e}")
     
     def clear_messages(self) -> None:
-        """Clear messages in textbox if available"""
+        """Clear messages in textbox and console if available"""
         textbox = self.textbox
+        console_manager = self.console_manager
+        
         try:
             if textbox:
                 textbox.clear()
+                
+            if console_manager:
+                console_manager.clear()
         except Exception as e:
             print(f"Error clearing messages: {e}")
     
@@ -266,6 +288,7 @@ class StateManager:
                 'driver_id': self._last_driver,
                 'response_id': self._last_response,
                 'has_textbox': self._textbox is not None,
+                'has_console_manager': self._console_manager is not None,
                 'has_config': bool(self._config),
                 'is_running': self._is_running,
                 'observer_count': len(self._observers)
