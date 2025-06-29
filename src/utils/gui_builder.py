@@ -113,15 +113,16 @@ class CustomTextbox(ctk.CTkTextbox):
 
     def add_colors(self) -> None:
         self._color_map = {
-            "red": "red",
-            "green": "#13ff00",
-            "yellow": "yellow",
-            "blue": "blue",
-            "cyan": "cyan",
-            "white": "white",
-            "purple": "#e400ff",
-            "orange": "orange",
-            "pink": "pink"
+            "red": "#ff6b6b",
+            "green": "#51cf66", 
+            "yellow": "#ffd43b",
+            "blue": "#74c0fc",
+            "cyan": "#66d9ef",
+            "white": "#f8f9fa",
+            "purple": "#d084f5",
+            "orange": "#ff8c42",
+            "pink": "#f783ac",
+            "gray": "#adb5bd"
         }
         for tag, color in self._color_map.items():
             self.tag_config(tag, foreground=color)
@@ -132,8 +133,10 @@ class CustomTextbox(ctk.CTkTextbox):
         self.configure(state="disabled")
 
     def colored_add(self, text: str) -> None:
-        print(text)
-        
+        """Add colored text to textbox (improved for console output)"""
+        if not text:
+            return
+            
         pattern = r'\[color:(\w+)\]'
         parts = re.split(pattern, text)
         current_tag = "white"
@@ -149,7 +152,10 @@ class CustomTextbox(ctk.CTkTextbox):
                 tag = part.lower()
                 current_tag = tag if hasattr(self, "_color_map") and tag in self._color_map else "white"
 
-        self.insert("end", "\n")
+        # Only add newline if the text doesn't already end with one
+        if not text.endswith('\n'):
+            self.insert("end", "\n")
+        
         self.configure(state="disabled")
         self.see("end")
 
@@ -745,14 +751,21 @@ class ConsoleWindow(ctk.CTkToplevel):
         textbox = CustomTextbox(
             self,
             state="disabled",
-            font=("Arial", 16),
-            wrap="none",
-            border_width=0,
-            corner_radius=0,
-            fg_color="black",
-            text_color="white"
+            font=("Consolas", 12),  # Better monospace font for console
+            wrap="word",  # Better text wrapping
+            border_width=1,
+            border_color=("gray60", "gray40"),
+            corner_radius=4,
+            fg_color=("gray10", "gray5"),  # Darker background
+            text_color=("gray90", "gray90"),  # Light text
+            scrollbar_button_color=("gray70", "gray30"),
+            scrollbar_button_hover_color=("gray60", "gray40")
         )
-        textbox.pack(expand=True, fill="both")
+        textbox.pack(expand=True, fill="both", padx=2, pady=2)
+        
+        # Initialize color support for console
+        textbox.add_colors()
+        
         _save_widget(self, id, textbox)
         return textbox
 

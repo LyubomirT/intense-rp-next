@@ -48,9 +48,9 @@ class ConsoleRedirector:
         self.callback = callback
 
     def write(self, text):
-        if text:
+        if text and text.strip():
             try:
-                self.callback(text)
+                self.callback(text.rstrip('\n')) 
             except Exception:
                 pass
     
@@ -64,11 +64,11 @@ def create_console_window() -> None:
         console_window = gui_builder.ConsoleWindow()
         console_window.create(
             visible=False,
-            title="Console",
-            width=600,
-            height=300,
-            min_width=200,
-            min_height=200,
+            title="Console Output",
+            width=700,
+            height=400,
+            min_width=400,
+            min_height=250,
             icon=icon_path
         )
         console_window.protocol("WM_DELETE_WINDOW", lambda: None)
@@ -78,13 +78,14 @@ def create_console_window() -> None:
         state.console_window = console_window
         
         try:
-            sys.stdout = ConsoleRedirector(console_textbox.add)
-            sys.stderr = ConsoleRedirector(console_textbox.add)
+            # Use colored_add for console output to support color formatting
+            sys.stdout = ConsoleRedirector(console_textbox.colored_add)
+            sys.stderr = ConsoleRedirector(lambda text: console_textbox.colored_add(f"[color:red]{text}"))
         except Exception:
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
 
-        print("Console window created.")
+        print("[color:green]Console window created and ready.")
     except Exception as e:
         print(f"Error creating console window: {e}")
 
