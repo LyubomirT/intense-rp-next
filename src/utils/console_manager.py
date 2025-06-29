@@ -54,11 +54,11 @@ class ConsoleColorPalettes:
         "purple": "#e400ff",
         "orange": "orange",
         "pink": "pink",
-        "gray": "#adb5bd"  # Adding gray for compatibility
+        "gray": "#adb5bd"
     }
-    
-    # New vibrant palette
-    VIBRANT = {
+
+    # New bright palette
+    BRIGHT = {
         "red": "#ff3333",
         "green": "#00ff88", 
         "yellow": "#ffdd00",
@@ -77,14 +77,14 @@ class ConsoleColorPalettes:
         palettes = {
             "Modern": cls.MODERN,
             "Classic": cls.CLASSIC,
-            "Vibrant": cls.VIBRANT
+            "Bright": cls.BRIGHT
         }
         return palettes.get(name, cls.MODERN)
     
     @classmethod
     def get_palette_names(cls) -> list[str]:
         """Get list of available palette names"""
-        return ["Modern", "Classic", "Vibrant"]
+        return ["Modern", "Classic", "Bright"]
 
 
 class ConsoleSettings:

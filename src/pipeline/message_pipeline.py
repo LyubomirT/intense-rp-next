@@ -3,7 +3,7 @@ from processors.base_processor import ProcessorPipeline, ProcessingError
 from processors.character_processor import CharacterProcessor, MessageFormatter
 from processors.deepseek_processor import DeepSeekProcessor
 from processors.content_processor import ContentProcessor
-from models.message_models import ChatRequest, ChatResponse
+from models.message_models import ChatRequest, ChatResponse, DeepSeekSettings
 
 
 class MessagePipeline:
