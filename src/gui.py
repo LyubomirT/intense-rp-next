@@ -1,4 +1,4 @@
-import threading, webbrowser, api, sys, re
+import threading, webbrowser, api, sys, re, platform, tkinter as tk
 import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
 import utils.storage_manager as storage
@@ -38,6 +38,56 @@ original_config = {
         "max_files": 10
     }
 }
+
+# =============================================================================================================================
+# Modal Window Management
+# =============================================================================================================================
+
+def make_window_modal(window, parent_window):
+    """
+    Make a window modal in a cross-platform way that preserves Mica effect on Windows 11.
+    On Windows, we avoid using transient() to preserve the Mica backdrop effect.
+    """
+    is_windows = platform.system() == "Windows"
+    
+    if not is_windows:
+        # On non-Windows platforms, use traditional transient approach
+        window.transient(parent_window)
+        window.grab_set()
+    else:
+        # On Windows, use alternative approach to preserve Mica effect
+        # Make window always on top and handle focus manually
+        window.attributes("-topmost", True)
+        window.grab_set()
+        
+        # Bind focus events to maintain modal behavior
+        def on_parent_focus(_event=None):
+            if window.winfo_exists():
+                window.focus_force()
+                window.lift()
+        
+        # Bind the focus event to the parent window
+        parent_window.bind("<FocusIn>", on_parent_focus)
+        
+        # Store the binding so we can clean it up later
+        setattr(window, '_parent_focus_binding', on_parent_focus)
+        setattr(window, '_parent_window', parent_window)
+        
+        # Override destroy to clean up bindings
+        original_destroy = window.destroy
+        def cleanup_and_destroy():
+            try:
+                if hasattr(window, '_parent_window') and hasattr(window, '_parent_focus_binding'):
+                    getattr(window, '_parent_window').unbind("<FocusIn>", getattr(window, '_parent_focus_binding'))
+            except (AttributeError, tk.TclError):
+                pass
+            original_destroy()
+        
+        window.destroy = cleanup_and_destroy
+    
+    # Common modal setup
+    window.focus_force()
+    window.lift()
 
 # =============================================================================================================================
 # Console Window
@@ -154,10 +204,8 @@ def open_config_window() -> None:
             min_height=450,
             icon=icon_path
         )
-        config_window.transient(root)
-        config_window.grab_set()
-        config_window.focus_force()
-        config_window.lift()
+        # Use cross-platform modal approach that preserves Mica on Windows
+        make_window_modal(config_window, root)
         config_window.center(root)
 
         # Update state
@@ -356,10 +404,8 @@ def create_update_window(last_version: str) -> None:
             icon=icon_path
         )
         update_window.resizable(False, False)
-        update_window.transient(root)
-        update_window.grab_set()
-        update_window.focus_force()
-        update_window.lift()
+        # Use cross-platform modal approach that preserves Mica on Windows
+        make_window_modal(update_window, root)
         update_window.center(root)
         update_window.grid_columnconfigure(0, weight=1)
 
