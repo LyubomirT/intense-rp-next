@@ -55,8 +55,8 @@ def make_window_modal(window, parent_window):
         window.transient(parent_window)
         window.grab_set()
     else:
-        # On Windows, use alternative approach to preserve Mica effect
-        # Make window always on top and handle focus manually
+        # On Windows, we use alternative approach to preserve Mica effect
+        # This makes the window always on top and handle focus manually
         window.attributes("-topmost", True)
         window.grab_set()
         
@@ -66,7 +66,12 @@ def make_window_modal(window, parent_window):
                 window.focus_force()
                 window.lift()
         
-        # Bind the focus event to the parent window
+        # UNFORTUNATELY, this also means that all of the normal built-in modal behaviors
+        # ... now must be written manually. Tell Microsoft I want to have my cake and eat it too.
+        # - Lyubomir
+        #
+        #
+        # If you're reading this, it's likely I've been hunted down by Microsoft for this comment.
         parent_window.bind("<FocusIn>", on_parent_focus)
         
         # Store the binding so we can clean it up later
