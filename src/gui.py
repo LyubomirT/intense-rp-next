@@ -68,7 +68,7 @@ def make_window_modal(window, parent_window):
         
         # UNFORTUNATELY, this also means that all of the normal built-in modal behaviors
         # ... now must be written manually. Tell Microsoft I want to have my cake and eat it too.
-        # - Lyubomir
+        #                                                                           - Lyubomir
         #
         #
         # If you're reading this, it's likely I've been hunted down by Microsoft for this comment.
