@@ -139,7 +139,7 @@ class ConsoleSettings:
 
 
 class CustomConsoleTextbox(gui_builder.CustomTextbox):
-    """Enhanced console textbox with customizable styling"""
+    """Console textbox with customizable styling"""
     
     def __init__(self, parent, settings: ConsoleSettings, **kwargs):
         self.settings = settings
