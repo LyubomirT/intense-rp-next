@@ -4,6 +4,7 @@ import utils.deepseek_driver as deepseek
 import utils.process_manager as process
 import utils.gui_builder as gui_builder
 import utils.console_manager as console_manager
+import utils.webdriver_utils as selenium
 from packaging import version
 from core import get_state_manager, StateEvent
 
@@ -140,6 +141,27 @@ def preview_console_changes() -> None:
     except Exception as e:
         print(f"Error applying console settings: {e}")
 
+def clear_browser_data() -> None:
+    """Clear browser data (cookies, cache, etc.)"""
+    global config_manager
+    
+    try:
+        # Get current browser setting
+        browser = config_manager.get("browser", "Chrome").lower()
+        
+        # Only works for Chromium browsers
+        if browser in ("chrome", "edge"):
+            success = selenium.clear_browser_data(browser)
+            if success:
+                print(f"[color:green]Browser data cleared for {browser.title()}")
+            else:
+                print(f"[color:red]Failed to clear browser data for {browser.title()}")
+        else:
+            print(f"[color:yellow]Browser data clearing not supported for {browser.title()}")
+            
+    except Exception as e:
+        print(f"[color:red]Error clearing browser data: {e}")
+
 def open_config_window() -> None:
     """Open configuration window using the new modular system"""
     global root, config_manager
@@ -150,6 +172,7 @@ def open_config_window() -> None:
         command_handlers = {
             'on_console_toggle': on_console_toggle,
             'preview_console_changes': preview_console_changes,
+            'clear_browser_data': clear_browser_data,
         }
         
         # Create UI generator
@@ -265,7 +288,8 @@ def create_gui() -> None:
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
         icon_path = storage_manager.get_existing_path(path_root="base", relative_path="icon.ico")
 
-        # Set up state manager
+        # Set up state manager with config manager
+        state.set_config_manager(config_manager)
         state.logging_manager = logging_manager_instance
 
         # Configure external dependencies
@@ -298,15 +322,11 @@ def create_gui() -> None:
         # Update state with UI components
         state.textbox = textbox
         
-        # Set configuration in state manager (for backward compatibility)
-        config_data = config_manager.get_all()
-        state.set_config(config_data)
-        
         # Create console window after config is loaded
         create_console_window()
         
-        # Initialize logging
-        logging_manager_instance.initialize(config_data)
+        # Initialize logging with config data
+        logging_manager_instance.initialize(config_manager.get_all())
         
         if config_manager.get("check_version", True):
             current_version = version.parse(__version__)

@@ -261,17 +261,35 @@ def run_services() -> None:
         config = state.config
         browser = state.get_config_value("browser", "Chrome")
         
-        state.driver = selenium.initialize_webdriver(browser, "https://chat.deepseek.com/sign_in")
+        # Initialize webdriver with config for persistent cookies support
+        state.driver = selenium.initialize_webdriver(browser, "https://chat.deepseek.com/sign_in", config)
         
         if state.driver:
             threading.Thread(target=monitor_driver, args=(current_driver_id,), daemon=True).start()
 
-            # Get DeepSeek config using new system
-            auto_login = state.get_config_value("models.deepseek.auto_login", False)
-            if auto_login:
-                email = state.get_config_value("models.deepseek.email", "")
-                password = state.get_config_value("models.deepseek.password", "")
-                deepseek.login(state.driver, email, password)
+            # Check if we're already logged in (persistent cookies might have us logged in)
+            try:
+                import time
+                time.sleep(2)  # Give page time to load
+                current_url = state.driver.get_current_url()
+                already_logged_in = not current_url.endswith("/sign_in")
+                
+                if already_logged_in:
+                    print("[color:green]Already logged in via persistent cookies!")
+                else:
+                    # Get DeepSeek config using new system for auto-login
+                    auto_login = state.get_config_value("models.deepseek.auto_login", False)
+                    if auto_login:
+                        email = state.get_config_value("models.deepseek.email", "")
+                        password = state.get_config_value("models.deepseek.password", "")
+                        if email and password:
+                            print("[color:cyan]Attempting auto-login...")
+                            deepseek.login(state.driver, email, password)
+                        else:
+                            print("[color:yellow]Auto-login enabled but email/password not configured")
+            except Exception as e:
+                print(f"[color:red]Error during login check: {e}")
+                # Continue anyway
 
             state.clear_messages()
             state.show_message("[color:red]API IS NOW ACTIVE!")

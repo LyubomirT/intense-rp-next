@@ -182,6 +182,21 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Browser to use for automation"
                 ),
                 ConfigField(
+                    key="browser_persistent_cookies",
+                    label="Persistent cookies:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Enable persistent cookies to bypass Cloudflare and store login sessions (Chrome/Edge only)"
+                ),
+                ConfigField(
+                    key="clear_browser_data",
+                    label="Clear Browser Data",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="clear_browser_data",
+                    help_text="Clear stored cookies and browser data (useful for debugging or starting fresh)"
+                ),
+                ConfigField(
                     key="check_version",
                     label="Check version at startup:",
                     field_type=ConfigFieldType.SWITCH,
