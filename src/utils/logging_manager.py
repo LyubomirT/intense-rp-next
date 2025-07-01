@@ -166,7 +166,7 @@ class LoggingManager:
                 if filename.startswith("log_file_") and filename.endswith(".txt"):
                     log_files.append(filename)
                     
-            return sorted(log_files, reverse=True)  # Newest first
+            return sorted(log_files, reverse=True)  # Ladies first, most recent right after
             
         except Exception as e:
             print(f"Error getting log files: {e}")

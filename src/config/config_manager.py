@@ -4,6 +4,7 @@ Handles loading, saving, validation, and access to configuration
 """
 
 from typing import Dict, Any, List, Optional, Tuple
+import copy
 from config.config_schema import get_config_schema, get_default_config, find_field_by_key
 from config.config_validators import ConfigValidator
 
@@ -92,7 +93,6 @@ class ConfigManager:
     
     def get_all(self) -> Dict[str, Any]:
         """Get complete configuration (copy to prevent external mutation)"""
-        import copy
         return copy.deepcopy(self._config)
     
     def validate(self) -> Tuple[bool, List[str]]:

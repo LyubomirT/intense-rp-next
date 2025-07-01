@@ -2,6 +2,7 @@ from seleniumbase import Driver
 from typing import Optional, Dict, Any
 import os
 import tempfile
+import shutil
 
 # =============================================================================================================================
 # Initialize SeleniumBase and open browser
@@ -84,7 +85,6 @@ def clear_browser_data(browser: str) -> bool:
         browser_data_dir = _get_browser_data_dir(browser)
         
         if os.path.exists(browser_data_dir):
-            import shutil
             shutil.rmtree(browser_data_dir)
             print(f"[color:green]Cleared browser data for {browser.title()}")
             return True

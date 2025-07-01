@@ -15,6 +15,7 @@ class ConfigFieldType(Enum):
     SWITCH = "switch"
     DROPDOWN = "dropdown"
     BUTTON = "button"
+    PATH = "path"
 
 
 @dataclass
@@ -29,6 +30,8 @@ class ConfigField:
     help_text: Optional[str] = None         # Tooltip/help text
     command: Optional[Callable] = None      # For buttons/switches with callbacks
     depends_on: Optional[str] = None        # Conditional field (key that must be True)
+    inline: bool = False                    # Whether this field should be inline with next
+    button_style: Optional[str] = None      # Button style: "primary", "danger", None
 
 
 @dataclass
@@ -89,6 +92,40 @@ def get_config_schema() -> List[ConfigSection]:
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
                     help_text="Enable web search capability"
+                ),
+            ]
+        ),
+        
+        ConfigSection(
+            id="saved_data_settings",
+            title="Saved Data Settings",
+            fields=[
+                ConfigField(
+                    key="data.storage_path",
+                    label="Storage Path:",
+                    field_type=ConfigFieldType.PATH,
+                    default="",
+                    validation="directory_path",
+                    help_text="Directory where app data will be stored"
+                ),
+                ConfigField(
+                    key="data.move_data",
+                    label="Move Data",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="move_app_data",
+                    help_text="Move app data to selected location (requires restart)",
+                    button_style="primary",
+                    inline=True
+                ),
+                ConfigField(
+                    key="data.clear_data",
+                    label="Clear Data",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="clear_app_data",
+                    help_text="Clear all app data (requires restart)",
+                    button_style="danger"
                 ),
             ]
         ),
