@@ -2,7 +2,6 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import Driver
 from typing import Optional
 import time
-from bs4 import BeautifulSoup
 
 manager = None
 
@@ -176,6 +175,8 @@ def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
 def _basic_html_cleanup(html: str) -> str:
     """Basic HTML cleanup for fallback scenarios"""
     try:
+        from bs4 import BeautifulSoup
+        
         soup = BeautifulSoup(html, 'html.parser')
         
         # Remove scripts and styles

@@ -2,7 +2,6 @@ from typing import Optional, Callable, Dict, Any, List
 from dataclasses import dataclass
 import threading
 from enum import Enum
-import time
 
 class StateEvent(Enum):
     BROWSER_STARTED = "browser_started"
@@ -56,6 +55,7 @@ class StateManager:
     
     def _notify_observers(self, event_type: StateEvent, data: Any = None) -> None:
         """Notify all observers of state change"""
+        import time
         change = StateChange(event_type, data, time.time())
         
         # Make a copy to avoid issues if observers list changes during iteration

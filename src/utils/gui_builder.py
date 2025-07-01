@@ -1,6 +1,5 @@
 from typing import Optional, List, Callable
 import customtkinter as ctk
-from tkinter import filedialog
 import re
 
 # =============================================================================================================================
@@ -343,73 +342,6 @@ class ConfigFrame(ctk.CTkFrame):
         if row_grid:
             _set_row_grid(self, row)
 
-        _save_widget(self, id, button)
-        return button
-
-    def create_path(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False) -> ctk.CTkEntry:
-        """Create a path entry field with browse button"""
-        
-        ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
-        
-        # Create frame to hold entry and button
-        path_frame = ctk.CTkFrame(self, fg_color="transparent")
-        path_frame.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
-        path_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
-        
-        # Path entry
-        entry = ctk.CTkEntry(path_frame, border_color="gray")
-        entry.grid(row=0, column=0, padx=(0, UIConstants.PADDING_SMALL), sticky="ew")
-        entry.insert(0, default_value)
-        
-        # Browse button
-        def browse_folder():
-            folder = filedialog.askdirectory(
-                title="Select Storage Directory",
-                initialdir=entry.get() or ""
-            )
-            if folder:
-                entry.delete(0, "end")
-                entry.insert(0, folder)
-        
-        browse_btn = ctk.CTkButton(
-            path_frame, 
-            text="Browse", 
-            width=80, 
-            command=browse_folder
-        )
-        browse_btn.grid(row=0, column=1, sticky="e")
-        
-        if row_grid:
-            _set_row_grid(self, row)
-        
-        _save_widget(self, id, entry)
-        return entry
-
-    def create_inline_frame(self, row: int) -> ctk.CTkFrame:
-        """Create a frame for inline elements"""
-        inline_frame = ctk.CTkFrame(self, fg_color="transparent")
-        inline_frame.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
-        inline_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_NONE)
-        inline_frame.grid_columnconfigure(1, weight=UIConstants.WEIGHT_NONE)
-        return inline_frame
-
-    def create_styled_button(self, parent, id: str, text: str, command: Optional[Callable] = None, 
-                            style: Optional[str] = None, width: int = 100) -> ctk.CTkButton:
-        """Create a button with specific styling"""
-        button_kwargs = {"text": text, "command": command, "width": width}
-        
-        if style == "primary":
-            button_kwargs.update({
-                "fg_color": ("#1f538d", "#14375e"),
-                "hover_color": ("#14375e", "#1f538d")
-            })
-        elif style == "danger":
-            button_kwargs.update({
-                "fg_color": ("#d32f2f", "#f44336"),
-                "hover_color": ("#b71c1c", "#d32f2f")
-            })
-        
-        button = ctk.CTkButton(parent, **button_kwargs)
         _save_widget(self, id, button)
         return button
 

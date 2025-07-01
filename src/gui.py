@@ -1,5 +1,4 @@
 import threading, webbrowser, api, sys, re, platform, tkinter as tk
-import tkinter.messagebox as messagebox
 import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
 import utils.process_manager as process
@@ -8,10 +7,6 @@ import utils.console_manager as console_manager
 import utils.webdriver_utils as selenium
 from packaging import version
 from core import get_state_manager, StateEvent
-
-# Initialize storage manager and config system
-import utils.storage_manager as storage
-import utils.logging_manager as logging_manager
 
 # New modular config system imports
 from config.config_manager import ConfigManager
@@ -178,8 +173,6 @@ def open_config_window() -> None:
             'on_console_toggle': on_console_toggle,
             'preview_console_changes': preview_console_changes,
             'clear_browser_data': clear_browser_data,
-            'move_app_data': move_app_data,
-            'clear_app_data': clear_app_data,
         }
         
         # Create UI generator
@@ -197,25 +190,6 @@ def open_config_window() -> None:
         
     except Exception as e:
         print(f"Error opening config window: {e}")
-    
-def move_app_data() -> None:
-    """Move app data to selected location"""
-    messagebox.showinfo(
-        "Restart Required", 
-        "App data will be moved on next restart.\nPlease restart the application to complete the move."
-    )
-
-def clear_app_data() -> None:
-    """Clear all app data"""
-    result = messagebox.askyesno(
-        "Clear App Data", 
-        "This will permanently delete all saved settings, logs, and cached data.\n\nAre you sure you want to continue?"
-    )
-    if result:
-        messagebox.showinfo(
-            "Restart Required", 
-            "App data will be cleared on next restart.\nPlease restart the application to complete the operation."
-        )
 
 # =============================================================================================================================
 # Credits
@@ -302,6 +276,10 @@ def create_gui() -> None:
     state = get_state_manager()
     
     try:
+        # Initialize storage manager and config system
+        import utils.storage_manager as storage
+        import utils.logging_manager as logging_manager
+        
         storage_manager = storage.StorageManager()
         
         # Initialize new config system

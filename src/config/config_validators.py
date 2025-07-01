@@ -5,7 +5,6 @@ Handles all validation logic for configuration fields
 
 import re
 from typing import List, Any
-import os
 from config.config_schema import ConfigField
 
 
@@ -19,7 +18,6 @@ class ConfigValidator:
             'password': self._validate_password,
             'file_size': self._validate_file_size,
             'max_files': self._validate_max_files,
-            'directory_path': self._validate_directory_path,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -119,29 +117,6 @@ class ConfigValidator:
             return []
         except ValueError:
             return [f"{field.label} Max files must be a valid number"]
-
-    def _validate_directory_path(self, field: ConfigField, value: str) -> List[str]:
-        """Validate directory path"""
-        if not value or not value.strip():
-            return []  # Empty path is allowed (will use default)
-    
-        path = value.strip()
-        
-        # Check if path is absolute
-        if not os.path.isabs(path):
-            return [f"{field.label} Path must be absolute"]
-        
-        # Check if parent directory exists (the path itself doesn't need to exist yet)
-        parent_dir = os.path.dirname(path)
-        if parent_dir and not os.path.exists(parent_dir):
-            return [f"{field.label} Parent directory does not exist: {parent_dir}"]
-        
-        # Check if path is writable (if it exists) or if parent is writable
-        test_dir = path if os.path.exists(path) else parent_dir
-        if test_dir and not os.access(test_dir, os.W_OK):
-            return [f"{field.label} Directory is not writable: {test_dir}"]
-        
-        return []
     
     @staticmethod
     def _parse_file_size(size_str: str) -> int:

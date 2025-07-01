@@ -8,7 +8,6 @@ import utils.gui_builder as gui_builder
 from config.config_schema import get_config_schema, ConfigFieldType, ConfigField
 from config.config_manager import ConfigManager, ConfigValidationError
 from config.config_validators import ConditionalValidator
-from config.config_validators import ConfigValidator
 
 
 class ConfigUIGenerator:
@@ -67,10 +66,7 @@ class ConfigUIGenerator:
         row += 1
         
         # Create fields
-        i = 0
-        while i < len(section.fields):
-            field = section.fields[i]
-            
+        for field in section.fields:
             if field.field_type == ConfigFieldType.TEXT:
                 self._create_text_field(frame, field, row)
             elif field.field_type == ConfigFieldType.PASSWORD:
@@ -79,22 +75,10 @@ class ConfigUIGenerator:
                 self._create_switch_field(frame, field, row)
             elif field.field_type == ConfigFieldType.DROPDOWN:
                 self._create_dropdown_field(frame, field, row)
-            elif field.field_type == ConfigFieldType.PATH:
-                self._create_path_field(frame, field, row)
             elif field.field_type == ConfigFieldType.BUTTON:
-                # Check if this button should be inline with the next one
-                if field.inline and i + 1 < len(section.fields):
-                    next_field = section.fields[i + 1]
-                    if next_field.field_type == ConfigFieldType.BUTTON:
-                        self._create_inline_buttons(frame, field, next_field, row)
-                        i += 1  # Skip next field since we processed it
-                    else:
-                        self._create_button_field(frame, field, row)
-                else:
-                    self._create_button_field(frame, field, row)
+                self._create_button_field(frame, field, row)
             
             row += 1
-            i += 1
     
     def _create_text_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
         """Create a text entry field"""
@@ -102,6 +86,7 @@ class ConfigUIGenerator:
         
         # Special handling for display conversion
         if field.validation == "file_size" and isinstance(current_value, int):
+            from config.config_validators import ConfigValidator
             display_value = ConfigValidator.format_file_size(current_value)
         elif field.validation == "max_files" and isinstance(current_value, int):
             display_value = str(current_value)
@@ -196,59 +181,6 @@ class ConfigUIGenerator:
             width=80
         )
         cancel_button.grid(row=0, column=1, padx=5, pady=5, sticky="w")
-
-    def _create_path_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
-        """Create a path input field with browse button"""
-        current_value = self.config_manager.get(field.key, field.default)
-        display_value = str(current_value) if current_value is not None else ""
-        
-        frame.create_path(
-            id=field.key,
-            label_text=field.label,
-            default_value=display_value,
-            row=row,
-            row_grid=True
-        )
-
-    def _create_inline_buttons(self, frame: gui_builder.ConfigFrame, field1: ConfigField, field2: ConfigField, row: int) -> None:
-        """Create two buttons inline"""
-        # Create label for the button group (use first button's label context)
-        gui_builder.ctk.CTkLabel(frame, text="Actions:").grid(
-            row=row, column=0, padx=gui_builder.UIConstants.PADDING_LARGE, pady=8, sticky="w"
-        )
-        
-        # Create inline frame
-        inline_frame = frame.create_inline_frame(row)
-        
-        # First button
-        command1 = None
-        if field1.command and field1.command in self.command_handlers:
-            command1 = self.command_handlers[field1.command]
-        
-        button1 = frame.create_styled_button(
-            inline_frame,
-            id=field1.key or f"{field1.label.lower().replace(' ', '_')}_btn",
-            text=field1.label,
-            command=command1,
-            style=field1.button_style,
-            width=100
-        )
-        button1.grid(row=0, column=0, padx=(0, gui_builder.UIConstants.PADDING_SMALL))
-        
-        # Second button
-        command2 = None
-        if field2.command and field2.command in self.command_handlers:
-            command2 = self.command_handlers[field2.command]
-        
-        button2 = frame.create_styled_button(
-            inline_frame,
-            id=field2.key or f"{field2.label.lower().replace(' ', '_')}_btn",
-            text=field2.label,
-            command=command2,
-            style=field2.button_style,
-            width=100
-        )
-        button2.grid(row=0, column=1)
     
     def _save_config(self) -> None:
         """Save configuration from UI"""
@@ -349,11 +281,6 @@ class ConfigUIGenerator:
             auto_login = ui_config.get("models", {}).get("deepseek", {}).get("auto_login", False)
             return auto_login
         
-        # Data storage path should be validated if it's not empty
-        if field.key == "data.storage_path":
-            storage_path = ui_config.get("data", {}).get("storage_path", "")
-            return bool(storage_path and storage_path.strip())
-        
         # By default, validate the field
         return True
     
@@ -361,10 +288,9 @@ class ConfigUIGenerator:
         """Convert UI string value to appropriate type"""
         if field.field_type == ConfigFieldType.SWITCH:
             return bool(ui_value)
-        elif field.field_type == ConfigFieldType.PATH:
-            return ui_value.strip() if ui_value else ""
         elif field.validation == "file_size":
             # Parse the human-readable format to bytes for storage (original behavior)
+            from config.config_validators import ConfigValidator
             return ConfigValidator._parse_file_size(ui_value.strip())
         elif field.validation == "max_files":
             # Convert to integer for storage (original behavior)
@@ -398,13 +324,12 @@ class ConfigUIGenerator:
     
     def _mark_field_error_by_message(self, error_message: str) -> None:
         """Mark a field as having an error based on error message"""
-        # Map error messages to field keys
+        # Map error messages to field keys - improved mapping
         error_mapping = {
             "models.deepseek.email": ["email", "Email"],
             "models.deepseek.password": ["password", "Password"],
             "logging.max_file_size": ["Max file size", "file size", "File size"],
             "logging.max_files": ["Max files", "max files", "Files"],
-            "data.storage_path": ["Storage Path", "storage path", "Path", "directory"],
         }
         
         for field_key, keywords in error_mapping.items():
