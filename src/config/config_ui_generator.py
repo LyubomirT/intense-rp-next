@@ -98,7 +98,8 @@ class ConfigUIGenerator:
             label_text=field.label,
             default_value=display_value,
             row=row,
-            row_grid=True
+            row_grid=True,
+            tooltip=field.help_text
         )
     
     def _create_password_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
@@ -111,7 +112,8 @@ class ConfigUIGenerator:
             label_text=field.label,
             default_value=display_value,
             row=row,
-            row_grid=True
+            row_grid=True,
+            tooltip=field.help_text
         )
     
     def _create_switch_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
@@ -129,7 +131,8 @@ class ConfigUIGenerator:
             default_value=bool(current_value),
             command=command,
             row=row,
-            row_grid=True
+            row_grid=True,
+            tooltip=field.help_text
         )
     
     def _create_dropdown_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
@@ -143,7 +146,8 @@ class ConfigUIGenerator:
             default_value=display_value,
             options=field.options or [],
             row=row,
-            row_grid=True
+            row_grid=True,
+            tooltip=field.help_text
         )
     
     def _create_button_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
@@ -157,7 +161,8 @@ class ConfigUIGenerator:
             text=field.label,
             command=command,
             row=row,
-            row_grid=True
+            row_grid=True,
+            tooltip=field.help_text
         )
     
     def _create_button_section(self) -> None:

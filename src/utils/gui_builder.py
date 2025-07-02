@@ -3,6 +3,81 @@ import customtkinter as ctk
 import re
 
 # =============================================================================================================================
+# Simple Tooltip Implementation
+# =============================================================================================================================
+
+class SimpleTooltip:
+    """Simple tooltip implementation for CustomTkinter widgets"""
+    
+    def __init__(self, widget: ctk.CTkBaseClass, text: str, delay: int = 500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.tooltip_window = None
+        self.show_timer = None
+        
+        # Bind hover events
+        self.widget.bind("<Enter>", self._on_enter)
+        self.widget.bind("<Leave>", self._on_leave)
+    
+    def _on_enter(self, event=None):
+        """Mouse entered widget"""
+        self._cancel_timer()
+        self.show_timer = self.widget.after(self.delay, self._show_tooltip)
+    
+    def _on_leave(self, event=None):
+        """Mouse left widget"""
+        self._cancel_timer()
+        self._hide_tooltip()
+    
+    def _cancel_timer(self):
+        """Cancel pending tooltip display"""
+        if self.show_timer:
+            self.widget.after_cancel(self.show_timer)
+            self.show_timer = None
+    
+    def _show_tooltip(self):
+        """Display the tooltip"""
+        if self.tooltip_window:
+            return
+        
+        # Get widget position
+        x = self.widget.winfo_rootx()
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        
+        # Create tooltip window
+        self.tooltip_window = ctk.CTkToplevel()
+        self.tooltip_window.wm_overrideredirect(True)
+        self.tooltip_window.geometry(f"+{x}+{y}")
+        
+        # Create tooltip label with modern styling
+        label = ctk.CTkLabel(
+            self.tooltip_window,
+            text=self.text,
+            corner_radius=6,
+            fg_color=("gray90", "gray20"),
+            text_color=("gray10", "gray90"),
+            font=("Arial", 12)
+        )
+        label.pack(padx=8, pady=4)
+        
+        # Keep tooltip on top but don't steal focus
+        self.tooltip_window.lift()
+        self.tooltip_window.attributes('-topmost', True)
+    
+    def _hide_tooltip(self):
+        """Hide the tooltip"""
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+def create_tooltip(widget: ctk.CTkBaseClass, text: str) -> Optional[SimpleTooltip]:
+    """Create a tooltip for a widget if text is provided"""
+    if text and text.strip():
+        return SimpleTooltip(widget, text.strip())
+    return None
+
+# =============================================================================================================================
 # Configuration Constants
 # =============================================================================================================================
 
@@ -272,7 +347,7 @@ class ConfigFrame(ctk.CTkFrame):
         _save_widget(self, id, label)
         return label
 
-    def create_entry(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False) -> ctk.CTkEntry:
+    def create_entry(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkEntry:
         ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         entry = ctk.CTkEntry(self, width=300, border_color="gray")
         entry.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
@@ -281,10 +356,14 @@ class ConfigFrame(ctk.CTkFrame):
         if row_grid:
             _set_row_grid(self, row)
 
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(entry, tooltip)
+
         _save_widget(self, id, entry)
         return entry
 
-    def create_password(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False) -> ctk.CTkEntry:
+    def create_password(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkEntry:
         ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         frame = ctk.CTkFrame(self, fg_color="transparent")
         frame.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
@@ -305,10 +384,14 @@ class ConfigFrame(ctk.CTkFrame):
         if row_grid:
             _set_row_grid(self, row)
 
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(entry, tooltip)
+
         _save_widget(self, id, entry)
         return entry
 
-    def create_switch(self, id: str, label_text: str, default_value: bool, command: Callable[[bool], None] = None, row: int = 0, row_grid: bool = False) -> ctk.CTkSwitch:
+    def create_switch(self, id: str, label_text: str, default_value: bool, command: Callable[[bool], None] = None, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkSwitch:
         ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         var = ctk.BooleanVar(value=default_value)
         switch = ctk.CTkSwitch(self, variable=var, text="")
@@ -320,10 +403,14 @@ class ConfigFrame(ctk.CTkFrame):
         if row_grid:
             _set_row_grid(self, row)
 
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(switch, tooltip)
+
         _save_widget(self, id, switch)
         return switch
 
-    def create_option_menu(self, id: str, label_text: str, default_value: str, options: List[str], row: int = 0, row_grid: bool = False) -> ctk.CTkOptionMenu:
+    def create_option_menu(self, id: str, label_text: str, default_value: str, options: List[str], row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkOptionMenu:
         ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         var = ctk.StringVar(value=default_value)
         menu = ctk.CTkOptionMenu(self, variable=var, values=options)
@@ -332,15 +419,23 @@ class ConfigFrame(ctk.CTkFrame):
         if row_grid:
             _set_row_grid(self, row)
 
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(menu, tooltip)
+
         _save_widget(self, id, menu)
         return menu
     
-    def create_button(self, id: str, text: str, command: Optional[Callable] = None, row: int = 0, column: int = 0, row_grid: bool = False) -> ctk.CTkButton:        
+    def create_button(self, id: str, text: str, command: Optional[Callable] = None, row: int = 0, column: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkButton:        
         button = ctk.CTkButton(self, text=text, command=command)
         button.grid(row=row, column=column, padx=8, pady=UIConstants.PADDING_SMALL, sticky="ew")
 
         if row_grid:
             _set_row_grid(self, row)
+
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(button, tooltip)
 
         _save_widget(self, id, button)
         return button
