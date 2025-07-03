@@ -286,7 +286,7 @@ def create_gui() -> None:
         config_manager = ConfigManager(storage_manager)
         
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
-        icon_path = storage_manager.get_existing_path(path_root="base", relative_path="icon.ico")
+        icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
 
         # Set up state manager with config manager
         state.set_config_manager(config_manager)
