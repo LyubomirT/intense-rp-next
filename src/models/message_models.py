@@ -34,6 +34,12 @@ class ChatRequest:
     use_search: bool = False
     use_text_file: bool = False
     
+    # API parameters for character info and settings
+    api_char_name: Optional[str] = None  # DATA1
+    api_user_name: Optional[str] = None  # DATA2
+    api_use_search: Optional[bool] = None  # use_search
+    api_use_r1: Optional[bool] = None  # use_r1
+    
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ChatRequest':
         messages = [Message.from_dict(msg) for msg in data.get('messages', [])]
@@ -42,7 +48,12 @@ class ChatRequest:
             messages=messages,
             temperature=data.get('temperature', 1.0),
             max_tokens=data.get('max_tokens', 300),
-            stream=data.get('stream', False)
+            stream=data.get('stream', False),
+            # Extract API parameters with priority over content detection
+            api_char_name=data.get('char_name') or data.get('DATA1'),
+            api_user_name=data.get('user_name') or data.get('DATA2'),
+            api_use_search=data.get('use_search'),
+            api_use_r1=data.get('use_r1')
         )
     
     def get_user_messages(self) -> List[Message]:

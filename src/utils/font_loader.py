@@ -16,7 +16,7 @@ class FontLoader:
     # Font size adjustments to normalize appearance across different fonts
     # Positive values make fonts larger, negative values make them smaller
     FONT_SIZE_ADJUSTMENTS = {
-        "Blinker": 2,           # Blinker is smaller, needs +2 to match Arial
+        "Blinker": 1,           # Blinker is smaller, needs +1 to match Arial
         "Arial": 0,             # Arial is the baseline
         "Helvetica": 0,         # Similar to Arial
         "Consolas": 0,          # Monospace, good as-is

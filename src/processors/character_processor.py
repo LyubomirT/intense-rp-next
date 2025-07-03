@@ -20,8 +20,14 @@ class CharacterProcessor(BaseProcessor):
         # Use the original approach: combine all messages, then process the combined string
         combined_content = self._combine_messages(request)
         
-        # Extract character info from combined content
+        # Extract character info - prioritize API parameters over message content
         character_info = self._extract_character_info_from_combined(combined_content)
+        
+        # Override with API parameters if provided (highest priority)
+        if request.api_char_name is not None:
+            character_info.character_name = request.api_char_name
+        if request.api_user_name is not None:
+            character_info.user_name = request.api_user_name
         
         # Process the combined content (like original logic)
         processed_content = self._process_combined_content(combined_content, character_info, request)

@@ -298,7 +298,7 @@ class RootWindow(ctk.CTk):
         return _get_widget_value(self, id)
 
     def create_title(self, id: str, text: str, row: int = 0, column: int = 0, row_grid: bool = False) -> ctk.CTkLabel:
-        label = ctk.CTkLabel(self, text=text, font=get_font_tuple("Blinker", 18, "bold"))
+        label = ctk.CTkLabel(self, text=text, font=get_font_tuple("Blinker", 20, "bold"))
         label.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=(UIConstants.PADDING_MEDIUM, 0), sticky="nsew")
 
         if row_grid:
