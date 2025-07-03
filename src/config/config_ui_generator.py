@@ -5,6 +5,7 @@ Generates UI from configuration schema
 
 from typing import Dict, Any, Optional, Callable
 import utils.gui_builder as gui_builder
+from utils.font_loader import get_font_tuple
 from config.config_schema import get_config_schema, ConfigFieldType, ConfigField
 from config.config_manager import ConfigManager, ConfigValidationError
 from config.config_validators import ConditionalValidator
@@ -175,7 +176,8 @@ class ConfigUIGenerator:
             button_container,
             text="Save",
             command=self._save_config,
-            width=80
+            width=80,
+            font=get_font_tuple("Blinker", 14)
         )
         save_button.grid(row=0, column=0, padx=5, pady=5, sticky="e")
         
@@ -183,7 +185,8 @@ class ConfigUIGenerator:
             button_container,
             text="Cancel",
             command=self.window.destroy,
-            width=80
+            width=80,
+            font=get_font_tuple("Blinker", 14)
         )
         cancel_button.grid(row=0, column=1, padx=5, pady=5, sticky="w")
     

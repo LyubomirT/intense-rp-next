@@ -1,6 +1,7 @@
 from typing import Optional, List, Callable
 import customtkinter as ctk
 import re
+from utils.font_loader import get_font_tuple
 
 # =============================================================================================================================
 # Simple Tooltip Implementation
@@ -57,7 +58,7 @@ class SimpleTooltip:
             corner_radius=6,
             fg_color=("gray90", "gray20"),
             text_color=("gray10", "gray90"),
-            font=("Arial", 12)
+            font=get_font_tuple("Blinker", 12)
         )
         label.pack(padx=8, pady=4)
         
@@ -297,7 +298,7 @@ class RootWindow(ctk.CTk):
         return _get_widget_value(self, id)
 
     def create_title(self, id: str, text: str, row: int = 0, column: int = 0, row_grid: bool = False) -> ctk.CTkLabel:
-        label = ctk.CTkLabel(self, text=text, font=("Arial", 18, "bold"))
+        label = ctk.CTkLabel(self, text=text, font=get_font_tuple("Blinker", 18, "bold"))
         label.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=(UIConstants.PADDING_MEDIUM, 0), sticky="nsew")
 
         if row_grid:
@@ -307,7 +308,7 @@ class RootWindow(ctk.CTk):
         return label
     
     def create_textbox(self, id: str, row: int = 0, column: int = 0, row_grid: bool = False, bg_color: Optional[str]= None) -> CustomTextbox:
-        textbox = CustomTextbox(self, state="disabled", font=("Arial", 16), wrap="none", fg_color=bg_color)
+        textbox = CustomTextbox(self, state="disabled", font=get_font_tuple("Blinker", 16), wrap="none", fg_color=bg_color)
         textbox.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=UIConstants.PADDING_MEDIUM, sticky="nsew")
 
         if row_grid:
@@ -317,7 +318,7 @@ class RootWindow(ctk.CTk):
         return textbox
 
     def create_button(self, id: str, text: str, command: Optional[Callable] = None, row: int = 0, column: int = 0, row_grid: bool = False) -> ctk.CTkButton:
-        button = ctk.CTkButton(self, text=text, command=command)
+        button = ctk.CTkButton(self, text=text, command=command, font=get_font_tuple("Blinker", 14))
         button.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=(0, UIConstants.PADDING_MEDIUM), sticky="ew")
 
         if row_grid:
@@ -338,7 +339,7 @@ class ConfigFrame(ctk.CTkFrame):
         return _get_widget_value(self, id)
     
     def create_title(self, id: str, text: str, row: int = 0, row_grid: bool = False) -> ctk.CTkLabel:
-        label = ctk.CTkLabel(self, text=text, font=("Arial", 16, "bold"))
+        label = ctk.CTkLabel(self, text=text, font=get_font_tuple("Blinker", 16, "bold"))
         label.grid(row=row, column=0, columnspan=2, padx=UIConstants.PADDING_LARGE, pady=(UIConstants.PADDING_LARGE, UIConstants.PADDING_MEDIUM), sticky="w")
 
         if row_grid:
@@ -348,8 +349,8 @@ class ConfigFrame(ctk.CTkFrame):
         return label
 
     def create_entry(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkEntry:
-        ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
-        entry = ctk.CTkEntry(self, width=300, border_color="gray")
+        ctk.CTkLabel(self, text=label_text, font=get_font_tuple("Blinker", 14)).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
+        entry = ctk.CTkEntry(self, width=300, border_color="gray", font=get_font_tuple("Blinker", 14))
         entry.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
         entry.insert(0, default_value)
 
@@ -364,12 +365,12 @@ class ConfigFrame(ctk.CTkFrame):
         return entry
 
     def create_password(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkEntry:
-        ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
+        ctk.CTkLabel(self, text=label_text, font=get_font_tuple("Blinker", 14)).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         frame = ctk.CTkFrame(self, fg_color="transparent")
         frame.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
         frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
 
-        entry = ctk.CTkEntry(frame, show="*", border_color="gray")
+        entry = ctk.CTkEntry(frame, show="*", border_color="gray", font=get_font_tuple("Blinker", 14))
         entry.grid(row=0, column=0, padx=(0, UIConstants.PADDING_SMALL), sticky="ew")
         entry.insert(0, default_value)
 
@@ -378,7 +379,7 @@ class ConfigFrame(ctk.CTkFrame):
             entry.configure(show="" if show_state == "*" else "*")
             toggle_btn.configure(text="Show" if show_state == "*" else "Hide")
 
-        toggle_btn = ctk.CTkButton(frame, text="Show", width=60, command=toggle)
+        toggle_btn = ctk.CTkButton(frame, text="Show", width=60, command=toggle, font=get_font_tuple("Blinker", 12))
         toggle_btn.grid(row=0, column=1, sticky="e")
 
         if row_grid:
@@ -392,9 +393,9 @@ class ConfigFrame(ctk.CTkFrame):
         return entry
 
     def create_switch(self, id: str, label_text: str, default_value: bool, command: Callable[[bool], None] = None, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkSwitch:
-        ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
+        ctk.CTkLabel(self, text=label_text, font=get_font_tuple("Blinker", 14)).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         var = ctk.BooleanVar(value=default_value)
-        switch = ctk.CTkSwitch(self, variable=var, text="")
+        switch = ctk.CTkSwitch(self, variable=var, text="", font=get_font_tuple("Blinker", 14))
         switch.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
 
         if command:
@@ -411,9 +412,9 @@ class ConfigFrame(ctk.CTkFrame):
         return switch
 
     def create_option_menu(self, id: str, label_text: str, default_value: str, options: List[str], row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkOptionMenu:
-        ctk.CTkLabel(self, text=label_text).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
+        ctk.CTkLabel(self, text=label_text, font=get_font_tuple("Blinker", 14)).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="w")
         var = ctk.StringVar(value=default_value)
-        menu = ctk.CTkOptionMenu(self, variable=var, values=options)
+        menu = ctk.CTkOptionMenu(self, variable=var, values=options, font=get_font_tuple("Blinker", 14))
         menu.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
 
         if row_grid:
@@ -427,7 +428,7 @@ class ConfigFrame(ctk.CTkFrame):
         return menu
     
     def create_button(self, id: str, text: str, command: Optional[Callable] = None, row: int = 0, column: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkButton:        
-        button = ctk.CTkButton(self, text=text, command=command)
+        button = ctk.CTkButton(self, text=text, command=command, font=get_font_tuple("Blinker", 14))
         button.grid(row=row, column=column, padx=8, pady=UIConstants.PADDING_SMALL, sticky="ew")
 
         if row_grid:
@@ -456,7 +457,7 @@ class SidebarNavButton(ctk.CTkButton):
             text_color=("gray70", "gray70"),
             hover_color=("gray20", "gray20"),
             anchor="w",
-            font=("Arial", 13)
+            font=get_font_tuple("Blinker", 13)
         )
     
     def set_active(self, active: bool):
@@ -574,7 +575,7 @@ class ConfigWindow(ctk.CTkToplevel):
         sidebar_title = ctk.CTkLabel(
             self.sidebar_container, 
             text="Settings", 
-            font=("Arial", 16, "bold"),
+            font=get_font_tuple("Blinker", 16, "bold"),
             text_color=("gray10", "gray90")
         )
         sidebar_title.grid(row=0, column=0, padx=UIConstants.PADDING_LARGE, 
@@ -846,7 +847,7 @@ class ConsoleWindow(ctk.CTkToplevel):
         textbox = CustomTextbox(
             self,
             state="disabled",
-            font=("Consolas", 12),  # Better monospace font for console
+            font=get_font_tuple("Consolas", 12),  # Better monospace font for console
             wrap="word",  # Better text wrapping
             border_width=1,
             border_color=("gray60", "gray40"),
@@ -901,7 +902,7 @@ class UpdateWindow(ctk.CTkToplevel):
             column: int = 0, 
             row_grid: bool = False
         ) -> ctk.CTkLabel:
-        label = ctk.CTkLabel(self, text=text, font=("Arial", 14, "bold"))
+        label = ctk.CTkLabel(self, text=text, font=get_font_tuple("Blinker", 14, "bold"))
         label.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=(UIConstants.PADDING_MEDIUM, UIConstants.PADDING_MEDIUM), sticky="nsew")
     
         if row_grid:
@@ -920,7 +921,7 @@ class UpdateWindow(ctk.CTkToplevel):
             row_grid: bool = False
         ) -> ctk.CTkButton:
         
-        button = ctk.CTkButton(self, text=text, command=command)
+        button = ctk.CTkButton(self, text=text, command=command, font=get_font_tuple("Blinker", 14))
         button.grid(row=row, column=column, padx=UIConstants.PADDING_MEDIUM, pady=(0, UIConstants.PADDING_MEDIUM), sticky="ew")
 
         if row_grid:
