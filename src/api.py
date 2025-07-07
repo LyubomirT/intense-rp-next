@@ -150,9 +150,18 @@ def deepseek_response(
                             initial_text = new_text
                         
                         if new_text and new_text != last_text and new_text.startswith(initial_text):
-                            diff = new_text[len(last_text):]
-                            last_text = new_text
-                            yield create_response_streaming(diff, pipeline)
+                            # Improved differencing logic to handle content changes robustly
+                            if len(new_text) > len(last_text) and new_text.startswith(last_text):
+                                # Normal case: new content is an extension of previous content
+                                diff = new_text[len(last_text):]
+                                last_text = new_text
+                                yield create_response_streaming(diff, pipeline)
+                            elif new_text != last_text:
+                                # Edge case: content changed unexpectedly (e.g., HTML processing race condition)
+                                # Send the complete new content and update last_text
+                                diff = new_text
+                                last_text = new_text
+                                yield create_response_streaming(diff, pipeline)
                         
                         time.sleep(0.2)
 
@@ -165,7 +174,12 @@ def deepseek_response(
                     if final_text:
                         # Send any remaining content
                         if final_text != last_text:
-                            final_diff = final_text[len(last_text):] if final_text.startswith(last_text) else final_text
+                            # Check for changes one last time before sending
+                            if len(final_text) > len(last_text) and final_text.startswith(last_text):
+                                final_diff = final_text[len(last_text):]
+                            else:
+                                final_diff = final_text
+                            
                             if final_diff:
                                 yield create_response_streaming(final_diff, pipeline)
                     

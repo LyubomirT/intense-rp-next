@@ -152,7 +152,7 @@ def send_chat_message(driver: Driver, text: str, text_file: bool) -> bool:
 def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
     """Get the last message from the chat, optionally using pipeline for processing"""
     try:
-        time.sleep(0.1)
+        time.sleep(0.2)
         
         messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
         
