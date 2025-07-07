@@ -124,7 +124,13 @@ def _get_widget(obj: ctk.CTkBaseClass, widget_id: str) -> Optional[ctk.CTkBaseCl
 
 def _get_widget_value(obj: ctk.CTkBaseClass, widget_id: str) -> Optional[str]:
     widget = getattr(obj, "_widgets", {}).get(widget_id)
-    return widget.get() if widget and hasattr(widget, "get") else None
+    if widget and hasattr(widget, "get"):
+        # Handle CTkTextbox widgets differently
+        if isinstance(widget, ctk.CTkTextbox):
+            return widget.get("0.0", "end").rstrip('\n')  # Remove trailing newline
+        else:
+            return widget.get()
+    return None
 
 # =============================================================================================================================
 # Frame Utils
@@ -440,6 +446,32 @@ class ConfigFrame(ctk.CTkFrame):
 
         _save_widget(self, id, button)
         return button
+    
+    def create_textarea(self, id: str, label_text: str, default_value: str, row: int = 0, row_grid: bool = False, tooltip: Optional[str] = None) -> ctk.CTkTextbox:
+        """Create a multi-line text area widget"""
+        ctk.CTkLabel(self, text=label_text, font=get_font_tuple("Blinker", 14)).grid(row=row, column=0, padx=UIConstants.PADDING_LARGE, pady=8, sticky="nw")
+        
+        textbox = ctk.CTkTextbox(
+            self, 
+            width=300, 
+            height=100, 
+            border_color="gray",
+            fg_color=("white", "gray17"),
+            text_color=("black", "white"),
+            font=get_font_tuple("Blinker", 14)
+        )
+        textbox.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
+        textbox.insert("0.0", default_value)
+
+        if row_grid:
+            _set_row_grid(self, row)
+
+        # Add tooltip if provided
+        if tooltip:
+            create_tooltip(textbox, tooltip)
+
+        _save_widget(self, id, textbox)
+        return textbox
 
 class SidebarNavButton(ctk.CTkButton):
     def __init__(self, parent, section_id: str, text: str, command: Callable, **kwargs):

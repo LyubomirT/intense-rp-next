@@ -35,8 +35,10 @@ def bot_response() -> Response:
             print("Error: Empty data was received.")
             return jsonify({}), 503
 
-        # Initialize message pipeline with current config
-        pipeline = MessagePipeline(state.config)
+        # Initialize message pipeline with current config and config manager
+        config_with_manager = state.config or {}
+        config_with_manager['config_manager'] = state._config_manager
+        pipeline = MessagePipeline(config_with_manager)
         
         # Process the request
         try:

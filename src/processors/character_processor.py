@@ -7,6 +7,10 @@ from models.message_models import ChatRequest, CharacterInfo, MessageRole
 class CharacterProcessor(BaseProcessor):
     """Processes character-specific data and formatting"""
     
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.config_manager = config.get('config_manager') if config else None
+    
     def can_process(self, request: ChatRequest) -> bool:
         """Always can process character data"""
         return True
@@ -32,9 +36,16 @@ class CharacterProcessor(BaseProcessor):
         # Process the combined content (like original logic)
         processed_content = self._process_combined_content(combined_content, character_info, request)
         
-        # Store the processed content back - we'll let the formatter handle this
-        # For now, store in a special attribute
-        request._processed_content = processed_content
+        # Apply new formatting system if configured
+        if self.config_manager:
+            formatter = MessageFormatter(self.config_manager)
+            formatted_content = formatter.format_messages(request, character_info)
+            # Apply template replacements from original logic
+            formatted_content = self._apply_template_replacements(formatted_content, request)
+            request._processed_content = formatted_content
+        else:
+            # Fallback to original logic
+            request._processed_content = processed_content
         
         return request
     
@@ -83,6 +94,12 @@ class CharacterProcessor(BaseProcessor):
         content = content.replace("user:", f"{character_info.user_name}:")
         
         # Replace template variables
+        content = self._apply_template_replacements(content, request)
+        
+        return content.strip()
+    
+    def _apply_template_replacements(self, content: str, request: ChatRequest) -> str:
+        """Apply template variable replacements"""
         content = content.replace("{{temperature}}", str(request.temperature))
         content = content.replace("{{max_tokens}}", str(request.max_tokens))
         
@@ -94,6 +111,28 @@ class CharacterProcessor(BaseProcessor):
 
 class MessageFormatter:
     """Utility class for formatting messages"""
+    
+    # Predefined formatting templates
+    PRESETS = {
+        "Classic": {
+            "pattern": "{role}: {content}",
+            "separator": "\n\n",
+            "description": "Traditional role-based formatting (user/assistant/system)"
+        },
+        "Wrapped": {
+            "pattern": "<{role}>\n{content}\n</{role}>",
+            "separator": "\n\n",
+            "description": "XML-style wrapped formatting with roles"
+        },
+        "Divided": {
+            "pattern": "----------- {role} -----------\n{content}",
+            "separator": "\n----------- ----------- -----------\n",
+            "description": "Divided formatting with visual separators"
+        }
+    }
+    
+    def __init__(self, config_manager=None):
+        self.config_manager = config_manager
     
     @staticmethod
     def format_for_api(request: ChatRequest) -> str:
@@ -112,6 +151,113 @@ class MessageFormatter:
         
         content = "\n\n".join(formatted_messages)
         return f"[Important Information]\n{content.strip()}"
+    
+    def format_messages(self, request: ChatRequest, character_info: CharacterInfo) -> str:
+        """Format messages based on current configuration"""
+        
+        # Get formatting configuration
+        preset = self._get_config_value('formatting.preset', 'Classic')
+        
+        if preset == 'Custom':
+            return self._format_custom(request, character_info)
+        elif preset in self.PRESETS:
+            return self._format_preset(request, character_info, preset)
+        else:
+            # Fallback to Classic
+            return self._format_preset(request, character_info, 'Classic')
+    
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        """Get configuration value with fallback"""
+        if self.config_manager:
+            return self.config_manager.get(key, default)
+        return default
+    
+    def _format_preset(self, request: ChatRequest, character_info: CharacterInfo, preset: str) -> str:
+        """Format using a predefined preset"""
+        preset_config = self.PRESETS[preset]
+        
+        formatted_messages = []
+        
+        for message in request.messages:
+            if not message.content.strip():
+                continue
+                
+            # Get both role and name for template substitution
+            literal_role = self._get_literal_role(message.role)
+            character_name = self._get_character_name(message.role, character_info)
+            
+            # Apply pattern (presets use {role} for literal roles)
+            formatted_message = preset_config['pattern'].format(
+                role=literal_role,
+                name=character_name,
+                content=message.content.strip()
+            )
+            
+            formatted_messages.append(formatted_message)
+        
+        # Join with separator
+        result = preset_config['separator'].join(formatted_messages)
+        
+        return result
+    
+    def _format_custom(self, request: ChatRequest, character_info: CharacterInfo) -> str:
+        """Format using custom templates"""
+        
+        # Get custom templates
+        user_template = self._get_config_value('formatting.user_template', '{name}: {content}')
+        char_template = self._get_config_value('formatting.char_template', '{name}: {content}')
+        
+        formatted_messages = []
+        
+        for message in request.messages:
+            if not message.content.strip():
+                continue
+                
+            # Choose template based on role
+            if message.role == MessageRole.USER:
+                template = user_template
+            elif message.role == MessageRole.ASSISTANT:
+                template = char_template
+            elif message.role == MessageRole.SYSTEM:
+                # System messages use character template
+                template = char_template
+            else:
+                # Fallback
+                template = '{name}: {content}'
+            
+            # Get both role and name for template substitution
+            literal_role = self._get_literal_role(message.role)
+            character_name = self._get_character_name(message.role, character_info)
+            
+            # Apply template (supports both {role} and {name})
+            formatted_message = template.format(
+                role=literal_role,
+                name=character_name,
+                content=message.content.strip()
+            )
+            
+            formatted_messages.append(formatted_message)
+        
+        return '\n\n'.join(formatted_messages)
+    
+    def _get_literal_role(self, role: MessageRole) -> str:
+        """Get the literal role name (user, assistant, system)"""
+        return role.value.lower()
+    
+    def _get_character_name(self, role: MessageRole, character_info: CharacterInfo) -> str:
+        """Get the character name for a role"""
+        if role == MessageRole.USER:
+            return character_info.user_name or 'User'
+        elif role == MessageRole.ASSISTANT:
+            return character_info.character_name or 'Assistant'
+        elif role == MessageRole.SYSTEM:
+            return 'System'
+        else:
+            return role.value
+    
+    def _get_role_name(self, role: MessageRole, character_info: CharacterInfo) -> str:
+        """Get the display name for a role (backward compatibility)"""
+        return self._get_character_name(role, character_info)
     
     @staticmethod
     def extract_final_user_prompt(request: ChatRequest) -> str:

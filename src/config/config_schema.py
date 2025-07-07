@@ -15,6 +15,7 @@ class ConfigFieldType(Enum):
     SWITCH = "switch"
     DROPDOWN = "dropdown"
     BUTTON = "button"
+    TEXTAREA = "textarea"
 
 
 @dataclass
@@ -135,6 +136,35 @@ def get_config_schema() -> List[ConfigSection]:
                     default=None,
                     command="preview_console_changes",
                     help_text="Apply changes to console immediately"
+                ),
+            ]
+        ),
+        
+        ConfigSection(
+            id="message_formatting",
+            title="Message Formatting",
+            fields=[
+                ConfigField(
+                    key="formatting.preset",
+                    label="Formatting Preset:",
+                    field_type=ConfigFieldType.DROPDOWN,
+                    default="Classic",
+                    options=["Classic", "Wrapped", "Divided", "Custom"],
+                    help_text="Choose how messages are formatted for DeepSeek"
+                ),
+                ConfigField(
+                    key="formatting.user_template",
+                    label="User Message Format:",
+                    field_type=ConfigFieldType.TEXTAREA,
+                    default="{name}: {content}",
+                    help_text="Template for user messages. Use {role} for 'user', {name} for character name, {content} for message content."
+                ),
+                ConfigField(
+                    key="formatting.char_template", 
+                    label="Character Message Format:",
+                    field_type=ConfigFieldType.TEXTAREA,
+                    default="{name}: {content}",
+                    help_text="Template for character messages. Use {role} for 'assistant', {name} for character name, {content} for message content."
                 ),
             ]
         ),
