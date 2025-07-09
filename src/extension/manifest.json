@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "IntenseRP CDP Network Interceptor",
+  "version": "1.0",
+  "description": "Intercepts DeepSeek network streams using Chrome DevTools Protocol",
+  "permissions": [
+    "debugger",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://chat.deepseek.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chat.deepseek.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

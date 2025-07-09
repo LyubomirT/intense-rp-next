@@ -249,13 +249,67 @@ class ConsoleManager:
                 # Redirect stdout and stderr to console
                 sys.stdout = ConsoleRedirector(self.console_textbox.colored_add)
                 sys.stderr = ConsoleRedirector(
-                    lambda text: self.console_textbox.colored_add(f"[color:red]{text}")
+                    lambda text: self.console_textbox.colored_add(f"[color:red]ERROR: {text}")
                 )
+                
+                # Also try to capture subprocess and webdriver outputs
+                self._setup_enhanced_logging()
+                
         except Exception as e:
             print(f"Error setting up output redirection: {e}")
             # Restore original streams on error
             sys.stdout = self.original_stdout
             sys.stderr = self.original_stderr
+    
+    def _setup_enhanced_logging(self) -> None:
+        """Set up enhanced logging to catch webdriver/subprocess errors"""
+        try:
+            import logging
+            import subprocess
+            
+            # Create a custom log handler that writes to console
+            class ConsoleLogHandler(logging.Handler):
+                def __init__(self, console_callback):
+                    super().__init__()
+                    self.console_callback = console_callback
+                
+                def emit(self, record):
+                    try:
+                        msg = self.format(record)
+                        level_colors = {
+                            'ERROR': 'red',
+                            'WARNING': 'yellow',
+                            'INFO': 'cyan',
+                            'DEBUG': 'gray'
+                        }
+                        color = level_colors.get(record.levelname, 'white')
+                        self.console_callback(f"[color:{color}]LOG {record.levelname}: {msg}")
+                    except Exception:
+                        pass
+            
+            # Add handler to root logger
+            root_logger = logging.getLogger()
+            console_handler = ConsoleLogHandler(self.console_textbox.colored_add)
+            console_handler.setLevel(logging.DEBUG)
+            root_logger.addHandler(console_handler)
+            root_logger.setLevel(logging.DEBUG)
+            
+            # Also add to selenium/webdriver loggers specifically
+            selenium_logger = logging.getLogger('selenium')
+            selenium_logger.addHandler(console_handler)
+            selenium_logger.setLevel(logging.DEBUG)
+            
+            webdriver_logger = logging.getLogger('webdriver')
+            webdriver_logger.addHandler(console_handler)
+            webdriver_logger.setLevel(logging.DEBUG)
+            
+            # Store handlers for cleanup
+            self._log_handlers = [console_handler]
+            
+            print("[color:cyan]Enhanced logging set up - webdriver errors should now appear in console")
+            
+        except Exception as e:
+            print(f"Error setting up enhanced logging: {e}")
     
     def restore_output_streams(self) -> None:
         """Restore original stdout/stderr"""
@@ -296,6 +350,13 @@ class ConsoleManager:
     
     def cleanup(self) -> None:
         """Cleanup console resources"""
+        # Clean up logging handlers
+        if hasattr(self, '_log_handlers'):
+            import logging
+            root_logger = logging.getLogger()
+            for handler in self._log_handlers:
+                root_logger.removeHandler(handler)
+        
         self.restore_output_streams()
         
         if self.console_window:

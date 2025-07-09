@@ -91,6 +91,13 @@ def get_config_schema() -> List[ConfigSection]:
                     default=False,
                     help_text="Enable web search capability"
                 ),
+                ConfigField(
+                    key="models.deepseek.intercept_network",
+                    label="Intercept Network:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Use network interception instead of DOM scraping (Chrome only)"
+                ),
             ]
         ),
         

@@ -200,6 +200,46 @@ def _basic_html_cleanup(html: str) -> str:
         return html
 
 # =============================================================================================================================
+# Network interception control
+# =============================================================================================================================
+
+def enable_network_interception(driver: Driver) -> bool:
+    """Enable CDP network interception by communicating with the extension"""
+    try:
+        # Send message to content script to start CDP network interception
+        driver.execute_script("""
+            console.log('DeepSeek driver: Enabling CDP network interception');
+            window.postMessage({
+                action: 'startNetworkInterception'
+            }, '*');
+        """)
+        
+        print("[color:green]CDP network interception enabled")
+        return True
+        
+    except Exception as e:
+        print(f"Error enabling CDP network interception: {e}")
+        return False
+
+def disable_network_interception(driver: Driver) -> bool:
+    """Disable CDP network interception by communicating with the extension"""
+    try:
+        # Send message to content script to stop CDP network interception
+        driver.execute_script("""
+            console.log('DeepSeek driver: Disabling CDP network interception');
+            window.postMessage({
+                action: 'stopNetworkInterception'
+            }, '*');
+        """)
+        
+        print("[color:cyan]CDP network interception disabled")
+        return True
+        
+    except Exception as e:
+        print(f"Error disabling CDP network interception: {e}")
+        return False
+
+# =============================================================================================================================
 # Bot response generation
 # =============================================================================================================================
 
