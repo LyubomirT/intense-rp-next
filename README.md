@@ -5,7 +5,7 @@
 <div align="center">
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/LyubomirT/intense-rp-api-improvements?style=flat-square)
-![GitHub](https://img.shields.io/github/license/LyubomirT/intense-rp-api-improvements?style=flat-square)
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 ![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-api-improvements?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-api-improvements?style=flat-square)
 
