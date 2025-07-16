@@ -139,11 +139,46 @@ def _send_chat_text(driver: Driver, text: str) -> bool:
         print(f"Error when pasting prompt: {e}")
         return False
 
-def send_chat_message(driver: Driver, text: str, text_file: bool) -> bool:
+def _send_prefix_message(driver: Driver, prefix_content: str) -> bool:
+    """Send prefix content as assistant prefill after the main message"""
+    try:
+        # Wait a moment for DeepSeek to process the first message
+        time.sleep(1)
+        
+        # Send the prefix content directly to the chat input
+        chat_input = driver.wait_for_element_present("chat-input", by="id", timeout=10)
+        
+        # Clear any existing content and add the prefix
+        chat_input.clear()
+        driver.execute_script("arguments[0].value = arguments[1];", chat_input, prefix_content)
+        chat_input.send_keys(" ")
+        chat_input.send_keys(Keys.BACKSPACE)
+        
+        # Verify the content was set correctly
+        if chat_input.get_attribute("value") == prefix_content:
+            return _click_send_message_button(driver)
+        
+        return False
+        
+    except Exception as e:
+        print(f"Error sending prefix message: {e}")
+        return False
+
+def send_chat_message(driver: Driver, text: str, text_file: bool, prefix_content: str = None) -> bool:
+    # Send the main message first
     if text_file:
-        return _send_chat_file(driver, text)
+        success = _send_chat_file(driver, text)
     else:
-        return _send_chat_text(driver, text)
+        success = _send_chat_text(driver, text)
+    
+    if not success:
+        return False
+    
+    # If there's prefix content, send it as a follow-up message to prefill the assistant response
+    if prefix_content and prefix_content.strip():
+        return _send_prefix_message(driver, prefix_content)
+    
+    return True
 
 # =============================================================================================================================
 # HTML extraction and processing

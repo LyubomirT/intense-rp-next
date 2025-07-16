@@ -75,6 +75,10 @@ def bot_response() -> Response:
         state.show_message(f"\n[color:purple]GENERATING RESPONSE {current_message}:")
         state.show_message("[color:white]- [color:green]Character data has been received.")
         
+        # Log prefix usage
+        if processed_request.has_prefix():
+            state.show_message(f"[color:white]- [color:cyan]Prefix detected: {len(processed_request.prefix_content)} characters")
+        
         # Check if network interception is enabled
         intercept_network = state.get_config_value("models.deepseek.intercept_network", False)
         
@@ -86,7 +90,8 @@ def bot_response() -> Response:
                 processed_request.use_deepthink,
                 processed_request.use_search,
                 processed_request.use_text_file,
-                pipeline
+                pipeline,
+                processed_request.prefix_content
             )
         else:
             return deepseek_response(
@@ -96,7 +101,8 @@ def bot_response() -> Response:
                 processed_request.use_deepthink,
                 processed_request.use_search,
                 processed_request.use_text_file,
-                pipeline
+                pipeline,
+                processed_request.prefix_content
             )
     except Exception as e:
         print(f"Error receiving JSON from Sillytavern: {e}")
@@ -109,7 +115,8 @@ def deepseek_response(
     deepthink: bool, 
     search: bool, 
     text_file: bool,
-    pipeline: MessagePipeline
+    pipeline: MessagePipeline,
+    prefix_content: str = None
 ) -> Response:
     state = get_state_manager()
 
@@ -144,7 +151,7 @@ def deepseek_response(
         if interrupted():
             return safe_interrupt_response()
 
-        if not deepseek.send_chat_message(state.driver, formatted_message, text_file):
+        if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
             state.show_message("[color:white]- [color:red]Could not paste prompt.")
             return create_response("Could not paste prompt.", streaming, pipeline)
 
@@ -250,7 +257,8 @@ def deepseek_network_response(
     deepthink: bool, 
     search: bool, 
     text_file: bool,
-    pipeline: MessagePipeline
+    pipeline: MessagePipeline,
+    prefix_content: str = None
 ) -> Response:
     """Handle DeepSeek response using network interception instead of DOM scraping"""
     state = get_state_manager()
@@ -300,7 +308,7 @@ def deepseek_network_response(
         if interrupted():
             return safe_interrupt_response()
 
-        if not deepseek.send_chat_message(state.driver, formatted_message, text_file):
+        if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
             state.show_message("[color:white]- [color:red]Could not paste prompt.")
             deepseek.disable_network_interception(state.driver)
             return create_response("Could not paste prompt.", streaming, pipeline)

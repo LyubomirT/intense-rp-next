@@ -40,12 +40,25 @@ class ChatRequest:
     api_use_search: Optional[bool] = None  # use_search
     api_use_r1: Optional[bool] = None  # use_r1
     
+    # Prefix support for assistant prefill
+    prefix_content: Optional[str] = None  # Assistant message content to prefill
+    
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ChatRequest':
         messages = [Message.from_dict(msg) for msg in data.get('messages', [])]
         
+        # Detect prefix content (assistant message with content)
+        prefix_content = None
+        conversation_messages = messages
+        
+        if messages and messages[-1].role == MessageRole.ASSISTANT and messages[-1].content.strip():
+            # Last message is an assistant message with content - use as prefix
+            prefix_content = messages[-1].content
+            # Remove the assistant message from conversation messages
+            conversation_messages = messages[:-1]
+        
         return cls(
-            messages=messages,
+            messages=conversation_messages,
             temperature=data.get('temperature', 1.0),
             max_tokens=data.get('max_tokens', 300),
             stream=data.get('stream', False),
@@ -53,7 +66,8 @@ class ChatRequest:
             api_char_name=data.get('char_name') or data.get('DATA1'),
             api_user_name=data.get('user_name') or data.get('DATA2'),
             api_use_search=data.get('use_search'),
-            api_use_r1=data.get('use_r1')
+            api_use_r1=data.get('use_r1'),
+            prefix_content=prefix_content
         )
     
     def get_user_messages(self) -> List[Message]:
@@ -65,6 +79,10 @@ class ChatRequest:
     def get_last_user_message(self) -> Optional[Message]:
         user_messages = self.get_user_messages()
         return user_messages[-1] if user_messages else None
+    
+    def has_prefix(self) -> bool:
+        """Check if the request has prefix content for assistant prefill"""
+        return self.prefix_content is not None and self.prefix_content.strip() != ""
 
 
 @dataclass
