@@ -88,10 +88,23 @@ class CharacterProcessor(BaseProcessor):
         content = re.sub(r"({{r1}}|\[r1\]|\(r1\))", "", content, flags=re.IGNORECASE)
         content = re.sub(r"({{search}}|\[search\])", "", content, flags=re.IGNORECASE)
         
-        # Replace role names (original logic)
-        content = content.replace("system: ", "")
-        content = content.replace("assistant:", f"{character_info.character_name}:")
-        content = content.replace("user:", f"{character_info.user_name}:")
+        # Replace role names only if we have explicit character info from DATA1/DATA2
+        # This prevents corrupting existing character names in user content
+        has_explicit_char_info = (
+            character_info.character_name != "Character" or 
+            character_info.user_name != "User"
+        )
+        
+        if has_explicit_char_info:
+            # Only replace role prefixes at the start of lines or after double newlines
+            # to avoid corrupting existing character names in content
+            content = re.sub(r'(^|\n\n)system:\s*', r'\1', content)
+            content = re.sub(r'(^|\n\n)assistant:\s*', fr'\1{character_info.character_name}: ', content)
+            content = re.sub(r'(^|\n\n)user:\s*', fr'\1{character_info.user_name}: ', content)
+        else:
+            # If no explicit character info, just remove system role prefix
+            # but preserve user/assistant content as-is to avoid corrupting character names
+            content = re.sub(r'(^|\n\n)system:\s*', r'\1', content)
         
         # Replace template variables
         content = self._apply_template_replacements(content, request)
