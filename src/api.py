@@ -19,7 +19,10 @@ network_data = {
     'stream_buffer': [],
     'events': [],
     'completed': False,
-    'error': None
+    'error': None,
+    'thinking_active': False,
+    'thinking_buffer': "",
+    'thinking_started': False
 }
 
 @app.route("/models", methods=["GET"])
@@ -296,6 +299,9 @@ def deepseek_network_response(
         network_data['events'] = []
         network_data['completed'] = False
         network_data['error'] = None
+        network_data['thinking_active'] = False
+        network_data['thinking_buffer'] = ""
+        network_data['thinking_started'] = False
         
         # Enable network interception
         deepseek.enable_network_interception(state.driver)
@@ -419,7 +425,7 @@ def deepseek_network_response(
         return create_response("Error receiving network response.", streaming, pipeline)
 
 def parse_network_stream_data(data: str) -> str:
-    """Parse network stream data to extract content"""
+    """Parse network stream data to extract content, handling thinking content with <think> tags"""
     try:
         # Handle different types of data
         if data.startswith('{'):
@@ -427,38 +433,119 @@ def parse_network_stream_data(data: str) -> str:
             import json
             json_data = json.loads(data)
             
-            # Handle DeepSeek specific format: {"v": "content", "p": "response/content", "o": "APPEND"}
-            if 'v' in json_data and 'p' in json_data and 'o' in json_data:
-                # This is a DeepSeek content update
-                if json_data.get('p') == 'response/content' and json_data.get('o') == 'APPEND':
-                    content = json_data['v']
-                    if isinstance(content, str):
-                        return content
-                    elif isinstance(content, list):
-                        # Handle batch updates: [{"v": "FINISHED", "p": "status"}, {"v": 66, "p": "accumulated_token_usage"}]
-                        result = ""
-                        for item in content:
+            # Handle DeepSeek specific format
+            if 'v' in json_data:
+                path = json_data.get('p')
+                content_value = json_data['v']
+                
+                # Handle thinking content start
+                if path == 'response/thinking_content':
+                    if not network_data['thinking_active']:
+                        # Starting thinking mode
+                        network_data['thinking_active'] = True
+                        network_data['thinking_buffer'] = ""
+                        network_data['thinking_started'] = True
+                    
+                    # Accumulate thinking content
+                    if isinstance(content_value, str):
+                        network_data['thinking_buffer'] += content_value
+                    elif isinstance(content_value, list):
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item:
+                                network_data['thinking_buffer'] += str(item['v'])
+                    
+                    # Return empty string while accumulating thinking content
+                    return ""
+                
+                # Handle regular content start - this ends thinking mode
+                elif path == 'response/content':
+                    result = ""
+                    
+                    # If we were in thinking mode, wrap and flush the thinking buffer
+                    if network_data['thinking_active']:
+                        thinking_content = network_data['thinking_buffer'].strip()
+                        if thinking_content:
+                            result = f"<think>\n{thinking_content}\n</think>\n\n"
+                        
+                        # Reset thinking state
+                        network_data['thinking_active'] = False
+                        network_data['thinking_buffer'] = ""
+                        network_data['thinking_started'] = False
+                    
+                    # Add regular content
+                    if isinstance(content_value, str):
+                        result += content_value
+                    elif isinstance(content_value, list):
+                        for item in content_value:
                             if isinstance(item, dict) and 'v' in item and item.get('p') == 'response/content':
                                 result += str(item['v'])
-                        return result
-                elif json_data.get('p') == 'response' and json_data.get('o') == 'BATCH':
-                    # Handle batch operations
-                    content = json_data['v']
-                    if isinstance(content, list):
-                        # Look for content updates in batch
+                    
+                    return result
+                
+                # Handle continuation chunks (no path specified)
+                elif path is None:
+                    # If we're in thinking mode, accumulate this content as thinking
+                    if network_data['thinking_active']:
+                        if isinstance(content_value, str):
+                            network_data['thinking_buffer'] += content_value
+                        elif isinstance(content_value, list):
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    network_data['thinking_buffer'] += str(item['v'])
+                        # Return empty while accumulating thinking content
+                        return ""
+                    else:
+                        # Not in thinking mode, treat as regular content
+                        if isinstance(content_value, str):
+                            return content_value
+                        elif isinstance(content_value, list):
+                            result = ""
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    result += str(item['v'])
+                            return result
+                
+                # Handle batch operations
+                elif path == 'response' and json_data.get('o') == 'BATCH':
+                    if isinstance(content_value, list):
                         result = ""
-                        for item in content:
-                            if isinstance(item, dict) and 'v' in item and item.get('p') == 'response/content':
-                                result += str(item['v'])
+                        thinking_content_found = False
+                        regular_content_found = False
+                        
+                        # Check for thinking content in batch
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item:
+                                item_path = item.get('p')
+                                if item_path == 'response/thinking_content':
+                                    thinking_content_found = True
+                                    if not network_data['thinking_active']:
+                                        network_data['thinking_active'] = True
+                                        network_data['thinking_buffer'] = ""
+                                        network_data['thinking_started'] = True
+                                    network_data['thinking_buffer'] += str(item['v'])
+                                elif item_path == 'response/content':
+                                    regular_content_found = True
+                                    # If we were in thinking mode, flush it first
+                                    if network_data['thinking_active']:
+                                        thinking_content = network_data['thinking_buffer'].strip()
+                                        if thinking_content:
+                                            result += f"<think>\n{thinking_content}\n</think>\n\n"
+                                        
+                                        # Reset thinking state
+                                        network_data['thinking_active'] = False
+                                        network_data['thinking_buffer'] = ""
+                                        network_data['thinking_started'] = False
+                                    
+                                    result += str(item['v'])
+                        
                         return result
             
-            # Handle simple content updates
+            # Handle simple content updates (fallback)
             elif 'v' in json_data:
                 content = json_data['v']
                 if isinstance(content, str):
                     return content
                 elif isinstance(content, list):
-                    # Handle batch updates
                     result = ""
                     for item in content:
                         if isinstance(item, dict) and 'v' in item:
@@ -486,6 +573,17 @@ def combine_network_stream_data(stream_buffer: list) -> str:
                 content = parse_network_stream_data(item['content'])
                 if content:
                     result += content
+        
+        # Check if there's any remaining thinking content to flush
+        if network_data['thinking_active'] and network_data['thinking_buffer'].strip():
+            thinking_content = network_data['thinking_buffer'].strip()
+            result += f"<think>\n{thinking_content}\n</think>\n\n"
+            
+            # Reset thinking state
+            network_data['thinking_active'] = False
+            network_data['thinking_buffer'] = ""
+            network_data['thinking_started'] = False
+        
         return result
     except Exception as e:
         print(f"Error combining network stream data: {e}")
@@ -507,6 +605,9 @@ def network_request():
             network_data['events'] = []
             network_data['completed'] = False
             network_data['error'] = None
+            network_data['thinking_active'] = False
+            network_data['thinking_buffer'] = ""
+            network_data['thinking_started'] = False
             print(f"[color:cyan]Network request intercepted: {data.get('requestId', 'unknown')}")
         return jsonify({"status": "received"}), 200
     except Exception as e:
