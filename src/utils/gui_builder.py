@@ -1,7 +1,15 @@
 from typing import Optional, List, Callable
 import customtkinter as ctk
 import re
+import json
+import webbrowser
+import os
 from utils.font_loader import get_font_tuple
+from utils import storage_manager
+from PIL import Image, ImageDraw
+import requests
+from io import BytesIO
+import threading
 
 # =============================================================================================================================
 # Simple Tooltip Implementation
@@ -961,3 +969,229 @@ class UpdateWindow(ctk.CTkToplevel):
 
         _save_widget(self, id, button)
         return button
+
+
+# =============================================================================================================================
+# Contributor Window
+# =============================================================================================================================
+
+class ContributorWindow(ctk.CTkToplevel):
+    def __init__(self, parent, icon_path=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.icon_path = icon_path
+        self.contributors_data = []
+        self._load_contributors_data()
+        self._create_window()
+        self._create_widgets()
+        # Override CustomTkinter's default icon after its 200ms delay
+        if self.icon_path:
+            self.after(300, self._set_custom_icon)
+    
+    def _load_contributors_data(self):
+        """Load contributors data from JSON file"""
+        try:
+            # Get the path to the contributors.json file
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            contributors_file = os.path.join(script_dir, "assets", "contributors.json")
+            
+            with open(contributors_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.contributors_data = data.get('contributors', [])
+        except Exception as e:
+            print(f"Error loading contributors data: {e}")
+            # Fallback data if file can't be loaded
+            self.contributors_data = [
+                {
+                    "name": "Claude (Anthropic)",
+                    "status": "AI Assistant - Code refactoring and improvements",
+                    "avatar_url": "",
+                    "github_url": "https://github.com/anthropics"
+                }
+            ]
+    
+    def _create_window(self):
+        """Set up the main window properties"""
+        self.title("Contributors")
+        self.geometry("500x600")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+    
+    def _set_custom_icon(self):
+        """Set custom icon, overriding CustomTkinter's default icon"""
+        try:
+            if self.icon_path and os.path.exists(self.icon_path):
+                self.iconbitmap(self.icon_path)
+        except Exception as e:
+            print(f"Error setting custom icon: {e}")
+    
+    def _create_widgets(self):
+        """Create and layout all widgets"""
+        # Main frame
+        main_frame = ctk.CTkFrame(self)
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(1, weight=1)
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            main_frame,
+            text="Contributors",
+            font=get_font_tuple("Blinker", 24, "bold")
+        )
+        title_label.grid(row=0, column=0, pady=(20, 10), sticky="ew")
+        
+        # Scrollable frame for contributors list
+        scrollable_frame = ctk.CTkScrollableFrame(
+            main_frame,
+            fg_color="transparent",
+            scrollbar_button_color=("gray70", "gray30"),
+            scrollbar_button_hover_color=("gray60", "gray40")
+        )
+        scrollable_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        scrollable_frame.grid_columnconfigure(0, weight=1)
+        
+        # Create contributor items
+        for i, contributor in enumerate(self.contributors_data):
+            self._create_contributor_item(scrollable_frame, contributor, i)
+        
+        # GitHub link button
+        github_button = ctk.CTkButton(
+            main_frame,
+            text="View All Contributors on GitHub",
+            command=self._open_github_contributors,
+            font=get_font_tuple("Blinker", 14),
+            height=40
+        )
+        github_button.grid(row=2, column=0, pady=(10, 20), padx=20, sticky="ew")
+    
+    def _create_contributor_item(self, parent, contributor, row):
+        """Create a single contributor item"""
+        # Container frame for this contributor with slightly brighter background
+        item_frame = ctk.CTkFrame(parent, height=80, fg_color=("gray94", "gray16"))
+        item_frame.grid(row=row, column=0, sticky="ew", padx=5, pady=5)
+        item_frame.grid_columnconfigure(0, weight=0)  # Avatar column - fixed width
+        item_frame.grid_columnconfigure(1, weight=1)  # Text column - expandable
+        item_frame.grid_propagate(False)
+        
+        # Avatar frame with image support (transparent background)
+        avatar_frame = ctk.CTkFrame(item_frame, width=60, height=60, corner_radius=30, fg_color="transparent")
+        avatar_frame.grid(row=0, column=0, padx=15, pady=10, rowspan=2)
+        avatar_frame.grid_propagate(False)
+        
+        # Avatar label (will show image or fallback text)
+        avatar_initial = ctk.CTkLabel(
+            avatar_frame,
+            text=contributor['name'][0].upper(),
+            font=get_font_tuple("Blinker", 20, "bold"),
+            text_color=("gray10", "gray90")
+        )
+        avatar_initial.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # Load avatar image if URL is available
+        if 'avatar_url' in contributor and contributor['avatar_url']:
+            self._load_avatar_image(contributor['avatar_url'], avatar_initial, contributor['name'][0].upper())
+        
+        # Name
+        name_label = ctk.CTkLabel(
+            item_frame,
+            text=contributor['name'],
+            font=get_font_tuple("Blinker", 16, "bold"),
+            anchor="w"
+        )
+        name_label.grid(row=0, column=1, sticky="ew", padx=(10, 15), pady=(8, 0))
+        
+        # Status
+        status_label = ctk.CTkLabel(
+            item_frame,
+            text=contributor['status'],
+            font=get_font_tuple("Blinker", 12),
+            anchor="w",
+            text_color=("gray50", "gray70")
+        )
+        status_label.grid(row=1, column=1, sticky="ew", padx=(10, 15), pady=(0, 8))
+        
+        # Make the item clickable to open GitHub profile
+        def open_profile(url=contributor.get('github_url', '')):
+            if url:
+                try:
+                    webbrowser.open(url)
+                except Exception as e:
+                    print(f"Error opening profile: {e}")
+        
+        # Store original colors for hover animation
+        original_fg_color = ("gray94", "gray16")
+        hover_fg_color = ("gray90", "gray20")
+        
+        # Hover animation functions
+        def on_enter(event, frame=item_frame):
+            frame.configure(fg_color=hover_fg_color)
+            
+        def on_leave(event, frame=item_frame):
+            frame.configure(fg_color=original_fg_color)
+        
+        # Bind click and hover events to all elements
+        for widget in [item_frame, avatar_frame, avatar_initial, name_label, status_label]:
+            widget.bind("<Button-1>", lambda e, url=contributor.get('github_url', ''): open_profile(url))
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+            widget.configure(cursor="hand2")
+    
+    def _open_github_contributors(self):
+        """Open the GitHub contributors page"""
+        try:
+            webbrowser.open("https://github.com/LyubomirT/intense-rp-api-improvements/graphs/contributors")
+        except Exception as e:
+            print(f"Error opening GitHub contributors page: {e}")
+    
+    def _load_avatar_image(self, url: str, avatar_label: ctk.CTkLabel, fallback_text: str):
+        """Load avatar image from URL asynchronously"""
+        def load_image():
+            try:
+                # Download image with timeout
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                
+                # Open image and resize to fit avatar
+                image = Image.open(BytesIO(response.content))
+                image = image.resize((60, 60), Image.Resampling.LANCZOS)
+                
+                # Create a circular image with transparent background
+                # This approach creates a truly circular image without square borders
+                circular_image = Image.new('RGBA', (60, 60), (0, 0, 0, 0))
+                
+                # Create a circular mask
+                mask = Image.new('L', (60, 60), 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0, 60, 60), fill=255)
+                
+                # Paste the original image onto the circular canvas using the mask
+                circular_image.paste(image, (0, 0), mask)
+                
+                # Convert to CTkImage for proper CustomTkinter support
+                ctk_image = ctk.CTkImage(light_image=circular_image, dark_image=circular_image, size=(60, 60))
+                
+                # Update label on main thread
+                def update_avatar():
+                    avatar_label.configure(image=ctk_image, text="")
+                    avatar_label.image = ctk_image  # Keep reference to prevent garbage collection
+                
+                self.after(0, update_avatar)
+                
+            except Exception as e:
+                print(f"Failed to load avatar from {url}: {e}")
+                # Keep the fallback text if image loading fails
+        
+        # Load image in background thread
+        threading.Thread(target=load_image, daemon=True).start()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+        y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+        self.geometry(f"+{x}+{y}")

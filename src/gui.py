@@ -3,6 +3,7 @@ import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
 import utils.process_manager as process
 import utils.gui_builder as gui_builder
+from utils.gui_builder import ContributorWindow
 import utils.console_manager as console_manager
 import utils.webdriver_utils as selenium
 from packaging import version
@@ -197,10 +198,15 @@ def open_config_window() -> None:
 
 def open_credits() -> None:
     try:
-        webbrowser.open("https://linktr.ee/omega_slender")
-        print("Credits link opened.")
+        global root, icon_path
+        if root:
+            contributor_window = ContributorWindow(root, icon_path)
+            contributor_window.center()
+            contributor_window.lift()
+            contributor_window.focus()
+            print("Contributors window opened.")
     except Exception as e:
-        print(f"Error opening credits: {e}")
+        print(f"Error opening contributors window: {e}")
 
 # =============================================================================================================================
 # Update Window

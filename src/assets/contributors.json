@@ -1,0 +1,28 @@
+{
+  "contributors": [
+    {
+      "name": "LyubomirT",
+      "status": "Project Maintainer - Lead Developer",
+      "avatar_url": "https://avatars.githubusercontent.com/u/127299159?s=500&v=4",
+      "github_url": "https://github.com/LyubomirT"
+    },
+    {
+      "name": "Omega-Slender",
+      "status": "Original Creator - IntenseRP API",
+      "avatar_url": "https://avatars.githubusercontent.com/u/134849645?s=500&v=4",
+      "github_url": "https://github.com/Omega-Slender"
+    },
+    {
+      "name": "Deaquay",
+      "status": "Contributor to OG IntenseRP API",
+      "avatar_url": "https://avatars.githubusercontent.com/u/103206423?s=500&v=4",
+      "github_url": "https://github.com/Deaquay"
+    },
+    {
+      "name": "Vova12344weq",
+      "status": "Bug reports, feature requests, and testing",
+      "avatar_url": "https://avatars.githubusercontent.com/u/131772052?s=500&v=4",
+      "github_url": "https://github.com/Vova12344weq"
+    }
+  ]
+}
