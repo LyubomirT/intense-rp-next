@@ -158,16 +158,35 @@ class DeepSeekSettings:
         """Auto-detect settings from message content"""
         settings = cls()
         
-        # Check the second-to-last message if it's from user
-        if len(messages) >= 2 and messages[-2].role == MessageRole.USER:
-            content = messages[-2].content
-            
-            # Check for deepthink markers
-            if re.search(r'({{r1}}|\[r1\]|\(r1\))', content, re.IGNORECASE):
-                settings.deepthink = True
-            
-            # Check for search markers
-            if re.search(r'({{search}}|\[search\])', content, re.IGNORECASE):
-                settings.search = True
+        # Check all user messages for directives
+        for message in messages:
+            if message.role == MessageRole.USER:
+                content = message.content
+                
+                # Check for deepthink markers
+                if re.search(r'({{r1}}|\[r1\]|\(r1\))', content, re.IGNORECASE):
+                    settings.deepthink = True
+                
+                # Check for search markers
+                if re.search(r'({{search}}|\[search\])', content, re.IGNORECASE):
+                    settings.search = True
         
         return settings
+    
+    @staticmethod
+    def clean_directives_from_content(content: str) -> str:
+        """Remove DeepSeek directives from message content"""
+        # Remove deepthink markers
+        content = re.sub(r'{{r1}}\s*', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'\[r1\]\s*', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'\(r1\)\s*', '', content, flags=re.IGNORECASE)
+        
+        # Remove search markers
+        content = re.sub(r'{{search}}\s*', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'\[search\]\s*', '', content, flags=re.IGNORECASE)
+        
+        # Clean up extra whitespace
+        content = re.sub(r'\n\s*\n', '\n\n', content)  # Remove empty lines with only whitespace
+        content = content.strip()
+        
+        return content

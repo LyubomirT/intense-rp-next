@@ -47,6 +47,9 @@ class DeepSeekProcessor(BaseProcessor):
         # Text file setting comes from config only
         request.use_text_file = config_settings.text_file
         
+        # Clean directives from message content
+        self._clean_directives_from_messages(request.messages)
+        
         return request
     
     def _get_config_settings(self) -> DeepSeekSettings:
@@ -58,6 +61,12 @@ class DeepSeekProcessor(BaseProcessor):
             search=deepseek_config.get("search", False),
             text_file=deepseek_config.get("text_file", False)
         )
+    
+    def _clean_directives_from_messages(self, messages) -> None:
+        """Remove DeepSeek directives from all user messages"""
+        for message in messages:
+            if message.role.value == "user":
+                message.content = DeepSeekSettings.clean_directives_from_content(message.content)
 
 
 class DeepSeekConfigValidator:
