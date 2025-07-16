@@ -60,7 +60,7 @@ class CharacterProcessor(BaseProcessor):
     
     def _combine_messages(self, request: ChatRequest) -> str:
         """Combine messages like the original code did"""
-        formatted_messages = [f"{msg.role.value}: {msg.content}" for msg in request.messages]
+        formatted_messages = [f"{msg.get_display_role()}: {msg.content}" for msg in request.messages]
         return "\n\n".join(formatted_messages)
     
     def _extract_character_info_from_combined(self, content: str) -> CharacterInfo:
@@ -102,9 +102,12 @@ class CharacterProcessor(BaseProcessor):
             content = re.sub(r'(^|\n\n)assistant:\s*', fr'\1{character_info.character_name}: ', content)
             content = re.sub(r'(^|\n\n)user:\s*', fr'\1{character_info.user_name}: ', content)
         else:
-            # If no explicit character info, just remove system role prefix
+            # If no explicit character info, preserve custom roles and just remove system role prefix
             # but preserve user/assistant content as-is to avoid corrupting character names
             content = re.sub(r'(^|\n\n)system:\s*', r'\1', content)
+            
+            # For custom roles, preserve the role name as-is when no explicit character info
+            # This allows custom roles like "Narrator:" to remain unchanged
         
         # Replace template variables
         content = self._apply_template_replacements(content, request)
@@ -160,7 +163,7 @@ class MessageFormatter:
         
         for message in request.messages:
             if message.content.strip():  # Only include non-empty messages
-                formatted_messages.append(f"{message.role.value}: {message.content}")
+                formatted_messages.append(f"{message.get_display_role()}: {message.content}")
         
         content = "\n\n".join(formatted_messages)
         return f"[Important Information]\n{content.strip()}"
@@ -196,8 +199,8 @@ class MessageFormatter:
                 continue
                 
             # Get both role and name for template substitution
-            literal_role = self._get_literal_role(message.role)
-            character_name = self._get_character_name(message.role, character_info)
+            literal_role = self._get_literal_role(message)
+            character_name = self._get_character_name(message, character_info)
             
             # Apply pattern (presets use {role} for literal roles)
             formatted_message = preset_config['pattern'].format(
@@ -227,7 +230,10 @@ class MessageFormatter:
                 continue
                 
             # Choose template based on role
-            if message.role == MessageRole.USER:
+            if message.is_custom_role():
+                # Custom roles use their original name as the template
+                template = '{name}: {content}'
+            elif message.role == MessageRole.USER:
                 template = user_template
             elif message.role == MessageRole.ASSISTANT:
                 template = char_template
@@ -239,8 +245,8 @@ class MessageFormatter:
                 template = '{name}: {content}'
             
             # Get both role and name for template substitution
-            literal_role = self._get_literal_role(message.role)
-            character_name = self._get_character_name(message.role, character_info)
+            literal_role = self._get_literal_role(message)
+            character_name = self._get_character_name(message, character_info)
             
             # Apply template (supports both {role} and {name})
             formatted_message = template.format(
@@ -253,24 +259,29 @@ class MessageFormatter:
         
         return '\n\n'.join(formatted_messages)
     
-    def _get_literal_role(self, role: MessageRole) -> str:
-        """Get the literal role name (user, assistant, system)"""
-        return role.value.lower()
+    def _get_literal_role(self, message) -> str:
+        """Get the literal role name (supports custom roles)"""
+        if message.is_custom_role():
+            return message.original_role
+        return message.role.value.lower()
     
-    def _get_character_name(self, role: MessageRole, character_info: CharacterInfo) -> str:
-        """Get the character name for a role"""
-        if role == MessageRole.USER:
+    def _get_character_name(self, message, character_info: CharacterInfo) -> str:
+        """Get the character name for a message (supports custom roles)"""
+        if message.is_custom_role():
+            # For custom roles, use the original role name
+            return message.original_role
+        elif message.role == MessageRole.USER:
             return character_info.user_name or 'User'
-        elif role == MessageRole.ASSISTANT:
+        elif message.role == MessageRole.ASSISTANT:
             return character_info.character_name or 'Assistant'
-        elif role == MessageRole.SYSTEM:
+        elif message.role == MessageRole.SYSTEM:
             return 'System'
         else:
-            return role.value
+            return message.role.value
     
-    def _get_role_name(self, role: MessageRole, character_info: CharacterInfo) -> str:
+    def _get_role_name(self, message, character_info: CharacterInfo) -> str:
         """Get the display name for a role (backward compatibility)"""
-        return self._get_character_name(role, character_info)
+        return self._get_character_name(message, character_info)
     
     @staticmethod
     def extract_final_user_prompt(request: ChatRequest) -> str:

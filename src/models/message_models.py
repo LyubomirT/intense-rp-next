@@ -14,12 +14,24 @@ class MessageRole(Enum):
 class Message:
     role: MessageRole
     content: str
+    original_role: str = None  # Preserve original role string for custom roles
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Message':
         role_str = data.get('role', 'user').lower()
+        original_role = data.get('role', 'user')  # Store original case-preserved role
         role = MessageRole(role_str) if role_str in [r.value for r in MessageRole] else MessageRole.USER
-        return cls(role=role, content=data.get('content', ''))
+        return cls(role=role, content=data.get('content', ''), original_role=original_role)
+    
+    def is_custom_role(self) -> bool:
+        """Check if this message has a custom role (not standard user/assistant/system)"""
+        return self.original_role.lower() not in ['user', 'assistant', 'system']
+    
+    def get_display_role(self) -> str:
+        """Get the role name to display (original for custom roles, enum value for standard roles)"""
+        if self.is_custom_role():
+            return self.original_role
+        return self.role.value
 
 
 @dataclass
