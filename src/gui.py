@@ -133,11 +133,42 @@ def preview_console_changes() -> None:
     
     try:
         if hasattr(state, 'console_manager') and state.console_manager:
-            # Get current values from config manager
-            new_settings = console_manager.ConsoleSettings(config_manager.get_all())
+            # Get current values from the active config window if it exists
+            current_ui_generator = getattr(state, 'current_ui_generator', None)
             
-            # Apply settings
-            state.console_manager.update_settings(new_settings)
+            if current_ui_generator:
+                # Get current UI state for console settings
+                ui_config = current_ui_generator._get_ui_config_state()
+                
+                # Try to get values directly from console frame widgets
+                console_frame = current_ui_generator.frames.get('console_settings')
+                if console_frame:
+                    font_family = console_frame.get_widget_value('console.font_family')
+                    font_size = console_frame.get_widget_value('console.font_size')
+                    color_palette = console_frame.get_widget_value('console.color_palette')
+                    word_wrap = console_frame.get_widget_value('console.word_wrap')
+                    
+                    # Create settings structure expected by ConsoleSettings constructor
+                    console_config = {}
+                    console_config['font_family'] = font_family if font_family is not None else 'Consolas'
+                    console_config['font_size'] = int(font_size) if font_size is not None else 12
+                    console_config['color_palette'] = color_palette if color_palette is not None else 'Modern'
+                    console_config['word_wrap'] = bool(word_wrap) if word_wrap is not None else True
+                    
+                    console_settings = {'console': console_config}
+                else:
+                    # Fallback to parsed UI config
+                    console_settings = ui_config
+                
+                # Apply settings
+                new_settings = console_manager.ConsoleSettings(console_settings)
+                state.console_manager.update_settings(new_settings)
+                print("[color:green]Console settings applied in preview mode")
+            else:
+                # Fallback to saved config if no UI window found
+                new_settings = console_manager.ConsoleSettings(config_manager.get_all())
+                state.console_manager.update_settings(new_settings)
+                print("[color:yellow]Applied saved console settings (no UI window found)")
             
     except Exception as e:
         print(f"Error applying console settings: {e}")
@@ -178,6 +209,9 @@ def open_config_window() -> None:
         
         # Create UI generator
         ui_generator = ConfigUIGenerator(config_manager, command_handlers)
+        
+        # Store reference to current UI generator for preview functionality
+        state.current_ui_generator = ui_generator
         
         # Create and show window
         config_window = ui_generator.create_config_window(icon_path)

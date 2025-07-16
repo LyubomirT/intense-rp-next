@@ -313,11 +313,16 @@ class ConfigUIGenerator:
         cancel_button = gui_builder.ctk.CTkButton(
             button_container,
             text="Cancel",
-            command=self.window.destroy,
+            command=self._cancel_config,
             width=80,
             font=get_font_tuple("Blinker", 14)
         )
         cancel_button.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+    
+    def _cancel_config(self) -> None:
+        """Cancel configuration and close window"""
+        self._clear_ui_generator_reference()
+        self.window.destroy()
     
     def _save_config(self) -> None:
         """Save configuration from UI"""
@@ -376,12 +381,45 @@ class ConfigUIGenerator:
                     original=self.config_manager._original_config
                 )
                 print("Configuration saved successfully.")
+                
+                # Apply console settings immediately after saving
+                self._apply_console_settings_after_save()
+                
+                # Clear reference to this UI generator
+                self._clear_ui_generator_reference()
+                
                 self.window.destroy()
             except Exception as e:
                 print(f"Error saving configuration: {e}")
                 
         except Exception as e:
             print(f"Error saving configuration: {e}")
+    
+    def _apply_console_settings_after_save(self) -> None:
+        """Apply console settings immediately after saving configuration"""
+        try:
+            from core import get_state_manager
+            import utils.console_manager as console_manager
+            
+            state = get_state_manager()
+            if hasattr(state, 'console_manager') and state.console_manager:
+                # Get the newly saved config
+                new_settings = console_manager.ConsoleSettings(self.config_manager.get_all())
+                state.console_manager.update_settings(new_settings)
+                print("[color:green]Console settings applied automatically after save")
+        except Exception as e:
+            print(f"Error applying console settings after save: {e}")
+    
+    def _clear_ui_generator_reference(self) -> None:
+        """Clear reference to this UI generator from state manager"""
+        try:
+            from core import get_state_manager
+            
+            state = get_state_manager()
+            if hasattr(state, 'current_ui_generator') and state.current_ui_generator is self:
+                state.current_ui_generator = None
+        except Exception as e:
+            print(f"Error clearing UI generator reference: {e}")
     
     def _get_ui_config_state(self) -> dict:
         """Get current UI state as config dict for validation"""
