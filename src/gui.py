@@ -339,7 +339,7 @@ def create_gui() -> None:
         gui_builder.apply_appearance()
         root = gui_builder.RootWindow()
         root.create(
-            title=f"INTENSE RP API V{__version__}",
+            title=f"INTENSE RP NEXT V{__version__}",
             width=400,
             height=500,
             min_width=250,
@@ -351,7 +351,7 @@ def create_gui() -> None:
         root.protocol("WM_DELETE_WINDOW", on_close_root)
         root.center()
         
-        root.create_title(id="title", text=f"INTENSE RP API V{__version__}", row=0)
+        root.create_title(id="title", text=f"INTENSE RP NEXT V{__version__}", row=0)
         textbox = root.create_textbox(id="textbox", row=1, row_grid=True, bg_color="#272727")
         root.create_button(id="start", text="Start", command=start_services, row=2)
         root.create_button(id="settings", text="Settings", command=open_config_window, row=3)
