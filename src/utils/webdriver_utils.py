@@ -2,6 +2,9 @@ from seleniumbase import Driver
 from typing import Optional, Dict, Any
 import os
 import tempfile
+import shutil
+import time
+import json
 
 # =============================================================================================================================
 # Initialize SeleniumBase and open browser
@@ -37,15 +40,24 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         if persistent_cookies and browser in ("chrome", "edge"):
             user_data_dir = _get_browser_data_dir(browser)
             print(f"[color:cyan]Using persistent browser data directory: {user_data_dir}")
+        elif clean_profile and browser == "chrome":
+            # Use a clean profile for extension management
+            user_data_dir = _create_clean_extension_profile()
+            print(f"[color:cyan]Using clean extension profile: {user_data_dir}")
 
         # Set up extension loading for Chrome when network interception is enabled
         extension_dir = None
+        clean_profile = False
         if intercept_network and browser == "chrome":
             extension_dir = _get_extension_dir()
-            if extension_dir and os.path.exists(extension_dir):
+            if extension_dir and _validate_extension_structure(extension_dir):
                 print(f"[color:cyan]Network interception enabled - loading extension from: {extension_dir}")
+                # Clean up old extension profiles
+                _cleanup_old_extension_profiles()
+                # Use a clean profile for better extension management
+                clean_profile = True
             else:
-                print(f"[color:yellow]Network interception requested but extension not found at: {extension_dir}")
+                print(f"[color:yellow]Network interception requested but extension not found or invalid at: {extension_dir}")
                 intercept_network = False
 
         # Initialize driver with proper user data directory and extension
@@ -65,10 +77,18 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         driver = Driver(**driver_options)
         print(f"[color:green]Driver created successfully")
         
-        # If network interception is enabled and we're using Chrome, reload the extension
+        # If network interception is enabled and we're using Chrome, validate and reload the extension
         if intercept_network and browser == "chrome" and extension_dir:
-            print("[color:cyan]Network interception enabled - reloading extension for better reliability...")
-            reload_chrome_extension(driver)
+            print("[color:cyan]Network interception enabled - validating extension installation...")
+            if validate_extension_installation(driver):
+                print("[color:green]Extension already properly installed")
+            else:
+                print("[color:cyan]Extension not found or invalid - attempting to reload...")
+                time.sleep(2)  # Give extension time to initialize
+                if validate_extension_installation(driver):
+                    print("[color:green]Extension loaded successfully after delay")
+                else:
+                    print("[color:red]Extension failed to load - check extension directory and manifest")
         
         # Navigate to URL for all browsers (since app mode is disabled)
         if url:
@@ -116,6 +136,102 @@ def _get_browser_data_dir(browser: str) -> str:
         # Fallback to temp directory
         return os.path.join(tempfile.gettempdir(), f"intenserp_{browser}_data")
 
+def _get_extension_data_dir() -> str:
+    """Get or create a dedicated directory for extension management"""
+    try:
+        base_temp_dir = tempfile.gettempdir()
+        app_data_dir = os.path.join(base_temp_dir, "IntenseRP_Browser_Data")
+        extension_data_dir = os.path.join(app_data_dir, "extension_profiles")
+        
+        os.makedirs(extension_data_dir, exist_ok=True)
+        return extension_data_dir
+        
+    except Exception as e:
+        print(f"Error creating extension data directory: {e}")
+        return os.path.join(tempfile.gettempdir(), "intenserp_extensions")
+
+def _create_clean_extension_profile() -> str:
+    """Create a clean Chrome profile with only our extension"""
+    try:
+        extension_data_dir = _get_extension_data_dir()
+        profile_name = f"intenserp_extension_{int(time.time())}"
+        profile_path = os.path.join(extension_data_dir, profile_name)
+        
+        # Remove any existing profile
+        if os.path.exists(profile_path):
+            shutil.rmtree(profile_path)
+        
+        os.makedirs(profile_path, exist_ok=True)
+        
+        # Create a marker file to identify this as our extension profile
+        marker_file = os.path.join(profile_path, "intenserp_extension_marker.txt")
+        with open(marker_file, "w") as f:
+            f.write(f"IntenseRP Extension Profile\nCreated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        return profile_path
+        
+    except Exception as e:
+        print(f"Error creating clean extension profile: {e}")
+        return _get_browser_data_dir("chrome")
+
+def _cleanup_old_extension_profiles() -> None:
+    """Clean up old extension profiles to prevent accumulation"""
+    try:
+        extension_data_dir = _get_extension_data_dir()
+        if not os.path.exists(extension_data_dir):
+            return
+            
+        current_time = time.time()
+        max_age = 24 * 60 * 60  # 24 hours in seconds
+        
+        for item in os.listdir(extension_data_dir):
+            item_path = os.path.join(extension_data_dir, item)
+            if os.path.isdir(item_path) and item.startswith("intenserp_extension_"):
+                # Check if profile is older than max_age
+                try:
+                    profile_time = int(item.split("_")[-1])
+                    if current_time - profile_time > max_age:
+                        shutil.rmtree(item_path)
+                        print(f"[color:cyan]Cleaned up old extension profile: {item}")
+                except (ValueError, IndexError):
+                    # If we can't parse the timestamp, clean it up anyway
+                    shutil.rmtree(item_path)
+                    print(f"[color:cyan]Cleaned up malformed extension profile: {item}")
+                    
+    except Exception as e:
+        print(f"[color:yellow]Error cleaning up old extension profiles: {e}")
+
+def _validate_extension_structure(extension_dir: str) -> bool:
+    """Validate that the extension directory has the required files"""
+    try:
+        if not os.path.exists(extension_dir):
+            return False
+            
+        required_files = ["manifest.json", "background.js", "content.js"]
+        for file in required_files:
+            file_path = os.path.join(extension_dir, file)
+            if not os.path.exists(file_path):
+                print(f"[color:red]Missing required extension file: {file}")
+                return False
+                
+        # Validate manifest.json
+        manifest_path = os.path.join(extension_dir, "manifest.json")
+        try:
+            with open(manifest_path, "r") as f:
+                manifest = json.load(f)
+                if manifest.get("name") != "IntenseRP CDP Network Interceptor":
+                    print(f"[color:red]Invalid extension manifest: wrong name")
+                    return False
+        except Exception as e:
+            print(f"[color:red]Error reading manifest.json: {e}")
+            return False
+            
+        return True
+        
+    except Exception as e:
+        print(f"[color:red]Error validating extension structure: {e}")
+        return False
+
 def _get_extension_dir() -> str:
     """Get the path to the Chrome extension directory"""
     try:
@@ -149,199 +265,169 @@ def clear_browser_data(browser: str) -> bool:
         print(f"[color:red]Error clearing browser data for {browser.title()}: {e}")
         return False
 
-def reload_chrome_extension(driver) -> bool:
-    """Reload the Chrome extension by disabling and re-enabling it"""
+def validate_extension_installation(driver) -> bool:
+    """Validate that the IntenseRP extension is properly installed and working"""
     try:
-        print("[color:cyan]Attempting to reload Chrome extension...")
+        # Test extension functionality by checking if it can communicate
+        # This is more reliable than trying to access chrome://extensions/
         
-        # Navigate to Chrome extension management page
-        driver.get("chrome://extensions/")
-        import time
-        time.sleep(2)
-        
-        # Enable developer mode if not already enabled
+        # Test if we can execute basic JavaScript (extension should not interfere)
         try:
-            developer_toggle = driver.execute_script("""
-                return document.querySelector('extensions-manager')
-                    .shadowRoot.querySelector('extensions-toolbar')
-                    .shadowRoot.querySelector('#devMode');
+            test_result = driver.execute_script("""
+                // Test if extension is active by checking for basic functionality
+                return {
+                    hasPostMessage: typeof window.postMessage === 'function',
+                    readyState: document.readyState,
+                    protocol: window.location.protocol,
+                    host: window.location.hostname
+                };
             """)
             
-            if developer_toggle:
-                is_checked = driver.execute_script("return arguments[0].checked;", developer_toggle)
-                if not is_checked:
-                    driver.execute_script("arguments[0].click();", developer_toggle)
-                    time.sleep(1)
-                    print("[color:cyan]Enabled developer mode")
-        except Exception as e:
-            print(f"[color:yellow]Could not toggle developer mode: {e}")
-        
-        # Find our extension by name and reload it
-        extension_reloaded = driver.execute_script("""
-            try {
-                const extensionsManager = document.querySelector('extensions-manager');
-                if (!extensionsManager) return false;
+            if not test_result.get('hasPostMessage'):
+                print("[color:yellow]Basic JavaScript functionality test failed")
+                return False
+            
+            # If we're on DeepSeek, test extension communication
+            if 'deepseek.com' in test_result.get('host', ''):
+                # Send a test message to the extension
+                driver.execute_script("""
+                    window.postMessage({
+                        action: 'startNetworkInterception',
+                        test: true
+                    }, '*');
+                """)
                 
-                const itemList = extensionsManager.shadowRoot.querySelector('extensions-item-list');
-                if (!itemList) return false;
+                # Wait for extension to process
+                time.sleep(1)
                 
-                const extensionItems = itemList.shadowRoot.querySelectorAll('extensions-item');
+                print("[color:green]Extension communication test completed")
+                return True
+            else:
+                # On non-DeepSeek pages, extension should be loaded but not active
+                print("[color:green]Extension loaded (not on DeepSeek domain)")
+                return True
                 
-                for (let item of extensionItems) {
-                    const name = item.shadowRoot.querySelector('#name');
-                    if (name && name.textContent.includes('IntenseRP CDP Network Interceptor')) {
-                        // Try to find and click the reload button
-                        const reloadButton = item.shadowRoot.querySelector('#reload-button');
-                        if (reloadButton && !reloadButton.hidden) {
-                            reloadButton.click();
-                            console.log('Extension reloaded successfully');
-                            return true;
-                        }
-                        
-                        // If no reload button, try toggle off/on
-                        const toggle = item.shadowRoot.querySelector('#enable-toggle');
-                        if (toggle) {
-                            // Disable first
-                            if (toggle.checked) {
-                                toggle.click();
-                                setTimeout(() => {
-                                    // Re-enable after a short delay
-                                    toggle.click();
-                                    console.log('Extension toggled off/on');
-                                }, 500);
-                            }
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            } catch (e) {
-                console.error('Error reloading extension:', e);
-                return false;
-            }
-        """)
-        
-        if extension_reloaded:
-            print("[color:green]Chrome extension reloaded successfully")
-            time.sleep(2)  # Give extension time to reinitialize
-            return True
-        else:
-            print("[color:yellow]Could not find or reload the extension")
+        except Exception as script_error:
+            print(f"[color:yellow]Extension validation script error: {script_error}")
             return False
             
     except Exception as e:
-        print(f"[color:red]Error reloading Chrome extension: {e}")
+        print(f"[color:red]Error validating extension installation: {e}")
         return False
 
-def remove_and_reinstall_extension(driver, extension_dir: str) -> bool:
-    """Remove and reinstall the Chrome extension"""
+def get_extension_status(driver) -> dict:
+    """Get detailed extension status information"""
     try:
-        print("[color:cyan]Attempting to remove and reinstall Chrome extension...")
+        status = {
+            'loaded': False,
+            'active': False,
+            'error': None,
+            'on_target_domain': False
+        }
         
-        # Navigate to Chrome extension management page
-        driver.get("chrome://extensions/")
-        import time
-        time.sleep(2)
-        
-        # Enable developer mode
+        # Check current page and extension state
         try:
-            developer_toggle = driver.execute_script("""
-                return document.querySelector('extensions-manager')
-                    .shadowRoot.querySelector('extensions-toolbar')
-                    .shadowRoot.querySelector('#devMode');
+            current_url = driver.get_current_url()
+            status['on_target_domain'] = 'chat.deepseek.com' in current_url
+            
+            # Test basic extension functionality
+            result = driver.execute_script("""
+                try {
+                    // Test if we can send messages (extension should listen)
+                    window.postMessage({
+                        action: 'startNetworkInterception',
+                        test: true
+                    }, '*');
+                    
+                    return {
+                        success: true,
+                        url: window.location.href,
+                        protocol: window.location.protocol
+                    };
+                } catch (e) {
+                    return {
+                        success: false,
+                        error: e.message
+                    };
+                }
             """)
             
-            if developer_toggle:
-                is_checked = driver.execute_script("return arguments[0].checked;", developer_toggle)
-                if not is_checked:
-                    driver.execute_script("arguments[0].click();", developer_toggle)
-                    time.sleep(1)
-                    print("[color:cyan]Enabled developer mode")
+            if result.get('success'):
+                status['loaded'] = True
+                status['active'] = status['on_target_domain']
+            else:
+                status['error'] = result.get('error', 'Unknown error')
+                
         except Exception as e:
-            print(f"[color:yellow]Could not enable developer mode: {e}")
-        
-        # Remove existing extension
-        extension_removed = driver.execute_script("""
-            try {
-                const extensionsManager = document.querySelector('extensions-manager');
-                if (!extensionsManager) return false;
-                
-                const itemList = extensionsManager.shadowRoot.querySelector('extensions-item-list');
-                if (!itemList) return false;
-                
-                const extensionItems = itemList.shadowRoot.querySelectorAll('extensions-item');
-                
-                for (let item of extensionItems) {
-                    const name = item.shadowRoot.querySelector('#name');
-                    if (name && name.textContent.includes('IntenseRP CDP Network Interceptor')) {
-                        const removeButton = item.shadowRoot.querySelector('#remove-button');
-                        if (removeButton) {
-                            removeButton.click();
-                            // Confirm removal in dialog
-                            setTimeout(() => {
-                                const dialog = document.querySelector('extensions-manager')
-                                    .shadowRoot.querySelector('cr-dialog[id="dialog"]');
-                                if (dialog) {
-                                    const confirmButton = dialog.querySelector('.action-button');
-                                    if (confirmButton) {
-                                        confirmButton.click();
-                                        console.log('Extension removed');
-                                    }
-                                }
-                            }, 500);
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            } catch (e) {
-                console.error('Error removing extension:', e);
-                return false;
-            }
-        """)
-        
-        if extension_removed:
-            print("[color:cyan]Extension removed, waiting before reinstall...")
-            time.sleep(3)
-        
-        # Load unpacked extension
-        load_success = driver.execute_script(f"""
-            try {{
-                const extensionsManager = document.querySelector('extensions-manager');
-                if (!extensionsManager) return false;
-                
-                const toolbar = extensionsManager.shadowRoot.querySelector('extensions-toolbar');
-                if (!toolbar) return false;
-                
-                const loadButton = toolbar.shadowRoot.querySelector('#load-unpacked');
-                if (loadButton) {{
-                    loadButton.click();
-                    console.log('Load unpacked button clicked');
-                    return true;
-                }}
-                return false;
-            }} catch (e) {{
-                console.error('Error clicking load unpacked:', e);
-                return false;
-            }}
-        """)
-        
-        if load_success:
-            print(f"[color:cyan]Load unpacked dialog opened. Extension directory: {extension_dir}")
-            time.sleep(2)
+            status['error'] = str(e)
             
-            # Note: We can't automatically select the folder in the file dialog due to browser security restrictions
-            # The user would need to manually select the extension folder
-            print("[color:yellow]Please manually select the extension folder in the file dialog that opened")
-            print(f"[color:yellow]Extension folder path: {extension_dir}")
-            return True
+        return status
+        
+    except Exception as e:
+        return {
+            'loaded': False,
+            'active': False,
+            'error': str(e),
+            'on_target_domain': False
+        }
+
+def get_chrome_extension_logs(driver) -> list:
+    """Get Chrome extension console logs for debugging"""
+    try:
+        # Get browser logs that might contain extension messages
+        logs = driver.get_log('browser')
+        extension_logs = []
+        
+        for log in logs:
+            message = log.get('message', '')
+            if ('IntenseRP' in message or 'CDP' in message or 
+                'Network Interceptor' in message or 'background.js' in message):
+                extension_logs.append({
+                    'timestamp': log.get('timestamp'),
+                    'level': log.get('level'),
+                    'message': message
+                })
+        
+        return extension_logs
+        
+    except Exception as e:
+        print(f"[color:yellow]Error getting extension logs: {e}")
+        return []
+
+def restart_chrome_with_extension(config: Optional[Dict[str, Any]] = None) -> Optional[Driver]:
+    """Restart Chrome with proper extension loading - replaces the old reload mechanism"""
+    try:
+        print("[color:cyan]Restarting Chrome with clean extension loading...")
+        
+        # Clean up old extension profiles first
+        _cleanup_old_extension_profiles()
+        
+        # Initialize a new driver instance with extension
+        new_driver = initialize_webdriver("chrome", "https://chat.deepseek.com", config)
+        
+        if new_driver:
+            print("[color:green]Chrome restarted successfully with extension")
+            return new_driver
         else:
-            print("[color:red]Could not open load unpacked dialog")
-            return False
+            print("[color:red]Failed to restart Chrome with extension")
+            return None
             
     except Exception as e:
-        print(f"[color:red]Error removing and reinstalling extension: {e}")
-        return False
+        print(f"[color:red]Error restarting Chrome with extension: {e}")
+        return None
+
+# Legacy functions - deprecated in favor of Chrome profile + --load-extension approach
+# These functions are kept for compatibility but are no longer used
+
+def deprecated_reload_chrome_extension(driver) -> bool:
+    """DEPRECATED: Use restart_chrome_with_extension() instead"""
+    print("[color:yellow]reload_chrome_extension() is deprecated - use restart_chrome_with_extension() instead")
+    return False
+
+def deprecated_remove_and_reinstall_extension(driver, extension_dir: str) -> bool:
+    """DEPRECATED: Use restart_chrome_with_extension() instead"""
+    print("[color:yellow]remove_and_reinstall_extension() is deprecated - use restart_chrome_with_extension() instead")
+    return False
 
 # =============================================================================================================================
 # SeleniumBase Utils
