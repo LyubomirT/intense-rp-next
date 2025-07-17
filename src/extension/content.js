@@ -1,5 +1,5 @@
 // Content script for CDP-based network interception
-console.log('IntenseRP CDP Network Interceptor content script loaded');
+// console.log('IntenseRP CDP Network Interceptor content script loaded');
 
 let isIntercepting = false;
 
@@ -7,7 +7,7 @@ let isIntercepting = false;
 function startInterception() {
   if (isIntercepting) return;
   
-  console.log('🔵 Starting CDP network interception...');
+  // console.log('🔵 Starting CDP network interception...');
   isIntercepting = true;
   
   // Send message to background script to start CDP interception
@@ -24,7 +24,7 @@ function startInterception() {
 function stopInterception() {
   if (!isIntercepting) return;
   
-  console.log('🔴 Stopping CDP network interception...');
+  // console.log('🔴 Stopping CDP network interception...');
   isIntercepting = false;
   
   // Send message to background script to stop CDP interception
@@ -60,10 +60,10 @@ window.addEventListener('beforeunload', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && isIntercepting) {
     // Page is hidden, but keep interception active
-    console.log('🟡 Page hidden, keeping CDP interception active');
+    // console.log('🟡 Page hidden, keeping CDP interception active');
   } else if (!document.hidden && !isIntercepting) {
     // Page is visible again, check if we should restart
-    console.log('🟡 Page visible, CDP interception status:', isIntercepting);
+    // console.log('🟡 Page visible, CDP interception status:', isIntercepting);
   }
 });
 

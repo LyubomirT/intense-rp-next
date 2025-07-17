@@ -1,5 +1,5 @@
 // CDP-based background service worker for network interception
-console.log('IntenseRP CDP Network Interceptor background service worker loaded');
+// console.log('IntenseRP CDP Network Interceptor background service worker loaded');
 
 let isIntercepting = false;
 let activeTabId = null;
@@ -9,7 +9,7 @@ const localApiUrl = 'http://127.0.0.1:5000';
 
 // Debug helper to send logs to IntenseRP console
 function debugLog(message) {
-  console.log(message); // Keep browser console too
+  // console.log(message); // Keep browser console too
   fetch(`${localApiUrl}/network/debug-log`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,7 +32,7 @@ function decodeBase64UTF8(base64Data) {
     // Decode UTF-8 bytes to proper string
     return new TextDecoder('utf-8').decode(bytes);
   } catch (error) {
-    debugLog(`⚠️ UTF-8 decode error, falling back to atob: ${error.message}`);
+    // debugLog(`⚠️ UTF-8 decode error, falling back to atob: ${error.message}`);
     // Fallback to regular atob if UTF-8 decoding fails
     return atob(base64Data);
   }
@@ -41,11 +41,11 @@ function decodeBase64UTF8(base64Data) {
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startInterception') {
-    debugLog('🔵 Starting CDP network interception...');
+    // debugLog('🔵 Starting CDP network interception...');
     startCDPInterception(sender.tab.id);
     sendResponse({ status: 'started' });
   } else if (message.action === 'stopInterception') {
-    debugLog('🔴 Stopping CDP network interception...');
+    // debugLog('🔴 Stopping CDP network interception...');
     stopCDPInterception();
     sendResponse({ status: 'stopped' });
   }
@@ -60,7 +60,7 @@ async function startCDPInterception(tabId) {
     
     // Attach debugger to the tab
     await new Promise((resolve, reject) => {
-      debugLog(`Attempting CDP attach to tab: ${tabId}`);
+      // debugLog(`Attempting CDP attach to tab: ${tabId}`);
       chrome.debugger.attach({ tabId: tabId }, '1.3', () => {
         if (chrome.runtime.lastError) {
           debugLog(`❌ CDP attach failed: ${chrome.runtime.lastError.message}`);
@@ -74,7 +74,7 @@ async function startCDPInterception(tabId) {
     
     // Enable Network domain
     await sendCDPCommand(tabId, 'Network.enable');
-    console.log('✅ CDP Network domain enabled');
+    // console.log('✅ CDP Network domain enabled');
     
     // Enable Runtime domain for better error handling
     await sendCDPCommand(tabId, 'Runtime.enable');
@@ -102,7 +102,7 @@ async function stopCDPInterception() {
     
     // Detach debugger
     chrome.debugger.detach({ tabId: activeTabId });
-    console.log('✅ CDP debugger detached from tab:', activeTabId);
+    // console.log('✅ CDP debugger detached from tab:', activeTabId);
     
     // Reset state
     isIntercepting = false;
@@ -159,7 +159,7 @@ function onCDPEvent(source, method, params) {
         break;
     }
   } catch (error) {
-    console.error('❌ Error handling CDP event:', error);
+    // console.error('❌ Error handling CDP event:', error);
   }
 }
 
@@ -167,7 +167,7 @@ function onCDPEvent(source, method, params) {
 function handleRequestWillBeSent(params) {
   const url = params.request.url;
   
-  debugLog(`📤 Request: ${params.requestId} - ${url} (current target: ${targetRequestId})`);
+  // debugLog(`📤 Request: ${params.requestId} - ${url} (current target: ${targetRequestId})`);
   
   // ONLY track the actual streaming endpoint, ignore all other DeepSeek API calls
   if (url.includes('/api/v0/chat/completion')) {
@@ -187,7 +187,7 @@ function handleRequestWillBeSent(params) {
         timestamp: Date.now()
       })
     }).catch(err => {
-      debugLog(`❌ Failed to send request notification: ${err}`);
+      // debugLog(`❌ Failed to send request notification: ${err}`);
     });
   }
 }
@@ -220,9 +220,9 @@ async function handleResponseReceived(params) {
       await sendCDPCommand(activeTabId, 'Network.streamResourceContent', {
         requestId: params.requestId
       });
-      debugLog('✅ Streaming content enabled for request: ' + params.requestId);
+      // debugLog('✅ Streaming content enabled for request: ' + params.requestId);
     } catch (error) {
-      debugLog('❌ Failed to enable streaming content: ' + error.message);
+      // debugLog('❌ Failed to enable streaming content: ' + error.message);
     }
     
     // Notify local API about response start
@@ -237,7 +237,7 @@ async function handleResponseReceived(params) {
         timestamp: Date.now()
       })
     }).catch(err => {
-      console.error('Failed to send response start notification:', err);
+      // console.error('Failed to send response start notification:', err);
     });
   }
 }
@@ -250,14 +250,14 @@ let isProcessingChunks = false;
 async function handleDataReceived(params) {
   if (params.requestId !== targetRequestId) return;
   
-  debugLog(`🟢 Data received for target request: ${params.requestId}, dataLength: ${params.dataLength}`);
+  // debugLog(`🟢 Data received for target request: ${params.requestId}, dataLength: ${params.dataLength}`);
   
   // Check if this event contains the actual data chunk
   if (params.data) {
     // Data is base64-encoded in Network.dataReceived events
     // Use proper UTF-8 decoding for multi-byte characters like em-dashes
     const data = decodeBase64UTF8(params.data);
-    debugLog(`🟢 Real-time chunk data (${data.length} chars): ${data.substring(0, 50)}...`);
+    // debugLog(`🟢 Real-time chunk data (${data.length} chars): ${data.substring(0, 50)}...`);
     
     // Add to queue for sequential processing
     chunkQueue.push(data);
@@ -278,7 +278,7 @@ async function handleDataReceived(params) {
         if (data.length > lastProcessedData.length && data.startsWith(lastProcessedData)) {
           const newData = data.substring(lastProcessedData.length);
           if (newData.trim()) {
-            debugLog(`🟢 Fallback streaming data (${newData.length} chars): ${newData.substring(0, 50)}...`);
+            // debugLog(`🟢 Fallback streaming data (${newData.length} chars): ${newData.substring(0, 50)}...`);
             
             // Add to queue for sequential processing
             chunkQueue.push(newData);
@@ -289,7 +289,7 @@ async function handleDataReceived(params) {
       }
       
     } catch (error) {
-      debugLog(`⚠️ Could not get response body: ${error.message}`);
+      // debugLog(`⚠️ Could not get response body: ${error.message}`);
     }
   }
 }
@@ -307,7 +307,7 @@ async function processChunkQueue() {
       // Process chunk sequentially
       await processSSEDataSlowly(chunk);
     } catch (error) {
-      debugLog(`❌ Error processing chunk: ${error.message}`);
+      // debugLog(`❌ Error processing chunk: ${error.message}`);
     }
   }
   
@@ -324,7 +324,7 @@ async function processSSEDataSlowly(data) {
     if (line.trim()) {
       if (line.startsWith('data: ')) {
         const eventData = line.substring(6);
-        debugLog(`📝 Processing SSE Data: ${eventData.substring(0, 50)}...`);
+        // debugLog(`📝 Processing SSE Data: ${eventData.substring(0, 50)}...`);
         
         // Send each data item individually with delay
         await fetch(`${localApiUrl}/network/stream-data`, {
@@ -337,7 +337,7 @@ async function processSSEDataSlowly(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          debugLog(`❌ Failed to forward stream data: ${err}`);
+          // debugLog(`❌ Failed to forward stream data: ${err}`);
         });
         
         // Small delay between data items
@@ -345,7 +345,7 @@ async function processSSEDataSlowly(data) {
         
       } else if (line.startsWith('event: ')) {
         const eventType = line.substring(7);
-        debugLog(`🎯 Processing SSE Event: ${eventType}`);
+        // debugLog(`🎯 Processing SSE Event: ${eventType}`);
         
         await fetch(`${localApiUrl}/network/stream-event`, {
           method: 'POST',
@@ -357,7 +357,7 @@ async function processSSEDataSlowly(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          debugLog(`❌ Failed to forward stream event: ${err}`);
+          // debugLog(`❌ Failed to forward stream event: ${err}`);
         });
       }
     }
@@ -366,10 +366,10 @@ async function processSSEDataSlowly(data) {
 
 // Handle loading finished
 function handleLoadingFinished(params) {
-  debugLog(`📥 Loading finished: ${params.requestId} (target: ${targetRequestId})`);
+  // debugLog(`📥 Loading finished: ${params.requestId} (target: ${targetRequestId})`);
   
   if (params.requestId !== targetRequestId) {
-    debugLog(`⚠️ Ignoring loadingFinished for non-target request ${params.requestId}`);
+    // debugLog(`⚠️ Ignoring loadingFinished for non-target request ${params.requestId}`);
     return;
   }
   
@@ -386,7 +386,7 @@ function handleLoadingFinished(params) {
       timestamp: Date.now()
     })
   }).catch(err => {
-    debugLog(`❌ Failed to send response end notification: ${err}`);
+    // debugLog(`❌ Failed to send response end notification: ${err}`);
   });
   
   // Reset for next request
@@ -415,7 +415,7 @@ function handleLoadingFailed(params) {
       timestamp: Date.now()
     })
   }).catch(err => {
-    console.error('Failed to send error notification:', err);
+    // console.error('Failed to send error notification:', err);
   });
   
   // Reset for next request
@@ -428,7 +428,7 @@ function handleLoadingFailed(params) {
 
 // Handle EventSource messages (the proper way!)
 function handleEventSourceMessage(params) {
-  console.log('🟢 EventSource message received:', params);
+  // console.log('🟢 EventSource message received:', params);
   
   // Forward the SSE data directly to local API
   fetch(`${localApiUrl}/network/stream-data`, {
@@ -443,13 +443,13 @@ function handleEventSourceMessage(params) {
       timestamp: params.timestamp
     })
   }).catch(err => {
-    console.error('Failed to forward EventSource data:', err);
+    // console.error('Failed to forward EventSource data:', err);
   });
 }
 
 // Parse and forward streaming data
 function parseAndForwardStreamData(data) {
-  debugLog(`🔄 Parsing streaming data: ${data.substring(0, 200)}...`);
+  // debugLog(`🔄 Parsing streaming data: ${data.substring(0, 200)}...`);
   
   // Split by newlines to handle SSE format
   const lines = data.split('\n');
@@ -458,7 +458,7 @@ function parseAndForwardStreamData(data) {
     if (line.trim()) {
       if (line.startsWith('data: ')) {
         const eventData = line.substring(6); // Remove 'data: ' prefix
-        debugLog(`📝 SSE Data: ${eventData.substring(0, 100)}...`);
+        // debugLog(`📝 SSE Data: ${eventData.substring(0, 100)}...`);
         
         // Forward to local API
         fetch(`${localApiUrl}/network/stream-data`, {
@@ -471,12 +471,12 @@ function parseAndForwardStreamData(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          debugLog(`❌ Failed to forward stream data: ${err}`);
+          // debugLog(`❌ Failed to forward stream data: ${err}`);
         });
         
       } else if (line.startsWith('event: ')) {
         const eventType = line.substring(7); // Remove 'event: ' prefix
-        debugLog(`🎯 SSE Event: ${eventType}`);
+        // debugLog(`🎯 SSE Event: ${eventType}`);
         
         // Forward to local API
         fetch(`${localApiUrl}/network/stream-event`, {
@@ -489,7 +489,7 @@ function parseAndForwardStreamData(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          debugLog(`❌ Failed to forward stream event: ${err}`);
+          // debugLog(`❌ Failed to forward stream event: ${err}`);
         });
       }
     }
