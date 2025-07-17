@@ -361,10 +361,11 @@ def deepseek_network_response(
                             if item['type'] == 'data':
                                 content = item['content']
                                 if content:
-                                    # Parse the streaming data
-                                    parsed_content = parse_network_stream_data(content)
-                                    if parsed_content:
-                                        yield create_response_streaming(parsed_content, pipeline)
+                                    # Parse streaming data with immediate forwarding
+                                    chunks = parse_network_stream_data_for_streaming(content)
+                                    for chunk in chunks:
+                                        if chunk:
+                                            yield create_response_streaming(chunk, pipeline)
                         
                         last_processed_index = len(stream_buffer)
                         
@@ -376,6 +377,13 @@ def deepseek_network_response(
                                 break
                             
                         time.sleep(0.1)
+                    
+                    # If thinking mode is still active at stream end, close it
+                    if network_data['thinking_active']:
+                        yield create_response_streaming("\n</think>\n\n", pipeline)
+                        # Reset thinking state
+                        network_data['thinking_active'] = False
+                        network_data['thinking_started'] = False
                     
                     # Check for errors
                     if network_data['error']:
@@ -423,6 +431,107 @@ def deepseek_network_response(
         state.show_message("[color:white]- [color:red]Network response error occurred.")
         deepseek.disable_network_interception(state.driver)
         return create_response("Error receiving network response.", streaming, pipeline)
+
+def parse_network_stream_data_for_streaming(data: str) -> list:
+    """Parse network stream data for streaming mode, returning list of chunks to send immediately"""
+    try:
+        chunks = []
+        
+        # Handle different types of data
+        if data.startswith('{'):
+            # JSON data
+            import json
+            json_data = json.loads(data)
+            
+            # Handle DeepSeek specific format
+            if 'v' in json_data:
+                path = json_data.get('p')
+                content_value = json_data['v']
+                
+                # Handle thinking content start
+                if path == 'response/thinking_content':
+                    if not network_data['thinking_active']:
+                        # Starting thinking mode - send opening <think> tag
+                        chunks.append("<think>\n")
+                        network_data['thinking_active'] = True
+                        network_data['thinking_started'] = True
+                    
+                    # Send thinking content immediately
+                    if isinstance(content_value, str):
+                        chunks.append(content_value)
+                    elif isinstance(content_value, list):
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item:
+                                chunks.append(str(item['v']))
+                
+                # Handle regular content start - this ends thinking mode
+                elif path == 'response/content':
+                    # If we were in thinking mode, close it first
+                    if network_data['thinking_active']:
+                        chunks.append("\n</think>\n\n")
+                        # Reset thinking state
+                        network_data['thinking_active'] = False
+                        network_data['thinking_started'] = False
+                    
+                    # Send regular content immediately
+                    if isinstance(content_value, str):
+                        chunks.append(content_value)
+                    elif isinstance(content_value, list):
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item and item.get('p') == 'response/content':
+                                chunks.append(str(item['v']))
+                
+                # Handle continuation chunks (no path specified)
+                elif path is None:
+                    # Send content immediately regardless of thinking mode
+                    if isinstance(content_value, str):
+                        chunks.append(content_value)
+                    elif isinstance(content_value, list):
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item:
+                                chunks.append(str(item['v']))
+                
+                # Handle batch operations
+                elif path == 'response' and json_data.get('o') == 'BATCH':
+                    if isinstance(content_value, list):
+                        for item in content_value:
+                            if isinstance(item, dict) and 'v' in item:
+                                item_path = item.get('p')
+                                if item_path == 'response/thinking_content':
+                                    if not network_data['thinking_active']:
+                                        chunks.append("<think>\n")
+                                        network_data['thinking_active'] = True
+                                        network_data['thinking_started'] = True
+                                    chunks.append(str(item['v']))
+                                elif item_path == 'response/content':
+                                    # If we were in thinking mode, close it first
+                                    if network_data['thinking_active']:
+                                        chunks.append("\n</think>\n\n")
+                                        network_data['thinking_active'] = False
+                                        network_data['thinking_started'] = False
+                                    chunks.append(str(item['v']))
+            
+            # Handle simple content updates (fallback)
+            elif 'v' in json_data:
+                content = json_data['v']
+                if isinstance(content, str):
+                    chunks.append(content)
+                elif isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and 'v' in item:
+                            chunks.append(str(item['v']))
+            
+            # Handle complex response structure
+            elif 'response' in json_data and 'content' in json_data['response']:
+                chunks.append(json_data['response']['content'])
+        else:
+            # Plain text data
+            chunks.append(data)
+        
+        return chunks
+    except Exception as e:
+        print(f"Error parsing network stream data for streaming: {e}")
+        return []
 
 def parse_network_stream_data(data: str) -> str:
     """Parse network stream data to extract content, handling thinking content with <think> tags"""
@@ -660,6 +769,7 @@ def network_stream_data():
     try:
         data = request.get_json()
         if data and 'data' in data:
+            # Always append to buffer - streaming mode determined by response generator
             network_data['stream_buffer'].append({
                 'type': 'data',
                 'content': data['data'],

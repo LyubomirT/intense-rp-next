@@ -17,6 +17,27 @@ function debugLog(message) {
   }).catch(() => {}); // Silent fail if API not available
 }
 
+// Proper UTF-8 decoding for base64 data containing multi-byte characters
+function decodeBase64UTF8(base64Data) {
+  try {
+    // Convert base64 to binary string
+    const binaryString = atob(base64Data);
+    
+    // Convert binary string to byte array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Decode UTF-8 bytes to proper string
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (error) {
+    debugLog(`⚠️ UTF-8 decode error, falling back to atob: ${error.message}`);
+    // Fallback to regular atob if UTF-8 decoding fails
+    return atob(base64Data);
+  }
+}
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startInterception') {
@@ -83,10 +104,14 @@ async function stopCDPInterception() {
     chrome.debugger.detach({ tabId: activeTabId });
     console.log('✅ CDP debugger detached from tab:', activeTabId);
     
+    // Reset state
     isIntercepting = false;
     activeTabId = null;
     targetRequestId = null;
     streamBuffer = [];
+    lastProcessedData = '';
+    chunkQueue = [];
+    isProcessingChunks = false;
     
     console.log('🔴 CDP network interception stopped');
     
@@ -168,7 +193,7 @@ function handleRequestWillBeSent(params) {
 }
 
 // Handle response received
-function handleResponseReceived(params) {
+async function handleResponseReceived(params) {
   if (params.requestId !== targetRequestId) return;
   
   const response = params.response;
@@ -184,8 +209,21 @@ function handleResponseReceived(params) {
   if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
     console.log('🟢 Streaming response detected');
     
-    // Reset stream buffer
+    // Reset stream buffer and chunk processing state
     streamBuffer = [];
+    lastProcessedData = '';
+    chunkQueue = [];
+    isProcessingChunks = false;
+    
+    try {
+      // Enable streaming content to capture SSE data in real-time
+      await sendCDPCommand(activeTabId, 'Network.streamResourceContent', {
+        requestId: params.requestId
+      });
+      debugLog('✅ Streaming content enabled for request: ' + params.requestId);
+    } catch (error) {
+      debugLog('❌ Failed to enable streaming content: ' + error.message);
+    }
     
     // Notify local API about response start
     fetch(`${localApiUrl}/network/response-start`, {
@@ -205,68 +243,78 @@ function handleResponseReceived(params) {
 }
 
 let lastProcessedData = '';
-let dataProcessingQueue = [];
-let isProcessingQueue = false;
+let chunkQueue = [];
+let isProcessingChunks = false;
 
-// Handle data received
+// Handle data received - now captures actual streaming chunks
 async function handleDataReceived(params) {
   if (params.requestId !== targetRequestId) return;
   
   debugLog(`🟢 Data received for target request: ${params.requestId}, dataLength: ${params.dataLength}`);
   
-  // Add to processing queue instead of processing immediately
-  dataProcessingQueue.push(params);
-  
-  // Process queue if not already processing
-  if (!isProcessingQueue) {
-    processDataQueue();
-  }
-}
-
-// Process data queue sequentially to maintain order
-async function processDataQueue() {
-  if (isProcessingQueue) return;
-  isProcessingQueue = true;
-  
-  while (dataProcessingQueue.length > 0) {
-    const params = dataProcessingQueue.shift();
+  // Check if this event contains the actual data chunk
+  if (params.data) {
+    // Data is base64-encoded in Network.dataReceived events
+    // Use proper UTF-8 decoding for multi-byte characters like em-dashes
+    const data = decodeBase64UTF8(params.data);
+    debugLog(`🟢 Real-time chunk data (${data.length} chars): ${data.substring(0, 50)}...`);
     
+    // Add to queue for sequential processing
+    chunkQueue.push(data);
+    processChunkQueue();
+    
+  } else if (params.encodedDataLength || params.dataLength) {
+    // Fallback: try to get response body if no direct data
     try {
-      // Wait longer before processing to let data stabilize
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Get the actual response body data
       const responseBody = await sendCDPCommand(activeTabId, 'Network.getResponseBody', {
         requestId: params.requestId
       });
       
       if (responseBody && responseBody.body) {
         const data = responseBody.base64Encoded ? 
-          atob(responseBody.body) : responseBody.body;
+          decodeBase64UTF8(responseBody.body) : responseBody.body;
         
-        // Only process new data (incremental)
+        // Only process new data (diff-based)
         if (data.length > lastProcessedData.length && data.startsWith(lastProcessedData)) {
           const newData = data.substring(lastProcessedData.length);
           if (newData.trim()) {
-            debugLog(`🟢 New incremental data (${newData.length} chars): ${newData.substring(0, 50)}...`);
+            debugLog(`🟢 Fallback streaming data (${newData.length} chars): ${newData.substring(0, 50)}...`);
             
-            // Process each SSE line individually with delays
-            await processSSEDataSlowly(newData);
+            // Add to queue for sequential processing
+            chunkQueue.push(newData);
+            processChunkQueue();
           }
           lastProcessedData = data;
         }
       }
       
     } catch (error) {
-      debugLog(`❌ Error getting response body: ${error.message}`);
+      debugLog(`⚠️ Could not get response body: ${error.message}`);
     }
+  }
+}
+
+// Process chunk queue sequentially to maintain order
+async function processChunkQueue() {
+  if (isProcessingChunks) return; // Already processing
+  
+  isProcessingChunks = true;
+  
+  while (chunkQueue.length > 0) {
+    const chunk = chunkQueue.shift();
     
-    // Longer delay between queue items
-    await new Promise(resolve => setTimeout(resolve, 50));
+    try {
+      // Process chunk sequentially
+      await processSSEDataSlowly(chunk);
+    } catch (error) {
+      debugLog(`❌ Error processing chunk: ${error.message}`);
+    }
   }
   
-  isProcessingQueue = false;
+  isProcessingChunks = false;
 }
+
+// Note: Polling functions removed - now using direct streaming data capture
 
 // Process SSE data slowly and carefully
 async function processSSEDataSlowly(data) {
@@ -344,6 +392,9 @@ function handleLoadingFinished(params) {
   // Reset for next request
   targetRequestId = null;
   streamBuffer = [];
+  lastProcessedData = '';
+  chunkQueue = [];
+  isProcessingChunks = false;
 }
 
 // Handle loading failed
@@ -370,6 +421,9 @@ function handleLoadingFailed(params) {
   // Reset for next request
   targetRequestId = null;
   streamBuffer = [];
+  lastProcessedData = '';
+  chunkQueue = [];
+  isProcessingChunks = false;
 }
 
 // Handle EventSource messages (the proper way!)
@@ -450,6 +504,9 @@ chrome.debugger.onDetach.addListener((source, reason) => {
     activeTabId = null;
     targetRequestId = null;
     streamBuffer = [];
+    lastProcessedData = '';
+    chunkQueue = [];
+    isProcessingChunks = false;
   }
 });
 
