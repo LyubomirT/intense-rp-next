@@ -506,7 +506,7 @@ class ConfigUIGenerator:
     
     def _mark_field_error_by_message(self, error_message: str) -> None:
         """Mark a field as having an error based on error message"""
-        # Map error messages to field keys - improved mapping
+        # Map error messages to field keys
         error_mapping = {
             "models.deepseek.email": ["email", "Email"],
             "models.deepseek.password": ["password", "Password"],
