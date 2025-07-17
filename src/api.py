@@ -355,8 +355,9 @@ def deepseek_network_response(
                         
                         # Process new stream data
                         stream_buffer = network_data['stream_buffer']
+                        current_buffer_length = len(stream_buffer)
                         
-                        for i in range(last_processed_index, len(stream_buffer)):
+                        for i in range(last_processed_index, current_buffer_length):
                             item = stream_buffer[i]
                             if item['type'] == 'data':
                                 content = item['content']
@@ -367,7 +368,7 @@ def deepseek_network_response(
                                         if chunk:
                                             yield create_response_streaming(chunk, pipeline)
                         
-                        last_processed_index = len(stream_buffer)
+                        last_processed_index = current_buffer_length
                         
                         # Check for finish event
                         events = network_data['events']
