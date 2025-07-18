@@ -37,19 +37,31 @@ class FontLoader:
     def _get_font_directory(self) -> Optional[Path]:
         """Get the path to the fonts directory"""
         try:
-            # Get the base directory - handle both development and packaged contexts
-            if hasattr(sys, '_MEIPASS'):
-                # Running as PyInstaller bundle
-                base_dir = Path(sys._MEIPASS)
-            else:
-                # Running in development
-                base_dir = Path(__file__).parent.parent
+            # For PyInstaller bundles, check executable directory first
+            if getattr(sys, 'frozen', False):
+                # Running as PyInstaller bundle - look in executable directory
+                exe_dir = Path(sys.executable).parent
+                font_dir = exe_dir / "assets" / "fonts"
+                if font_dir.exists():
+                    print(f"[color:green]Found font directory in executable path: {font_dir}")
+                    return font_dir
             
+            # Use StorageManager for fallback path resolution
+            from .storage_manager import StorageManager
+            storage_manager = StorageManager()
+            
+            # Try to get fonts path from storage manager
+            font_path = storage_manager.get_existing_path("base", "assets/fonts")
+            if font_path:
+                return Path(font_path)
+            
+            # Final fallback to development path resolution
+            base_dir = Path(__file__).parent.parent
             font_dir = base_dir / "assets" / "fonts"
             if font_dir.exists():
                 return font_dir
             
-            print(f"[color:yellow]Warning: Font directory not found at {font_dir}")
+            print(f"[color:yellow]Warning: Font directory not found")
             return None
             
         except Exception as e:
@@ -61,6 +73,13 @@ class FontLoader:
         if not self.font_directory:
             print("[color:yellow]No font directory available, using system fonts only")
             return
+        
+        print(f"[color:cyan]DEBUG: Font directory found: {self.font_directory}")
+        print(f"[color:cyan]DEBUG: Font directory exists: {self.font_directory.exists()}")
+        
+        if self.font_directory.exists():
+            font_files = list(self.font_directory.glob("*.ttf"))
+            print(f"[color:cyan]DEBUG: Found {len(font_files)} TTF files: {[f.name for f in font_files]}")
         
         try:
             # Use tkextrafont for lightweight font loading
@@ -77,16 +96,21 @@ class FontLoader:
     def _load_fonts_with_tkextrafont(self) -> bool:
         """Load fonts using tkextrafont library"""
         try:
+            print("[color:cyan]DEBUG: Attempting to import tkextrafont...")
             from tkextrafont import Font
+            print("[color:cyan]DEBUG: tkextrafont imported successfully")
             
             font_files = list(self.font_directory.glob("*.ttf"))
             if not font_files:
+                print("[color:yellow]DEBUG: No TTF files found in font directory")
                 return False
             
+            print(f"[color:cyan]DEBUG: Attempting to load {len(font_files)} font files...")
             loaded_count = 0
             for font_file in font_files:
                 try:
                     font_name = self._extract_font_name(font_file)
+                    print(f"[color:cyan]DEBUG: Loading font {font_name} from {font_file}")
                     # Create a Font object and register it
                     font_obj = Font(file=str(font_file), family=font_name)
                     self.available_fonts[font_name] = font_obj
@@ -99,8 +123,8 @@ class FontLoader:
                 print(f"[color:green]Successfully loaded {loaded_count} fonts using tkextrafont")
                 return True
             
-        except ImportError:
-            print("[color:yellow]tkextrafont not available")
+        except ImportError as e:
+            print(f"[color:yellow]tkextrafont not available: {e}")
         except Exception as e:
             print(f"[color:red]tkextrafont font loading failed: {e}")
         

@@ -991,9 +991,15 @@ class ContributorWindow(ctk.CTkToplevel):
     def _load_contributors_data(self):
         """Load contributors data from JSON file"""
         try:
-            # Get the path to the contributors.json file
-            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            contributors_file = os.path.join(script_dir, "assets", "contributors.json")
+            # Get the path to the contributors.json file using StorageManager
+            from .storage_manager import StorageManager
+            storage_manager = StorageManager()
+            contributors_file = storage_manager.get_existing_path("base", "assets/contributors.json")
+            
+            if not contributors_file:
+                # Fallback to development path resolution
+                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                contributors_file = os.path.join(script_dir, "assets", "contributors.json")
             
             with open(contributors_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)

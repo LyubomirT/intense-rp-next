@@ -1,4 +1,4 @@
-import threading, webbrowser, api, sys, re, platform, tkinter as tk
+import threading, webbrowser, api, sys, os, re, platform, tkinter as tk
 import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
 import utils.process_manager as process
@@ -326,7 +326,19 @@ def create_gui() -> None:
         config_manager = ConfigManager(storage_manager)
         
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
-        icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
+        
+        # Try to find icon file - check executable directory first for PyInstaller bundles
+        icon_path = None
+        if getattr(sys, 'frozen', False):
+            # Running as PyInstaller bundle - look in executable directory
+            exe_dir = os.path.dirname(sys.executable)
+            icon_path = os.path.join(exe_dir, "newlogo.ico")
+            if not os.path.exists(icon_path):
+                icon_path = None
+        
+        # Fallback to storage manager
+        if not icon_path:
+            icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
 
         # Set up state manager with config manager
         state.set_config_manager(config_manager)
