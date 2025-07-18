@@ -7,7 +7,7 @@
 <div align="center">
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/LyubomirT/intense-rp-api-improvements?style=flat-square)
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![License](https://img.shields.io/github/license/LyubomirT/intense-rp-api-improvements?style=flat-square)
 ![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-api-improvements?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-api-improvements?style=flat-square)
 
@@ -137,12 +137,15 @@ Find all of our contributors on [GitHub](https://github.com/LyubomirT/intense-rp
 
 ## 📄 License
 
-This project is open source and available under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license.
+This project is open source and available under the [MIT License](https://opensource.org/licenses/MIT) license.
+
+> [!IMPORTANT]
+> I've officially received permission from Omega-Slender to relicense the original IntenseRP API under the MIT License. This means that the original distribution license is no longer valid, and this project is now fully compliant with the MIT License.
 
 # 📋 Legal Stuff
 
 1. This project is not affiliated with or endorsed by Omega-Slender or the original IntenseRP API.
-2. The original IntenseRP API is available under the same license, and you can find it [here](https://github.com/Omega-Slender/intense-rp-api).
+2. The original IntenseRP API is available under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), and you can find it [here](https://github.com/Omega-Slender/intense-rp-api).
 3. I do not claim ownership of the original IntenseRP API code, and this project is a separate work that builds upon its ideas and concepts.
 
 ## 🔗 Links
