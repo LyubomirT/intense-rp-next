@@ -85,6 +85,14 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Enable R1 reasoning mode"
                 ),
                 ConfigField(
+                    key="models.deepseek.send_thoughts",
+                    label="Send Thoughts:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=True,
+                    depends_on="models.deepseek.deepthink",
+                    help_text="Include R1 thinking content in <think> tags (only when R1 is enabled)"
+                ),
+                ConfigField(
                     key="models.deepseek.search",
                     label="Search:",
                     field_type=ConfigFieldType.SWITCH,

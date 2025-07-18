@@ -86,6 +86,8 @@ def bot_response() -> Response:
         intercept_network = state.get_config_value("models.deepseek.intercept_network", False)
         
         if intercept_network:
+            # Get send_thoughts setting - only applies when deepthink is enabled
+            send_thoughts = state.get_config_value("models.deepseek.send_thoughts", True) if processed_request.use_deepthink else False
             return deepseek_network_response(
                 current_message, 
                 formatted_message, 
@@ -94,7 +96,8 @@ def bot_response() -> Response:
                 processed_request.use_search,
                 processed_request.use_text_file,
                 pipeline,
-                processed_request.prefix_content
+                processed_request.prefix_content,
+                send_thoughts
             )
         else:
             return deepseek_response(
@@ -261,7 +264,8 @@ def deepseek_network_response(
     search: bool, 
     text_file: bool,
     pipeline: MessagePipeline,
-    prefix_content: str = None
+    prefix_content: str = None,
+    send_thoughts: bool = True
 ) -> Response:
     """Handle DeepSeek response using network interception instead of DOM scraping"""
     state = get_state_manager()
@@ -363,7 +367,7 @@ def deepseek_network_response(
                                 content = item['content']
                                 if content:
                                     # Parse streaming data with immediate forwarding
-                                    chunks = parse_network_stream_data_for_streaming(content)
+                                    chunks = parse_network_stream_data_for_streaming(content, send_thoughts)
                                     for chunk in chunks:
                                         if chunk:
                                             yield create_response_streaming(chunk, pipeline)
@@ -379,10 +383,11 @@ def deepseek_network_response(
                             
                         time.sleep(0.1)
                     
-                    # If thinking mode is still active at stream end, close it
-                    if network_data['thinking_active']:
+                    # If thinking mode is still active at stream end, close it (only if send_thoughts is enabled)
+                    if network_data['thinking_active'] and send_thoughts:
                         yield create_response_streaming("\n</think>\n\n", pipeline)
-                        # Reset thinking state
+                    # Reset thinking state regardless of send_thoughts setting
+                    if network_data['thinking_active']:
                         network_data['thinking_active'] = False
                         network_data['thinking_started'] = False
                     
@@ -420,7 +425,7 @@ def deepseek_network_response(
             else:
                 # Combine all stream data
                 state.show_message(f"[color:cyan]Combining {len(network_data['stream_buffer'])} stream items...")
-                response_text = combine_network_stream_data(network_data['stream_buffer'])
+                response_text = combine_network_stream_data(network_data['stream_buffer'], send_thoughts)
                 state.show_message(f"[color:cyan]Final combined response length: {len(response_text)}")
             
             deepseek.disable_network_interception(state.driver)
@@ -433,7 +438,7 @@ def deepseek_network_response(
         deepseek.disable_network_interception(state.driver)
         return create_response("Error receiving network response.", streaming, pipeline)
 
-def parse_network_stream_data_for_streaming(data: str) -> list:
+def parse_network_stream_data_for_streaming(data: str, send_thoughts: bool = True) -> list:
     """Parse network stream data for streaming mode, returning list of chunks to send immediately"""
     try:
         chunks = []
@@ -451,25 +456,32 @@ def parse_network_stream_data_for_streaming(data: str) -> list:
                 
                 # Handle thinking content start
                 if path == 'response/thinking_content':
-                    if not network_data['thinking_active']:
-                        # Starting thinking mode - send opening <think> tag
-                        chunks.append("<think>\n")
-                        network_data['thinking_active'] = True
-                        network_data['thinking_started'] = True
-                    
-                    # Send thinking content immediately
-                    if isinstance(content_value, str):
-                        chunks.append(content_value)
-                    elif isinstance(content_value, list):
-                        for item in content_value:
-                            if isinstance(item, dict) and 'v' in item:
-                                chunks.append(str(item['v']))
+                    if send_thoughts:
+                        if not network_data['thinking_active']:
+                            # Starting thinking mode - send opening <think> tag
+                            chunks.append("<think>\n")
+                            network_data['thinking_active'] = True
+                            network_data['thinking_started'] = True
+                        
+                        # Send thinking content immediately
+                        if isinstance(content_value, str):
+                            chunks.append(content_value)
+                        elif isinstance(content_value, list):
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    chunks.append(str(item['v']))
+                    else:
+                        # Track thinking state but don't send content
+                        if not network_data['thinking_active']:
+                            network_data['thinking_active'] = True
+                            network_data['thinking_started'] = True
                 
                 # Handle regular content start - this ends thinking mode
                 elif path == 'response/content':
-                    # If we were in thinking mode, close it first
+                    # If we were in thinking mode, close it first (only if send_thoughts is enabled)
                     if network_data['thinking_active']:
-                        chunks.append("\n</think>\n\n")
+                        if send_thoughts:
+                            chunks.append("\n</think>\n\n")
                         # Reset thinking state
                         network_data['thinking_active'] = False
                         network_data['thinking_started'] = False
@@ -484,13 +496,22 @@ def parse_network_stream_data_for_streaming(data: str) -> list:
                 
                 # Handle continuation chunks (no path specified)
                 elif path is None:
-                    # Send content immediately regardless of thinking mode
-                    if isinstance(content_value, str):
-                        chunks.append(content_value)
-                    elif isinstance(content_value, list):
-                        for item in content_value:
-                            if isinstance(item, dict) and 'v' in item:
-                                chunks.append(str(item['v']))
+                    # Send content immediately only if not in thinking mode
+                    if not network_data['thinking_active']:
+                        if isinstance(content_value, str):
+                            chunks.append(content_value)
+                        elif isinstance(content_value, list):
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    chunks.append(str(item['v']))
+                    # If we're in thinking mode and send_thoughts is enabled, send thinking content
+                    elif send_thoughts:
+                        if isinstance(content_value, str):
+                            chunks.append(content_value)
+                        elif isinstance(content_value, list):
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    chunks.append(str(item['v']))
                 
                 # Handle batch operations
                 elif path == 'response' and json_data.get('o') == 'BATCH':
@@ -499,15 +520,22 @@ def parse_network_stream_data_for_streaming(data: str) -> list:
                             if isinstance(item, dict) and 'v' in item:
                                 item_path = item.get('p')
                                 if item_path == 'response/thinking_content':
-                                    if not network_data['thinking_active']:
-                                        chunks.append("<think>\n")
-                                        network_data['thinking_active'] = True
-                                        network_data['thinking_started'] = True
-                                    chunks.append(str(item['v']))
+                                    if send_thoughts:
+                                        if not network_data['thinking_active']:
+                                            chunks.append("<think>\n")
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
+                                        chunks.append(str(item['v']))
+                                    else:
+                                        # Track thinking state but don't send content
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
                                 elif item_path == 'response/content':
-                                    # If we were in thinking mode, close it first
+                                    # If we were in thinking mode, close it first (only if send_thoughts is enabled)
                                     if network_data['thinking_active']:
-                                        chunks.append("\n</think>\n\n")
+                                        if send_thoughts:
+                                            chunks.append("\n</think>\n\n")
                                         network_data['thinking_active'] = False
                                         network_data['thinking_started'] = False
                                     chunks.append(str(item['v']))
@@ -534,7 +562,7 @@ def parse_network_stream_data_for_streaming(data: str) -> list:
         print(f"Error parsing network stream data for streaming: {e}")
         return []
 
-def parse_network_stream_data(data: str) -> str:
+def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
     """Parse network stream data to extract content, handling thinking content with <think> tags"""
     try:
         # Handle different types of data
@@ -550,32 +578,39 @@ def parse_network_stream_data(data: str) -> str:
                 
                 # Handle thinking content start
                 if path == 'response/thinking_content':
-                    if not network_data['thinking_active']:
-                        # Starting thinking mode
-                        network_data['thinking_active'] = True
-                        network_data['thinking_buffer'] = ""
-                        network_data['thinking_started'] = True
+                    if send_thoughts:
+                        if not network_data['thinking_active']:
+                            # Starting thinking mode
+                            network_data['thinking_active'] = True
+                            network_data['thinking_buffer'] = ""
+                            network_data['thinking_started'] = True
+                        
+                        # Accumulate thinking content
+                        if isinstance(content_value, str):
+                            network_data['thinking_buffer'] += content_value
+                        elif isinstance(content_value, list):
+                            for item in content_value:
+                                if isinstance(item, dict) and 'v' in item:
+                                    network_data['thinking_buffer'] += str(item['v'])
+                    else:
+                        # Track thinking state but don't accumulate content
+                        if not network_data['thinking_active']:
+                            network_data['thinking_active'] = True
+                            network_data['thinking_started'] = True
                     
-                    # Accumulate thinking content
-                    if isinstance(content_value, str):
-                        network_data['thinking_buffer'] += content_value
-                    elif isinstance(content_value, list):
-                        for item in content_value:
-                            if isinstance(item, dict) and 'v' in item:
-                                network_data['thinking_buffer'] += str(item['v'])
-                    
-                    # Return empty string while accumulating thinking content
+                    # Return empty string while accumulating/ignoring thinking content
                     return ""
                 
                 # Handle regular content start - this ends thinking mode
                 elif path == 'response/content':
                     result = ""
                     
-                    # If we were in thinking mode, wrap and flush the thinking buffer
+                    # If we were in thinking mode, wrap and flush the thinking buffer (only if send_thoughts is enabled)
                     if network_data['thinking_active']:
-                        thinking_content = network_data['thinking_buffer'].strip()
-                        if thinking_content:
-                            result = f"<think>\n{thinking_content}\n</think>\n\n"
+                        if send_thoughts:
+                            thinking_content = network_data['thinking_buffer'].strip()
+                            if thinking_content:
+                                result = f"<think>\n{thinking_content}\n</think>\n\n"
                         
                         # Reset thinking state
                         network_data['thinking_active'] = False
@@ -594,15 +629,16 @@ def parse_network_stream_data(data: str) -> str:
                 
                 # Handle continuation chunks (no path specified)
                 elif path is None:
-                    # If we're in thinking mode, accumulate this content as thinking
+                    # If we're in thinking mode, accumulate this content as thinking (only if send_thoughts is enabled)
                     if network_data['thinking_active']:
-                        if isinstance(content_value, str):
-                            network_data['thinking_buffer'] += content_value
-                        elif isinstance(content_value, list):
-                            for item in content_value:
-                                if isinstance(item, dict) and 'v' in item:
-                                    network_data['thinking_buffer'] += str(item['v'])
-                        # Return empty while accumulating thinking content
+                        if send_thoughts:
+                            if isinstance(content_value, str):
+                                network_data['thinking_buffer'] += content_value
+                            elif isinstance(content_value, list):
+                                for item in content_value:
+                                    if isinstance(item, dict) and 'v' in item:
+                                        network_data['thinking_buffer'] += str(item['v'])
+                        # Return empty while accumulating/ignoring thinking content
                         return ""
                     else:
                         # Not in thinking mode, treat as regular content
@@ -628,18 +664,25 @@ def parse_network_stream_data(data: str) -> str:
                                 item_path = item.get('p')
                                 if item_path == 'response/thinking_content':
                                     thinking_content_found = True
-                                    if not network_data['thinking_active']:
-                                        network_data['thinking_active'] = True
-                                        network_data['thinking_buffer'] = ""
-                                        network_data['thinking_started'] = True
-                                    network_data['thinking_buffer'] += str(item['v'])
+                                    if send_thoughts:
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_buffer'] = ""
+                                            network_data['thinking_started'] = True
+                                        network_data['thinking_buffer'] += str(item['v'])
+                                    else:
+                                        # Track thinking state but don't accumulate content
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
                                 elif item_path == 'response/content':
                                     regular_content_found = True
-                                    # If we were in thinking mode, flush it first
+                                    # If we were in thinking mode, flush it first (only if send_thoughts is enabled)
                                     if network_data['thinking_active']:
-                                        thinking_content = network_data['thinking_buffer'].strip()
-                                        if thinking_content:
-                                            result += f"<think>\n{thinking_content}\n</think>\n\n"
+                                        if send_thoughts:
+                                            thinking_content = network_data['thinking_buffer'].strip()
+                                            if thinking_content:
+                                                result += f"<think>\n{thinking_content}\n</think>\n\n"
                                         
                                         # Reset thinking state
                                         network_data['thinking_active'] = False
@@ -674,18 +717,18 @@ def parse_network_stream_data(data: str) -> str:
         print(f"Error parsing network stream data: {e}")
         return ""
 
-def combine_network_stream_data(stream_buffer: list) -> str:
+def combine_network_stream_data(stream_buffer: list, send_thoughts: bool = True) -> str:
     """Combine all network stream data into a single response"""
     try:
         result = ""
         for item in stream_buffer:
             if item['type'] == 'data':
-                content = parse_network_stream_data(item['content'])
+                content = parse_network_stream_data(item['content'], send_thoughts)
                 if content:
                     result += content
         
-        # Check if there's any remaining thinking content to flush
-        if network_data['thinking_active'] and network_data['thinking_buffer'].strip():
+        # Check if there's any remaining thinking content to flush (only if send_thoughts is enabled)
+        if send_thoughts and network_data['thinking_active'] and network_data['thinking_buffer'].strip():
             thinking_content = network_data['thinking_buffer'].strip()
             result += f"<think>\n{thinking_content}\n</think>\n\n"
             
