@@ -63,7 +63,7 @@ class CharacterProcessor(BaseProcessor):
             messages.pop(-2)
     
     def _combine_messages(self, request: ChatRequest) -> str:
-        """Combine messages like the original code did, but with STMP-style user names"""
+        """Combine messages like the original code did with STMP-style"""
         formatted_messages = []
         for msg in request.messages:
             # Use the actual user name if available (STMP-style)
