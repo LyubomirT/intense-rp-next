@@ -863,7 +863,7 @@ def get_model_response() -> Response:
     return jsonify({
         "object": "list",
         "data": [{
-            "id": "rp-intense-2.7.0",
+            "id": "intense-rp-next-1",
             "object": "model",
             "created": int(time.time() * 1000)
         }]
@@ -875,7 +875,7 @@ def create_response_jsonify(text: str, pipeline: MessagePipeline) -> Response:
         "id": "chatcmpl-intenserp",
         "object": "chat.completion",
         "created": int(time.time() * 1000),
-        "model": "rp-intense-2.7.0",
+        "model": "intense-rp-next-1",
         "choices": [{
             "index": 0,
             "message": {"role": "assistant", "content": text},
@@ -889,7 +889,7 @@ def create_response_streaming(text: str, pipeline: MessagePipeline) -> str:
         "id": "chatcmpl-intenserp",
         "object": "chat.completion.chunk",
         "created": int(time.time() * 1000),
-        "model": "rp-intense-2.7.0",
+        "model": "intense-rp-next-1",
         "choices": [{"index": 0, "delta": {"content": text}}]
     }) + "\n\n"
 
