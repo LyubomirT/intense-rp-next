@@ -27,11 +27,15 @@ class CharacterProcessor(BaseProcessor):
         # Extract character info - prioritize API parameters over message content
         character_info = self._extract_character_info_from_combined(combined_content)
         
+        # Extract user names from individual messages (STMP-style)
+        self._extract_user_names_from_messages(request, character_info)
+        
         # Override with API parameters if provided (highest priority)
         if request.api_char_name is not None:
             character_info.character_name = request.api_char_name
         if request.api_user_name is not None:
             character_info.user_name = request.api_user_name
+            character_info.add_user_name(request.api_user_name)
         
         # Process the combined content (like original logic)
         processed_content = self._process_combined_content(combined_content, character_info, request)
@@ -59,8 +63,15 @@ class CharacterProcessor(BaseProcessor):
             messages.pop(-2)
     
     def _combine_messages(self, request: ChatRequest) -> str:
-        """Combine messages like the original code did"""
-        formatted_messages = [f"{msg.get_display_role()}: {msg.content}" for msg in request.messages]
+        """Combine messages like the original code did, but with STMP-style user names"""
+        formatted_messages = []
+        for msg in request.messages:
+            # Use the actual user name if available (STMP-style)
+            if msg.role == MessageRole.USER and msg.has_user_name():
+                role_display = msg.get_user_name()
+            else:
+                role_display = msg.get_display_role()
+            formatted_messages.append(f"{role_display}: {msg.content}")
         return "\n\n".join(formatted_messages)
     
     def _extract_character_info_from_combined(self, content: str) -> CharacterInfo:
@@ -74,8 +85,15 @@ class CharacterProcessor(BaseProcessor):
             character_info.character_name = character_match.group(1)
         if user_match:
             character_info.user_name = user_match.group(1)
+            character_info.add_user_name(user_match.group(1))
             
         return character_info
+    
+    def _extract_user_names_from_messages(self, request: ChatRequest, character_info: CharacterInfo) -> None:
+        """Extract user names from individual messages (STMP-style)"""
+        for message in request.messages:
+            if message.role == MessageRole.USER and message.has_user_name():
+                character_info.add_user_name(message.get_user_name())
     
     def _process_combined_content(self, content: str, character_info: CharacterInfo, request: ChatRequest) -> str:
         """Process combined content using original logic"""
@@ -266,11 +284,14 @@ class MessageFormatter:
         return message.role.value.lower()
     
     def _get_character_name(self, message, character_info: CharacterInfo) -> str:
-        """Get the character name for a message (supports custom roles)"""
+        """Get the character name for a message (supports custom roles and STMP-style multiple users)"""
         if message.is_custom_role():
             # For custom roles, use the original role name
             return message.original_role
         elif message.role == MessageRole.USER:
+            # STMP-style: Use message name if available, otherwise fallback to character_info
+            if message.has_user_name():
+                return message.get_user_name()
             return character_info.user_name or 'User'
         elif message.role == MessageRole.ASSISTANT:
             return character_info.character_name or 'Assistant'

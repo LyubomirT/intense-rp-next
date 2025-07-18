@@ -15,13 +15,15 @@ class Message:
     role: MessageRole
     content: str
     original_role: str = None  # Preserve original role string for custom roles
+    name: Optional[str] = None  # Optional name field for user identification (STMP-style)
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Message':
         role_str = data.get('role', 'user').lower()
         original_role = data.get('role', 'user')  # Store original case-preserved role
         role = MessageRole(role_str) if role_str in [r.value for r in MessageRole] else MessageRole.USER
-        return cls(role=role, content=data.get('content', ''), original_role=original_role)
+        name = data.get('name')  # Extract optional name field
+        return cls(role=role, content=data.get('content', ''), original_role=original_role, name=name)
     
     def is_custom_role(self) -> bool:
         """Check if this message has a custom role (not standard user/assistant/system)"""
@@ -32,6 +34,14 @@ class Message:
         if self.is_custom_role():
             return self.original_role
         return self.role.value
+    
+    def get_user_name(self) -> Optional[str]:
+        """Get the user name from the message if available"""
+        return self.name
+    
+    def has_user_name(self) -> bool:
+        """Check if this message has a user name"""
+        return self.name is not None and self.name.strip() != ""
 
 
 @dataclass
@@ -95,13 +105,35 @@ class ChatRequest:
     def has_prefix(self) -> bool:
         """Check if the request has prefix content for assistant prefill"""
         return self.prefix_content is not None and self.prefix_content.strip() != ""
+    
+    def get_unique_user_names(self) -> List[str]:
+        """Get all unique user names from messages (STMP-style multiple users)"""
+        names = set()
+        for msg in self.messages:
+            if msg.role == MessageRole.USER and msg.has_user_name():
+                names.add(msg.get_user_name())
+        return sorted(list(names))
+    
+    def get_messages_by_user(self, user_name: str) -> List[Message]:
+        """Get all messages from a specific user"""
+        return [msg for msg in self.messages 
+                if msg.role == MessageRole.USER and msg.get_user_name() == user_name]
+    
+    def has_multiple_users(self) -> bool:
+        """Check if this conversation has multiple users (STMP-style)"""
+        return len(self.get_unique_user_names()) > 1
 
 
 @dataclass
 class CharacterInfo:
     character_name: str = "Character"
-    user_name: str = "User"
+    user_name: str = "User"  # Primary/fallback user name (for backward compatibility)
     formatted_content: str = ""
+    user_names: List[str] = None  # All user names in conversation (STMP-style)
+    
+    def __post_init__(self):
+        if self.user_names is None:
+            self.user_names = []
     
     def extract_names_from_content(self, content: str) -> None:
         """Extract character and user names from content"""
@@ -112,6 +144,22 @@ class CharacterInfo:
             self.character_name = character_match.group(1)
         if user_match:
             self.user_name = user_match.group(1)
+            # Add to user_names list if not already present
+            if self.user_name not in self.user_names:
+                self.user_names.append(self.user_name)
+    
+    def add_user_name(self, name: str) -> None:
+        """Add a user name to the list if not already present"""
+        if name and name not in self.user_names:
+            self.user_names.append(name)
+    
+    def get_primary_user_name(self) -> str:
+        """Get the primary user name (first in list or fallback)"""
+        return self.user_names[0] if self.user_names else self.user_name
+    
+    def has_multiple_users(self) -> bool:
+        """Check if there are multiple users in this conversation"""
+        return len(self.user_names) > 1
 
 
 @dataclass
