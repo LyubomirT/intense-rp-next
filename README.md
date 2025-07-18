@@ -2,7 +2,7 @@
 
 **IntenseRP Next** is a completely reimagined and reworked successor to the original IntenseRP API by Omega-Slender. This new version brings lots of improvements, fixes, and features that make connecting DeepSeek AI to SillyTavern easy and reliable.
 
-![Preview](https://github.com/LyubomirT/intense-rp-api-improvements/blob/d6980e1983614a48f2c1bc1052e622471b8a570d/images/Preview.gif)
+![Preview](/images/PreviewIntenseRpNext_optim.gif)
 
 <div align="center">
 
