@@ -1144,7 +1144,7 @@ class ContributorWindow(ctk.CTkToplevel):
     def _open_github_contributors(self):
         """Open the GitHub contributors page"""
         try:
-            webbrowser.open("https://github.com/LyubomirT/intense-rp-api-improvements/graphs/contributors")
+            webbrowser.open("https://github.com/LyubomirT/intense-rp-next/graphs/contributors")
         except Exception as e:
             print(f"Error opening GitHub contributors page: {e}")
     

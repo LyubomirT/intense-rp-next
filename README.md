@@ -6,10 +6,10 @@
 
 <div align="center">
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/LyubomirT/intense-rp-api-improvements?style=flat-square)
-![License](https://img.shields.io/github/license/LyubomirT/intense-rp-api-improvements?style=flat-square)
-![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-api-improvements?style=flat-square)
-![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-api-improvements?style=flat-square)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/LyubomirT/intense-rp-next?style=flat-square)
+![License](https://img.shields.io/github/license/LyubomirT/intense-rp-next?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-next?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-next?style=flat-square)
 
 </div>
 
@@ -46,7 +46,7 @@ I've completely reimagined the original project with a focus on **reliability**,
 **For Windows Users:**
 - 🖥️ Windows 10/11 x64
 - 🌐 A browser (Chrome is recommended)
-- 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-api-improvements/releases)
+- 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-next/releases)
 
 **For Linux Users:**
 
@@ -58,7 +58,7 @@ Currently, only Windows binaries are available, but I'm actively working on Linu
 
 ### 🎮 Getting Started
 
-1. **Download**: Grab the latest release from [Releases](https://github.com/LyubomirT/intense-rp-api-improvements/releases) or clone the repo
+1. **Download**: Grab the latest release from [Releases](https://github.com/LyubomirT/intense-rp-next/releases) or clone the repo
 2. **Run**: Double-click `Intense RP API.exe` or run `python src/main.pyw`
 3. **Configure**: Hit the Settings button and fill in your DeepSeek credentials
 4. **Choose Browser**: Chrome is recommended for best Cloudflare bypass and network interception
@@ -134,7 +134,7 @@ Just open an issue or submit a PR. We value all of the contributors for their ti
 | Lead Developer | Original Creator | Contributor | Testing & QA |
 
 
-Find all of our contributors on [GitHub](https://github.com/LyubomirT/intense-rp-api-improvements/graphs/contributors)
+Find all of our contributors on [GitHub](https://github.com/LyubomirT/intense-rp-next/graphs/contributors)
 
 </div>
 

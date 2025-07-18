@@ -39,7 +39,7 @@ That's great too! You can help by spreading the word, sharing your experiences, 
 ## Getting Started with Development
 
 ### Setting Up
-1. Clone the repo: `git clone https://github.com/LyubomirT/intense-rp-api-improvements.git`
+1. Clone the repo: `git clone https://github.com/LyubomirT/intense-rp-next.git`
 2. Install Python 3.8+ from python.org
 3. Install dependencies: `pip install -r requirements.txt`
 4. Run the app: `python src/main.pyw`

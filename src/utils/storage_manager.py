@@ -175,7 +175,7 @@ class StorageManager:
     
     def get_latest_version(self) -> Optional[str]:
         try:
-            url = "https://raw.githubusercontent.com/LyubomirT/intense-rp-api-improvements/main/version.txt"
+            url = "https://raw.githubusercontent.com/LyubomirT/intense-rp-next/main/version.txt"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return response.text.strip()

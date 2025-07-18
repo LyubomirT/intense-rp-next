@@ -273,7 +273,7 @@ def create_update_window(last_version: str) -> None:
 
 def open_github(update_window: gui_builder.UpdateWindow) -> None:
     try:
-        webbrowser.open("https://github.com/LyubomirT/intense-rp-api-improvements")
+        webbrowser.open("https://github.com/LyubomirT/intense-rp-next")
         update_window.destroy()
         print("Github link opened.")
     except Exception as e:
