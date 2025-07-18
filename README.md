@@ -28,6 +28,9 @@ I've completely reimagined the original project with a focus on **reliability**,
 
 ### 🎯 New Additions
 
+- **Send Thoughts**: Now you can toggle whether you want to see DeepSeek's thoughts in the response or not.
+- **`name` parameter**: Now IntenseRP Next supports the `name` parameter in the request, which allows you to specify the character name for the response and override `DATA1` and `DATA2` variables.
+
 - **STMP Support**: Handles custom roles appropriately for SillyTavern MultiPlayer
 - **Message Formatting Templates**: Custom formatting support for how messages are sent to DeepSeek
 - **CDP Extension**: Automatically loads the Chrome extension for network interception
