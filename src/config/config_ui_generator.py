@@ -203,10 +203,7 @@ class ConfigUIGenerator:
         # Special handling for formatting template textareas
         if field.key in ["formatting.user_template", "formatting.char_template"]:
             # Set initial state based on current preset
-            preset = self.config_manager.get('formatting.preset', 'Classic')
-            
-            # Always store the actual config value as custom content
-            textbox._custom_content = display_value
+            preset = self.config_manager.get('formatting.preset', 'Classic (Name)')
             
             if preset != 'Custom':
                 # Show preset content instead of actual config value
@@ -219,11 +216,17 @@ class ConfigUIGenerator:
                     state="disabled",
                     text_color=("gray60", "gray40")
                 )
+            else:
+                # In Custom mode, load from hidden variables
+                hidden_key = 'custom_user_template' if field.key == "formatting.user_template" else 'custom_char_template'
+                custom_content = self.config_manager.get_hidden_var(hidden_key, "{name}: {content}")
+                textbox.delete("0.0", "end")
+                textbox.insert("0.0", custom_content)
     
     def _update_textarea_state(self, preset_value: str) -> None:
         """Update textarea state based on preset selection"""
         # Get current preset to know if we're switching FROM Custom
-        current_preset = self.config_manager.get('formatting.preset', 'Classic')
+        current_preset = self.config_manager.get('formatting.preset', 'Classic (Role)')
         
         # Find both formatting template textareas
         for section in get_config_schema():
@@ -235,25 +238,33 @@ class ConfigUIGenerator:
             char_textarea = frame.get_widget("formatting.char_template")
             
             if preset_value == "Custom":
-                # Enable textareas and restore custom content
-                for textarea in [user_textarea, char_textarea]:
-                    if textarea:
-                        textarea.configure(
-                            state="normal",
-                            text_color=("black", "white")  # Restore normal text color
-                        )
-                        # Restore custom content if it exists
-                        if hasattr(textarea, '_custom_content'):
-                            textarea.delete("0.0", "end")
-                            textarea.insert("0.0", textarea._custom_content)
+                # Enable textareas and restore custom content from hidden variables
+                if user_textarea:
+                    user_textarea.configure(
+                        state="normal",
+                        text_color=("black", "white")  # Restore normal text color
+                    )
+                    custom_content = self.config_manager.get_hidden_var('custom_user_template', "{name}: {content}")
+                    user_textarea.delete("0.0", "end")
+                    user_textarea.insert("0.0", custom_content)
+                    
+                if char_textarea:
+                    char_textarea.configure(
+                        state="normal",
+                        text_color=("black", "white")  # Restore normal text color
+                    )
+                    custom_content = self.config_manager.get_hidden_var('custom_char_template', "{name}: {content}")
+                    char_textarea.delete("0.0", "end")
+                    char_textarea.insert("0.0", custom_content)
             else:
                 # Show preset content
                 preset_templates = self._get_preset_templates(preset_value)
                 
                 if user_textarea:
-                    # Only save content if we're switching FROM Custom (real content)
+                    # Save current content to hidden variables if switching FROM Custom
                     if current_preset == "Custom":
-                        user_textarea._custom_content = user_textarea.get("0.0", "end").rstrip('\n')
+                        current_content = user_textarea.get("0.0", "end").rstrip('\n')
+                        self.config_manager.set_hidden_var('custom_user_template', current_content)
                     # Enable first, then modify content, then disable
                     user_textarea.configure(state="normal")
                     user_textarea.delete("0.0", "end")
@@ -265,9 +276,10 @@ class ConfigUIGenerator:
                     )
                 
                 if char_textarea:
-                    # Only save content if we're switching FROM Custom (real content)
+                    # Save current content to hidden variables if switching FROM Custom
                     if current_preset == "Custom":
-                        char_textarea._custom_content = char_textarea.get("0.0", "end").rstrip('\n')
+                        current_content = char_textarea.get("0.0", "end").rstrip('\n')
+                        self.config_manager.set_hidden_var('custom_char_template', current_content)
                     # Enable first, then modify content, then disable
                     char_textarea.configure(state="normal")
                     char_textarea.delete("0.0", "end")
@@ -363,10 +375,14 @@ class ConfigUIGenerator:
                         widget = frame.get_widget(field.key)
                         widget_value = frame.get_widget_value(field.key)
                         
-                        # Special handling for formatting textareas - save custom content
+                        # Special handling for formatting textareas - save to hidden variables if in Custom mode
                         if field.key in ["formatting.user_template", "formatting.char_template"] and widget:
-                            if hasattr(widget, '_custom_content'):
-                                widget_value = widget._custom_content
+                            preset = self.config_manager.get('formatting.preset', 'Classic (Name)')
+                            if preset == "Custom":
+                                # Save current textarea content to hidden variables
+                                current_content = widget.get("0.0", "end").rstrip('\n')
+                                hidden_key = 'custom_user_template' if field.key == "formatting.user_template" else 'custom_char_template'
+                                self.config_manager.set_hidden_var(hidden_key, current_content)
                         
                         if widget_value is not None:
                             processed_value = self._convert_ui_value(field, widget_value)
@@ -374,13 +390,7 @@ class ConfigUIGenerator:
             
             # Save without additional validation (already validated)
             try:
-                self.config_manager.storage_manager.save_config(
-                    path_root="executable",
-                    sub_path="save", 
-                    new=self.config_manager._config,
-                    original=self.config_manager._original_config
-                )
-                print("Configuration saved successfully.")
+                self.config_manager.save()
                 
                 # Apply console settings immediately after saving
                 self._apply_console_settings_after_save()

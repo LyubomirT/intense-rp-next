@@ -163,22 +163,22 @@ def get_config_schema() -> List[ConfigSection]:
                     key="formatting.preset",
                     label="Formatting Preset:",
                     field_type=ConfigFieldType.DROPDOWN,
-                    default="Classic",
-                    options=["Classic", "Wrapped", "Divided", "Custom"],
-                    help_text="Choose how messages are formatted for DeepSeek"
+                    default="Classic (Name)",
+                    options=["Classic (Role)", "Classic (Name)", "Wrapped (Role)", "Wrapped (Name)", "Divided (Role)", "Divided (Name)", "Custom"],
+                    help_text="Choose how messages are formatted for DeepSeek. (Role) uses user/assistant labels, (Name) uses character names."
                 ),
                 ConfigField(
                     key="formatting.user_template",
                     label="User Message Format:",
                     field_type=ConfigFieldType.TEXTAREA,
-                    default="{name}: {content}",
+                    default="{role}: {content}",
                     help_text="Template for user messages. Use {role} for 'user', {name} for character name, {content} for message content."
                 ),
                 ConfigField(
                     key="formatting.char_template", 
                     label="Character Message Format:",
                     field_type=ConfigFieldType.TEXTAREA,
-                    default="{name}: {content}",
+                    default="{role}: {content}",
                     help_text="Template for character messages. Use {role} for 'assistant', {name} for character name, {content} for message content."
                 ),
             ]

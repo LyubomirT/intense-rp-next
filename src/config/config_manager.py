@@ -23,7 +23,9 @@ class ConfigManager:
         self.validator = ConfigValidator()
         self._config = {}
         self._original_config = get_default_config()
+        self._hidden_vars = {}  # Hidden variables stored in separate files
         self._load_config()
+        self._load_hidden_vars()
     
     def _load_config(self) -> None:
         """Load configuration from storage with defaults"""
@@ -51,7 +53,37 @@ class ConfigManager:
             
             return result
         
-        return merge_recursive(self._original_config, saved_config)
+        merged_config = merge_recursive(self._original_config, saved_config)
+        
+        # Handle backward compatibility for formatting presets
+        merged_config = self._migrate_formatting_presets(merged_config)
+        
+        return merged_config
+    
+    def _migrate_formatting_presets(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Migrate old formatting preset values to new (Name)/(Role) format"""
+        try:
+            formatting = config.get('formatting', {})
+            preset = formatting.get('preset', '')
+            
+            # Map old preset names to new format
+            preset_migration = {
+                'Classic': 'Classic (Name)',     # Default to Name for better UX
+                'Wrapped': 'Wrapped (Name)',     # Default to Name for better UX  
+                'Divided': 'Divided (Name)',     # Default to Name for better UX
+                'Custom': 'Custom'               # Custom stays the same
+            }
+            
+            if preset in preset_migration:
+                old_preset = preset
+                new_preset = preset_migration[preset]
+                config['formatting']['preset'] = new_preset
+                print(f"Migrated formatting preset from '{old_preset}' to '{new_preset}'")
+            
+        except Exception as e:
+            print(f"Error migrating formatting presets: {e}")
+        
+        return config
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation (e.g., 'models.deepseek.email')"""
@@ -128,9 +160,109 @@ class ConfigManager:
                 new=self._config,
                 original=self._original_config
             )
+            self._save_hidden_vars()
             print("Configuration saved successfully.")
         except Exception as e:
             raise Exception(f"Failed to save configuration: {e}") from e
+    
+    def _load_hidden_vars(self) -> None:
+        """Load hidden variables from encrypted files"""
+        try:
+            import os
+            from cryptography.fernet import Fernet
+            
+            save_path = self.storage_manager.get_path("executable", "save")
+            if not save_path or not os.path.exists(save_path):
+                # Set defaults
+                self._hidden_vars['custom_user_template'] = "{name}: {content}"
+                self._hidden_vars['custom_char_template'] = "{name}: {content}"
+                return
+            
+            # Load encryption key (same as main config)
+            key = self.storage_manager._load_key("executable", "save")
+            if not key:
+                # Set defaults if no key exists
+                self._hidden_vars['custom_user_template'] = "{name}: {content}"
+                self._hidden_vars['custom_char_template'] = "{name}: {content}"
+                return
+            
+            fernet = Fernet(key)
+            
+            # Load encrypted custom template files
+            user_template_file = os.path.join(save_path, "custom_user_template.enc")
+            char_template_file = os.path.join(save_path, "custom_char_template.enc")
+            
+            if os.path.exists(user_template_file):
+                with open(user_template_file, 'rb') as f:
+                    encrypted_data = f.read()
+                    decrypted_data = fernet.decrypt(encrypted_data)
+                    self._hidden_vars['custom_user_template'] = decrypted_data.decode('utf-8')
+            else:
+                self._hidden_vars['custom_user_template'] = "{name}: {content}"
+                
+            if os.path.exists(char_template_file):
+                with open(char_template_file, 'rb') as f:
+                    encrypted_data = f.read()
+                    decrypted_data = fernet.decrypt(encrypted_data)
+                    self._hidden_vars['custom_char_template'] = decrypted_data.decode('utf-8')
+            else:
+                self._hidden_vars['custom_char_template'] = "{name}: {content}"
+                
+        except Exception as e:
+            print(f"Error loading hidden variables: {e}")
+            # Set defaults
+            self._hidden_vars['custom_user_template'] = "{name}: {content}"
+            self._hidden_vars['custom_char_template'] = "{name}: {content}"
+    
+    def _save_hidden_vars(self) -> None:
+        """Save hidden variables to encrypted files"""
+        try:
+            import os
+            from cryptography.fernet import Fernet
+            
+            save_path = self.storage_manager.get_path("executable", "save")
+            if not save_path:
+                return
+            
+            os.makedirs(save_path, exist_ok=True)
+            
+            # Ensure encryption key exists (same as main config)
+            key = self.storage_manager._load_key("executable", "save")
+            if not key:
+                self.storage_manager._generate_key("executable", "save")
+                key = self.storage_manager._load_key("executable", "save")
+                if not key:
+                    raise ValueError("Could not load or create encryption key")
+            
+            fernet = Fernet(key)
+            
+            # Save encrypted custom template files
+            user_template_file = os.path.join(save_path, "custom_user_template.enc")
+            char_template_file = os.path.join(save_path, "custom_char_template.enc")
+            
+            user_template = self._hidden_vars.get('custom_user_template', "{name}: {content}")
+            char_template = self._hidden_vars.get('custom_char_template', "{name}: {content}")
+            
+            # Encrypt and save user template
+            encrypted_user = fernet.encrypt(user_template.encode('utf-8'))
+            with open(user_template_file, 'wb') as f:
+                f.write(encrypted_user)
+                
+            # Encrypt and save char template
+            encrypted_char = fernet.encrypt(char_template.encode('utf-8'))
+            with open(char_template_file, 'wb') as f:
+                f.write(encrypted_char)
+                
+        except Exception as e:
+            print(f"Error saving hidden variables: {e}")
+    
+    def get_hidden_var(self, key: str, default: str = "") -> str:
+        """Get a hidden variable value"""
+        return self._hidden_vars.get(key, default)
+    
+    def set_hidden_var(self, key: str, value: str) -> None:
+        """Set a hidden variable value"""
+        self._hidden_vars[key] = value
     
     def reset_to_defaults(self) -> None:
         """Reset configuration to defaults"""

@@ -148,20 +148,35 @@ class MessageFormatter:
     
     # Predefined formatting templates
     PRESETS = {
-        "Classic": {
+        "Classic (Role)": {
             "pattern": "{role}: {content}",
             "separator": "\n\n",
             "description": "Traditional role-based formatting (user/assistant/system)"
         },
-        "Wrapped": {
+        "Classic (Name)": {
+            "pattern": "{name}: {content}",
+            "separator": "\n\n",
+            "description": "Traditional name-based formatting (character names)"
+        },
+        "Wrapped (Role)": {
             "pattern": "<{role}>\n{content}\n</{role}>",
             "separator": "\n\n",
             "description": "XML-style wrapped formatting with roles"
         },
-        "Divided": {
+        "Wrapped (Name)": {
+            "pattern": "<{name}>\n{content}\n</{name}>",
+            "separator": "\n\n",
+            "description": "XML-style wrapped formatting with names"
+        },
+        "Divided (Role)": {
             "pattern": "----------- {role} -----------\n{content}",
             "separator": "\n----------- ----------- -----------\n",
-            "description": "Divided formatting with visual separators"
+            "description": "Divided formatting with visual separators and roles"
+        },
+        "Divided (Name)": {
+            "pattern": "----------- {name} -----------\n{content}",
+            "separator": "\n----------- ----------- -----------\n",
+            "description": "Divided formatting with visual separators and names"
         }
     }
     
@@ -190,7 +205,7 @@ class MessageFormatter:
         """Format messages based on current configuration"""
         
         # Get formatting configuration
-        preset = self._get_config_value('formatting.preset', 'Classic')
+        preset = self._get_config_value('formatting.preset', 'Classic (Name)')
         
         if preset == 'Custom':
             return self._format_custom(request, character_info)
@@ -237,9 +252,9 @@ class MessageFormatter:
     def _format_custom(self, request: ChatRequest, character_info: CharacterInfo) -> str:
         """Format using custom templates"""
         
-        # Get custom templates
-        user_template = self._get_config_value('formatting.user_template', '{name}: {content}')
-        char_template = self._get_config_value('formatting.char_template', '{name}: {content}')
+        # Get custom templates from hidden variables
+        user_template = self.config_manager.get_hidden_var('custom_user_template', '{name}: {content}')
+        char_template = self.config_manager.get_hidden_var('custom_char_template', '{name}: {content}')
         
         formatted_messages = []
         
