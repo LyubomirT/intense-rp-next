@@ -35,30 +35,47 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         # Note: App mode disabled to ensure extension compatibility
         chromium_arg = None
         
-        # Set up persistent data directory for Chromium browsers if enabled
-        user_data_dir = None
-        if persistent_cookies and browser in ("chrome", "edge"):
-            user_data_dir = _get_browser_data_dir(browser)
-            print(f"[color:cyan]Using persistent browser data directory: {user_data_dir}")
-        elif clean_profile and browser == "chrome":
-            # Use a clean profile for extension management
-            user_data_dir = _create_clean_extension_profile()
-            print(f"[color:cyan]Using clean extension profile: {user_data_dir}")
-
         # Set up extension loading for Chrome when network interception is enabled
         extension_dir = None
         clean_profile = False
         if intercept_network and browser == "chrome":
-            extension_dir = _get_extension_dir()
-            if extension_dir and _validate_extension_structure(extension_dir):
-                print(f"[color:cyan]Network interception enabled - loading extension from: {extension_dir}")
-                # Clean up old extension profiles
-                _cleanup_old_extension_profiles()
-                # Use a clean profile for better extension management
-                clean_profile = True
+            source_extension_dir = _get_extension_dir()
+            if source_extension_dir and _validate_extension_structure(source_extension_dir):
+                print(f"[color:cyan]Network interception enabled - preparing fresh extension copy...")
+                # Create a fresh copy of the extension to avoid Chrome caching issues
+                extension_dir = _create_fresh_extension_copy(source_extension_dir)
+                if extension_dir:
+                    print(f"[color:cyan]Extension copied to: {extension_dir}")
+                    # Clean up old extension copies and profiles
+                    _cleanup_old_extension_copies()
+                    _cleanup_old_extension_profiles()
+                    # Use a clean profile for better extension management
+                    clean_profile = True
+                else:
+                    print(f"[color:red]Failed to create fresh extension copy")
+                    intercept_network = False
             else:
-                print(f"[color:yellow]Network interception requested but extension not found or invalid at: {extension_dir}")
+                print(f"[color:yellow]Network interception requested but extension not found or invalid at: {source_extension_dir}")
                 intercept_network = False
+        
+        # Set up data directory for Chromium browsers
+        user_data_dir = None
+        if persistent_cookies and browser in ("chrome", "edge"):
+            user_data_dir = _get_browser_data_dir(browser)
+            print(f"[color:cyan]Using persistent browser data directory: {user_data_dir}")
+            
+            # If network interception is enabled, clean any old extension installations first
+            if intercept_network and browser == "chrome":
+                _remove_existing_extension_from_profile(user_data_dir)
+                
+        elif clean_profile and browser == "chrome":
+            # Use a clean profile for extension management (when network interception enabled but persistent cookies disabled)
+            user_data_dir = _create_clean_extension_profile()
+            print(f"[color:cyan]Using clean extension profile: {user_data_dir}")
+        else:
+            # Default behavior - no special profile needed
+            if intercept_network and browser == "chrome":
+                print(f"[color:yellow]Network interception enabled but no profile specified - using default profile")
 
         # Initialize driver with proper user data directory and extension
         driver_options = {
@@ -117,6 +134,57 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         print(f"[color:red]Error initializing Selenium driver: {e}")
         print(f"[color:red]Full traceback: {traceback.format_exc()}")
         return None
+
+def _remove_existing_extension_from_profile(user_data_dir: str) -> None:
+    """Remove any existing IntenseRP extension installations from the Chrome profile"""
+    try:
+        # Chrome stores extensions in Default/Extensions/
+        extensions_dir = os.path.join(user_data_dir, "Default", "Extensions")
+        
+        if not os.path.exists(extensions_dir):
+            print(f"[color:cyan]No existing extensions directory found")
+            return
+            
+        print(f"[color:cyan]Checking for existing IntenseRP extensions in profile...")
+        
+        removed_count = 0
+        for extension_id in os.listdir(extensions_dir):
+            extension_path = os.path.join(extensions_dir, extension_id)
+            
+            if not os.path.isdir(extension_path):
+                continue
+                
+            # Check each version directory for our extension
+            try:
+                for version_dir in os.listdir(extension_path):
+                    version_path = os.path.join(extension_path, version_dir)
+                    manifest_path = os.path.join(version_path, "manifest.json")
+                    
+                    if os.path.exists(manifest_path):
+                        try:
+                            with open(manifest_path, "r") as f:
+                                manifest = json.load(f)
+                                # Check if this is our extension
+                                if manifest.get("name") == "IntenseRP CDP Network Interceptor":
+                                    print(f"[color:cyan]Found existing IntenseRP extension (ID: {extension_id}), removing...")
+                                    shutil.rmtree(extension_path)
+                                    removed_count += 1
+                                    break  # Extension directory removed, no need to check other versions
+                        except (json.JSONDecodeError, IOError) as e:
+                            # Skip malformed manifest files
+                            continue
+                            
+            except (OSError, PermissionError) as e:
+                # Skip directories we can't access
+                continue
+                
+        if removed_count > 0:
+            print(f"[color:green]Removed {removed_count} existing IntenseRP extension(s) from profile")
+        else:
+            print(f"[color:cyan]No existing IntenseRP extensions found in profile")
+            
+    except Exception as e:
+        print(f"[color:yellow]Error checking/removing existing extensions: {e}")
 
 def _get_browser_data_dir(browser: str) -> str:
     """Get or create a persistent data directory for the specified browser"""
@@ -231,6 +299,75 @@ def _validate_extension_structure(extension_dir: str) -> bool:
     except Exception as e:
         print(f"[color:red]Error validating extension structure: {e}")
         return False
+
+def _create_fresh_extension_copy(source_extension_dir: str) -> str:
+    """Create a fresh copy of the extension to avoid Chrome caching issues"""
+    try:
+        # Create a unique temporary directory for this extension copy
+        base_temp_dir = tempfile.gettempdir()
+        app_temp_dir = os.path.join(base_temp_dir, "IntenseRP_Extension_Copies")
+        os.makedirs(app_temp_dir, exist_ok=True)
+        
+        # Create unique directory name with timestamp
+        timestamp = int(time.time() * 1000)  # Use milliseconds for uniqueness
+        copy_name = f"intenserp_ext_{timestamp}"
+        copy_path = os.path.join(app_temp_dir, copy_name)
+        
+        # Copy the entire extension directory
+        print(f"[color:cyan]Copying extension from {source_extension_dir} to {copy_path}")
+        shutil.copytree(source_extension_dir, copy_path)
+        
+        # Verify the copy was successful
+        if _validate_extension_structure(copy_path):
+            print(f"[color:green]Extension copy created and validated successfully")
+            return copy_path
+        else:
+            print(f"[color:red]Extension copy validation failed")
+            # Clean up the failed copy
+            if os.path.exists(copy_path):
+                shutil.rmtree(copy_path)
+            return None
+            
+    except Exception as e:
+        print(f"[color:red]Error creating fresh extension copy: {e}")
+        return None
+
+def _cleanup_old_extension_copies() -> None:
+    """Clean up old extension copies to prevent disk space accumulation"""
+    try:
+        base_temp_dir = tempfile.gettempdir()
+        app_temp_dir = os.path.join(base_temp_dir, "IntenseRP_Extension_Copies")
+        
+        if not os.path.exists(app_temp_dir):
+            return
+            
+        current_time = time.time() * 1000  # Convert to milliseconds
+        max_age = 2 * 60 * 60 * 1000  # 2 hours in milliseconds
+        cleanup_count = 0
+        
+        for item in os.listdir(app_temp_dir):
+            item_path = os.path.join(app_temp_dir, item)
+            if os.path.isdir(item_path) and item.startswith("intenserp_ext_"):
+                try:
+                    # Extract timestamp from directory name
+                    timestamp_str = item.split("intenserp_ext_")[1]
+                    timestamp = int(timestamp_str)
+                    
+                    # Remove if older than max_age
+                    if current_time - timestamp > max_age:
+                        shutil.rmtree(item_path)
+                        cleanup_count += 1
+                        
+                except (ValueError, IndexError):
+                    # If we can't parse the timestamp, it's probably old/malformed, remove it
+                    shutil.rmtree(item_path)
+                    cleanup_count += 1
+                    
+        if cleanup_count > 0:
+            print(f"[color:cyan]Cleaned up {cleanup_count} old extension copies")
+            
+    except Exception as e:
+        print(f"[color:yellow]Error cleaning up old extension copies: {e}")
 
 def _get_extension_dir() -> str:
     """Get the path to the Chrome extension directory"""
