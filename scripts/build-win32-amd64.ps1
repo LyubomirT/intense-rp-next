@@ -260,7 +260,7 @@ try {
             
             # Rename the main folder
             $oldFolderPath = "dist\main"
-            $newFolderName = "intenserp-next-win64"
+            $newFolderName = "intenserp-next-win32-amd64"
             $newFolderPath = "dist\$newFolderName"
             
             Write-ColorOutput "Renaming distribution folder to '$newFolderName'..." "Yellow"
