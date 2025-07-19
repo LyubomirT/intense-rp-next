@@ -1,4 +1,5 @@
-# 🎭 IntenseRP Next
+<img src="/images/IntenseRP Next release Strip.png" alt="IntenseRP Next release Strip">
+<h3 align="center">Welcome to IntenseRP Next</h3>
 
 **IntenseRP Next** is a completely reimagined and reworked successor to the original IntenseRP API by Omega-Slender. This new version brings lots of improvements, fixes, and features that make connecting DeepSeek AI to SillyTavern easy and reliable.
 
