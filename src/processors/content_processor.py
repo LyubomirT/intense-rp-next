@@ -184,28 +184,113 @@ class ContentProcessor:
             div.unwrap()
     
     def _convert_lists(self, soup: BeautifulSoup) -> None:
-        """Convert HTML lists to Markdown"""
-        # Unordered lists
-        for ul in soup.find_all('ul'):
-            list_items = ul.find_all('li')
-            markdown_list = []
-            for li in list_items:
-                item_text = li.get_text().strip()
-                markdown_list.append(f"- {item_text}")
-            ul.replace_with('\n' + '\n'.join(markdown_list) + '\n')
+        """Convert HTML lists to Markdown with proper nesting support"""
+        # Find all top-level lists (not nested inside other lists)
+        top_level_lists = []
+        for list_elem in soup.find_all(['ul', 'ol']):
+            # Check if this list is nested inside another list
+            is_nested = False
+            parent = list_elem.parent
+            while parent:
+                if parent.name in ['ul', 'ol']:
+                    is_nested = True
+                    break
+                parent = parent.parent
+            
+            if not is_nested:
+                top_level_lists.append(list_elem)
         
-        # Ordered lists
-        for ol in soup.find_all('ol'):
-            list_items = ol.find_all('li')
-            markdown_list = []
-            for i, li in enumerate(list_items, 1):
-                item_text = li.get_text().strip()
-                markdown_list.append(f"{i}. {item_text}")
-            ol.replace_with('\n' + '\n'.join(markdown_list) + '\n')
+        # Process each top-level list recursively
+        for list_elem in top_level_lists:
+            self._convert_list_recursive(list_elem, 0)
         
-        # Remaining list items
+        # Clean up any remaining orphaned list items
         for li in soup.find_all('li'):
-            li.replace_with(f"- {li.get_text()}")
+            li.replace_with(f"- {li.get_text().strip()}")
+    
+    def _convert_list_recursive(self, list_element, indent_level):
+        """Recursively convert a list and all its nested lists"""
+        indent = "  " * indent_level  # 2 spaces per level
+        markdown_lines = []
+        
+        # Get only direct children <li> elements
+        list_items = []
+        for child in list_element.children:
+            if hasattr(child, 'name') and child.name == 'li':
+                list_items.append(child)
+        
+        for i, li in enumerate(list_items):
+            # Extract text from direct children only (no nested lists)
+            li_text = self._extract_li_text_only(li)
+            
+            # Create the list item
+            if list_element.name == 'ol':
+                marker = f"{i + 1}."
+            else:
+                marker = "-"
+            
+            if li_text:
+                markdown_lines.append(f"{indent}{marker} {li_text}")
+            
+            # Process any nested lists within this <li>
+            nested_lists = []
+            for child in li.children:
+                if hasattr(child, 'name') and child.name in ['ul', 'ol']:
+                    nested_lists.append(child)
+            
+            for nested_list in nested_lists:
+                nested_markdown = self._convert_list_recursive(nested_list, indent_level + 1)
+                if nested_markdown:
+                    # Add nested content directly to markdown_lines
+                    nested_lines = nested_markdown.split('\n')
+                    for line in nested_lines:
+                        if line.strip():
+                            markdown_lines.append(line)
+        
+        # Convert list to markdown and return the result
+        result = '\n'.join(markdown_lines)
+        
+        # Replace the original list element only if we're at the top level
+        if indent_level == 0:
+            if result:
+                list_element.replace_with('\n' + result + '\n')
+            else:
+                list_element.extract()
+        
+        return result
+    
+    def _extract_li_text_only(self, li_element):
+        """Extract text from li element, excluding any nested lists"""
+        text_parts = []
+        
+        for child in li_element.children:
+            if hasattr(child, 'name'):
+                if child.name in ['ul', 'ol']:
+                    # Skip nested lists completely
+                    continue
+                elif child.name == 'p':
+                    # Get text from paragraph
+                    p_text = child.get_text().strip()
+                    if p_text:
+                        text_parts.append(p_text)
+                elif child.name in ['span', 'em', 'strong', 'b', 'i', 'code']:
+                    # Get text from inline elements
+                    inline_text = child.get_text().strip()
+                    if inline_text:
+                        text_parts.append(inline_text)
+                else:
+                    # Other elements - try to get text but exclude lists
+                    if child.name not in ['ul', 'ol']:
+                        other_text = child.get_text().strip()
+                        if other_text:
+                            text_parts.append(other_text)
+            else:
+                # Text node
+                text = str(child).strip()
+                if text:
+                    text_parts.append(text)
+        
+        return ' '.join(text_parts).strip()
     
     def _convert_formatting(self, soup: BeautifulSoup) -> None:
         """Convert formatting tags to Markdown"""
