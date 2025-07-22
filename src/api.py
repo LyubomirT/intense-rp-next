@@ -174,34 +174,36 @@ def deepseek_response(
             return safe_interrupt_response()
 
         state.show_message("[color:white]- [color:cyan]Awaiting response.")
-        initial_text = ""
-        last_text = ""
+        last_sent_position = 0
+        last_content_hash = None
+        stable_content = None
 
         if streaming:
             def streaming_response() -> Generator[str, None, None]:
-                nonlocal initial_text, last_text
+                nonlocal last_sent_position, last_content_hash, stable_content
                 try:
                     while deepseek.is_response_generating(state.driver):
                         if interrupted():
                             break
 
-                        new_text = deepseek.get_last_message(state.driver, pipeline)
-                        if new_text and not initial_text:
-                            initial_text = new_text
+                        current_text = deepseek.get_last_message(state.driver, pipeline)
+                        if not current_text:
+                            time.sleep(0.2)
+                            continue
                         
-                        if new_text and new_text != last_text and new_text.startswith(initial_text):
-                            # Improved differencing logic to handle content changes robustly
-                            if len(new_text) > len(last_text) and new_text.startswith(last_text):
-                                # Normal case: new content is an extension of previous content
-                                diff = new_text[len(last_text):]
-                                last_text = new_text
-                                yield create_response_streaming(diff, pipeline)
-                            elif new_text != last_text:
-                                # Edge case: content changed unexpectedly (e.g., HTML processing race condition)
-                                # Send the complete new content and update last_text
-                                diff = new_text
-                                last_text = new_text
-                                yield create_response_streaming(diff, pipeline)
+                        # Generate hash to detect content changes vs processing artifacts
+                        current_hash = deepseek._get_content_hash(current_text)
+                        
+                        # Handle content hash changes (real content updates)
+                        if current_hash != last_content_hash:
+                            last_content_hash = current_hash
+                            stable_content = current_text
+                            
+                            # Send incremental content based on position
+                            if len(current_text) > last_sent_position:
+                                new_content = current_text[last_sent_position:]
+                                last_sent_position = len(current_text)
+                                yield create_response_streaming(new_content, pipeline)
                         
                         time.sleep(0.2)
 
@@ -212,16 +214,11 @@ def deepseek_response(
                     final_text = deepseek.wait_for_response_completion(state.driver, pipeline)
                     
                     if final_text:
-                        # Send any remaining content
-                        if final_text != last_text:
-                            # Check for changes one last time before sending
-                            if len(final_text) > len(last_text) and final_text.startswith(last_text):
-                                final_diff = final_text[len(last_text):]
-                            else:
-                                final_diff = final_text
-                            
-                            if final_diff:
-                                yield create_response_streaming(final_diff, pipeline)
+                        # Send any remaining content based on position
+                        if len(final_text) > last_sent_position:
+                            final_content = final_text[last_sent_position:]
+                            if final_content:
+                                yield create_response_streaming(final_content, pipeline)
                     
                     # Send closing symbol if needed
                     closing = pipeline.get_closing_symbol(final_text) if final_text else ""

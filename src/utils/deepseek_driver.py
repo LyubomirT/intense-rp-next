@@ -2,8 +2,32 @@ from selenium.webdriver.common.keys import Keys
 from seleniumbase import Driver
 from typing import Optional
 import time
+import hashlib
 
 manager = None
+
+# Content caching system to avoid reprocessing identical HTML
+_content_cache = {}
+_cache_max_size = 100  # Limit cache size to prevent memory issues
+
+def _get_content_hash(html_content: str) -> str:
+    """Generate a hash for HTML content to enable caching and change detection"""
+    if not html_content:
+        return ""
+    return hashlib.md5(html_content.encode('utf-8')).hexdigest()
+
+def _cleanup_cache():
+    """Clean up cache if it gets too large"""
+    if len(_content_cache) > _cache_max_size:
+        # Remove oldest entries (simple FIFO)
+        keys_to_remove = list(_content_cache.keys())[:-_cache_max_size//2]
+        for key in keys_to_remove:
+            _content_cache.pop(key, None)
+
+def _clear_content_cache():
+    """Clear the entire content cache - used when starting new chat"""
+    global _content_cache
+    _content_cache.clear()
 
 # =============================================================================================================================
 # Login
@@ -38,6 +62,8 @@ def new_chat(driver: Driver) -> None:
     try:
         boton = driver.find_element("xpath", "//div[contains(@class, '_217e214')]")
         driver.execute_script("arguments[0].click();", boton)
+        # Clear content cache when starting new chat
+        _clear_content_cache()
     except Exception:
         pass
 
@@ -185,7 +211,7 @@ def send_chat_message(driver: Driver, text: str, text_file: bool, prefix_content
 # =============================================================================================================================
 
 def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
-    """Get the last message from the chat, optionally using pipeline for processing"""
+    """Get the last message from the chat, optionally using pipeline for processing with caching"""
     try:
         time.sleep(0.2)
         
@@ -194,12 +220,26 @@ def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
         if messages:
             last_message_html = messages[-1].get_attribute("innerHTML")
             
-            # Use pipeline content processor if available, otherwise return raw HTML
+            # Generate hash for caching
+            content_hash = _get_content_hash(last_message_html)
+            
+            # Check cache first
+            cache_key = f"{content_hash}_{bool(pipeline)}"
+            if cache_key in _content_cache:
+                return _content_cache[cache_key]
+            
+            # Process content
             if pipeline and hasattr(pipeline, 'process_response_content'):
-                return pipeline.process_response_content(last_message_html)
+                processed_content = pipeline.process_response_content(last_message_html)
             else:
                 # Fallback to basic processing if no pipeline
-                return _basic_html_cleanup(last_message_html)
+                processed_content = _basic_html_cleanup(last_message_html)
+            
+            # Cache the result
+            _content_cache[cache_key] = processed_content
+            _cleanup_cache()
+            
+            return processed_content
         
         return None
     
@@ -288,32 +328,45 @@ def active_generate_response(driver: Driver) -> bool:
 
 def wait_for_response_completion(driver: Driver, pipeline=None, max_wait_time: float = 5.0) -> str:
     """
-    Wait for response to be completely finished and content to stabilize.
-    This fixes the race condition where button state changes before content is fully rendered.
+    Wait for response to be completely finished and content to stabilize using hash-based detection.
+    This fixes the race condition where content appears unstable due to processing variations.
     """
     try:
         while is_response_generating(driver):
             time.sleep(0.1)
         
+        last_content_hash = None
         last_content = None
         stable_count = 0
         start_time = time.time()
         
         while time.time() - start_time < max_wait_time:
-            current_content = get_last_message(driver, pipeline)
-            
-            if current_content == last_content:
-                stable_count += 1
-                # Content has been stable for multiple checks
-                if stable_count >= 3:
-                    return current_content or ""
-            else:
-                stable_count = 0
-                last_content = current_content
+            # Get raw HTML and hash it for comparison
+            try:
+                messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
+                if messages:
+                    current_html = messages[-1].get_attribute("innerHTML")
+                    current_hash = _get_content_hash(current_html)
+                    
+                    if current_hash == last_content_hash:
+                        stable_count += 1
+                        # Content hash has been stable for multiple checks
+                        if stable_count >= 2:  # Reduced from 3 since hash-based is more reliable
+                            if last_content is None:
+                                last_content = get_last_message(driver, pipeline)
+                            return last_content or ""
+                    else:
+                        stable_count = 0
+                        last_content_hash = current_hash
+                        last_content = None  # Reset processed content cache
+                    
+            except Exception:
+                pass  # Continue trying
             
             time.sleep(0.2)
         
-        return last_content or ""
+        # Final attempt to get content
+        return get_last_message(driver, pipeline) or ""
         
     except Exception as e:
         print(f"Error waiting for response completion: {e}")
