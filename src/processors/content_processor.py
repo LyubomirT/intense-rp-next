@@ -253,7 +253,7 @@ class ContentProcessor:
         # Replace the original list element only if we're at the top level
         if indent_level == 0:
             if result:
-                list_element.replace_with('\n' + result + '\n')
+                list_element.replace_with('\n' + result + '\n\n')
             else:
                 list_element.extract()
         
