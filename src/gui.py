@@ -311,6 +311,33 @@ def on_close_root() -> None:
     except Exception as e:
         print(f"Error closing root: {e}")
 
+def get_icon_path():
+    """Get appropriate icon path for current platform"""
+    icon_path = None
+    
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        exe_dir = os.path.dirname(sys.executable)
+        if sys.platform.startswith('win'):
+            icon_path = os.path.join(exe_dir, "newlogo.ico")
+        else:
+            icon_path = os.path.join(exe_dir, "newlogo.xbm")
+            # Fallback to .ico if .xbm doesn't exist
+            if not os.path.exists(icon_path):
+                icon_path = os.path.join(exe_dir, "newlogo.ico")
+    
+    # Fallback to storage manager
+    if not icon_path or not os.path.exists(icon_path):
+        if sys.platform.startswith('win'):
+            icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
+        else:
+            icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.xbm")
+            # Fallback to .ico if .xbm doesn't exist
+            if not icon_path:
+                icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
+    
+    return icon_path
+
 def create_gui() -> None:
     global __version__, root, storage_manager, config_manager, icon_path
     state = get_state_manager()
@@ -327,18 +354,8 @@ def create_gui() -> None:
         
         logging_manager_instance = logging_manager.LoggingManager(storage_manager)
         
-        # Try to find icon file - check executable directory first for PyInstaller bundles
-        icon_path = None
-        if getattr(sys, 'frozen', False):
-            # Running as PyInstaller bundle - look in executable directory
-            exe_dir = os.path.dirname(sys.executable)
-            icon_path = os.path.join(exe_dir, "newlogo.ico")
-            if not os.path.exists(icon_path):
-                icon_path = None
-        
-        # Fallback to storage manager
-        if not icon_path:
-            icon_path = storage_manager.get_existing_path(path_root="base", relative_path="newlogo.ico")
+        # Try to find icon file
+        icon_path = get_icon_path()
 
         # Set up state manager with config manager
         state.set_config_manager(config_manager)

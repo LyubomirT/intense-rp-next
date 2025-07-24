@@ -4,12 +4,85 @@ import re
 import json
 import webbrowser
 import os
+import sys
 from utils.font_loader import get_font_tuple
 from utils import storage_manager
 from PIL import Image, ImageDraw
 import requests
 from io import BytesIO
 import threading
+
+# ============================================================================================================================
+# Cross-Platform GUI Utilities
+# ============================================================================================================================
+
+def set_window_icon(window, icon_path: Optional[str]) -> None:
+    """
+    Set window icon in a cross-platform way.
+    Uses .ico files on Windows and PNG files with iconphoto() on Linux.
+    """
+    if not icon_path:
+        return
+        
+    try:
+        if sys.platform.startswith('win'):
+            # Windows - use .ico file with iconbitmap
+            if icon_path.endswith('.ico') and os.path.exists(icon_path):
+                window.iconbitmap(icon_path)
+                return
+            elif icon_path.endswith(('.xbm', '.png')):
+                # Convert path to .ico for Windows
+                ico_path = icon_path.replace('.xbm', '.ico').replace('.png', '.ico')
+                if os.path.exists(ico_path):
+                    window.iconbitmap(ico_path)
+                    return
+        else:
+            # Linux/Unix - prefer iconphoto with PNG for better compatibility
+            png_candidates = []
+            
+            if icon_path.endswith('.ico'):
+                png_candidates = [
+                    icon_path.replace('.ico', '.png'),
+                    icon_path.replace('.ico', '.xbm')
+                ]
+            elif icon_path.endswith('.xbm'):
+                png_candidates = [
+                    icon_path.replace('.xbm', '.png'),
+                    icon_path
+                ]
+            elif icon_path.endswith('.png'):
+                png_candidates = [icon_path]
+            
+            # Try PNG first (most reliable on Linux)
+            for candidate in png_candidates:
+                if candidate.endswith('.png') and os.path.exists(candidate):
+                    try:
+                        import tkinter as tk
+                        photo = tk.PhotoImage(file=candidate)
+                        window.iconphoto(False, photo)
+                        return
+                    except Exception as png_error:
+                        print(f"Failed to load PNG icon {candidate}: {png_error}")
+                        continue
+            
+            # Fallback to XBM with iconbitmap (less reliable but worth trying)
+            for candidate in png_candidates:
+                if candidate.endswith('.xbm') and os.path.exists(candidate):
+                    try:
+                        # Validate XBM file format first
+                        with open(candidate, 'r') as f:
+                            content = f.read()
+                            if '#define' in content and 'static' in content:
+                                window.iconbitmap(candidate)
+                                return
+                            else:
+                                print(f"Invalid XBM format in file: {candidate}")
+                    except Exception as xbm_error:
+                        print(f"Failed to load XBM icon {candidate}: {xbm_error}")
+                        continue
+                
+    except Exception as e:
+        print(f"Could not set window icon: {e}")
 
 # =============================================================================================================================
 # Simple Tooltip Implementation
@@ -173,10 +246,7 @@ def _create_parent_window(
         if min_width or min_height:
             parent.minsize(min_width or 0, min_height or 0)
         if icon:
-            try:
-                parent.after(200, lambda: parent.iconbitmap(icon))
-            except Exception:
-                pass
+            parent.after(200, lambda: set_window_icon(parent, icon))
     else:
         parent.withdraw()
 
@@ -287,11 +357,8 @@ class RootWindow(ctk.CTk):
             self.minsize(min_width or 0, min_height or 0)
         
         if icon:
-            try:
-                self.iconbitmap(icon)
-            except Exception:
-                pass
-    
+            set_window_icon(self, icon)
+
     def center(self) -> None:
         self.update_idletasks()
 
@@ -876,7 +943,7 @@ class ConsoleWindow(ctk.CTkToplevel):
             self.minsize(self._last_min_width, self._last_min_height)
 
             if self._last_icon:
-                self.after(200, lambda: self.iconbitmap(self._last_icon))
+                self.after(200, lambda: set_window_icon(self, self._last_icon))
 
             if center:
                 return _center_parent_window(self, root, self._last_width, self._last_height)
@@ -1029,11 +1096,7 @@ class ContributorWindow(ctk.CTkToplevel):
     
     def _set_custom_icon(self):
         """Set custom icon, overriding CustomTkinter's default icon"""
-        try:
-            if self.icon_path and os.path.exists(self.icon_path):
-                self.iconbitmap(self.icon_path)
-        except Exception as e:
-            print(f"Error setting custom icon: {e}")
+        set_window_icon(self, self.icon_path)  # Changed this line
     
     def _create_widgets(self):
         """Create and layout all widgets"""
