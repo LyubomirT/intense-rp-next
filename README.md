@@ -58,7 +58,7 @@ Currently, only Windows binaries are available, but I'm actively working on Linu
 - 📚 Dependencies auto-install from `requirements.txt`
 
 > [!WARNING]
-> If on Linux, you should also install `scikit-build` alongside `CMake` and `tcl-dev` `tk-dev` packages if you want to have `tkextrafont` support for custom fonts. If you don't want to use custom fonts, it will still work but will fall back to Arial. You can simply remove the `tkextrafont` dependency from `requirements.txt` if you don't want to use custom fonts at all.
+> If on Linux, you should also install `scikit-build` (via `pip`) alongside `CMake` and `tcl-dev` `tk-dev` (via your package manager) packages if you want to have `tkextrafont` support for custom fonts. If you don't want to use custom fonts, it will still work but will fall back to Arial. You can simply remove the `tkextrafont` dependency from `requirements.txt` if you don't want to use custom fonts at all.
 
 ### 🎮 Getting Started
 
