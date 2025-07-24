@@ -5,6 +5,7 @@ let isIntercepting = false;
 let activeTabId = null;
 let targetRequestId = null;
 let streamBuffer = [];
+let completionTriggered = false;
 const localApiUrl = 'http://127.0.0.1:5000';
 
 // Debug helper to send logs to IntenseRP console
@@ -32,7 +33,7 @@ function decodeBase64UTF8(base64Data) {
     // Decode UTF-8 bytes to proper string
     return new TextDecoder('utf-8').decode(bytes);
   } catch (error) {
-    // debugLog(`⚠️ UTF-8 decode error, falling back to atob: ${error.message}`);
+    debugLog(`⚠️ UTF-8 decode error, falling back to atob: ${error.message}`);
     // Fallback to regular atob if UTF-8 decoding fails
     return atob(base64Data);
   }
@@ -41,11 +42,11 @@ function decodeBase64UTF8(base64Data) {
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startInterception') {
-    // debugLog('🔵 Starting CDP network interception...');
+    debugLog('🔵 Starting CDP network interception...');
     startCDPInterception(sender.tab.id);
     sendResponse({ status: 'started' });
   } else if (message.action === 'stopInterception') {
-    // debugLog('🔴 Stopping CDP network interception...');
+    debugLog('🔴 Stopping CDP network interception...');
     stopCDPInterception();
     sendResponse({ status: 'stopped' });
   }
@@ -60,7 +61,7 @@ async function startCDPInterception(tabId) {
     
     // Attach debugger to the tab
     await new Promise((resolve, reject) => {
-      // debugLog(`Attempting CDP attach to tab: ${tabId}`);
+      debugLog(`Attempting CDP attach to tab: ${tabId}`);
       chrome.debugger.attach({ tabId: tabId }, '1.3', () => {
         if (chrome.runtime.lastError) {
           debugLog(`❌ CDP attach failed: ${chrome.runtime.lastError.message}`);
@@ -102,7 +103,7 @@ async function stopCDPInterception() {
     
     // Detach debugger
     chrome.debugger.detach({ tabId: activeTabId });
-    // console.log('✅ CDP debugger detached from tab:', activeTabId);
+    console.log('✅ CDP debugger detached from tab:', activeTabId);
     
     // Reset state
     isIntercepting = false;
@@ -112,6 +113,7 @@ async function stopCDPInterception() {
     lastProcessedData = '';
     chunkQueue = [];
     isProcessingChunks = false;
+    completionTriggered = false;
     
     console.log('🔴 CDP network interception stopped');
     
@@ -166,13 +168,14 @@ function onCDPEvent(source, method, params) {
 // Handle request will be sent
 function handleRequestWillBeSent(params) {
   const url = params.request.url;
-  
+
   // debugLog(`📤 Request: ${params.requestId} - ${url} (current target: ${targetRequestId})`);
-  
+
   // ONLY track the actual streaming endpoint, ignore all other DeepSeek API calls
   if (url.includes('/api/v0/chat/completion')) {
     debugLog(`🟡 REAL DeepSeek STREAMING request detected - SETTING TARGET: ${params.requestId}`);
     targetRequestId = params.requestId;
+    completionTriggered = false; // Reset completion flag for new request
     
     // Notify local API about request
     fetch(`${localApiUrl}/network/request`, {
@@ -187,7 +190,7 @@ function handleRequestWillBeSent(params) {
         timestamp: Date.now()
       })
     }).catch(err => {
-      // debugLog(`❌ Failed to send request notification: ${err}`);
+      debugLog(`❌ Failed to send request notification: ${err}`);
     });
   }
 }
@@ -222,7 +225,7 @@ async function handleResponseReceived(params) {
       });
       // debugLog('✅ Streaming content enabled for request: ' + params.requestId);
     } catch (error) {
-      // debugLog('❌ Failed to enable streaming content: ' + error.message);
+      debugLog('❌ Failed to enable streaming content: ' + error.message);
     }
     
     // Notify local API about response start
@@ -289,7 +292,7 @@ async function handleDataReceived(params) {
       }
       
     } catch (error) {
-      // debugLog(`⚠️ Could not get response body: ${error.message}`);
+      debugLog(`⚠️ Could not get response body: ${error.message}`);
     }
   }
 }
@@ -307,7 +310,7 @@ async function processChunkQueue() {
       // Process chunk sequentially
       await processSSEDataSlowly(chunk);
     } catch (error) {
-      // debugLog(`❌ Error processing chunk: ${error.message}`);
+      debugLog(`❌ Error processing chunk: ${error.message}`);
     }
   }
   
@@ -337,7 +340,7 @@ async function processSSEDataSlowly(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          // debugLog(`❌ Failed to forward stream data: ${err}`);
+          debugLog(`❌ Failed to forward stream data: ${err}`);
         });
         
         // Small delay between data items
@@ -357,23 +360,60 @@ async function processSSEDataSlowly(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          // debugLog(`❌ Failed to forward stream event: ${err}`);
+          debugLog(`❌ Failed to forward stream event: ${err}`);
         });
+        
+        // Detect completion based on actual SSE events from DeepSeek
+        if (eventType === 'finish') {
+          debugLog('🟢 SSE finish event detected - checking if completion already triggered');
+          if (!completionTriggered) {
+            completionTriggered = true;
+            debugLog('🟢 SSE completion handler winning - triggering completion after queue empties');
+            await waitForQueueAndTriggerCompletion();
+          } else {
+            debugLog('🟡 SSE completion handler - completion already triggered by network event, skipping');
+          }
+        }
       }
     }
   }
 }
 
 // Handle loading finished
-function handleLoadingFinished(params) {
-  // debugLog(`📥 Loading finished: ${params.requestId} (target: ${targetRequestId})`);
+async function handleLoadingFinished(params) {
+  debugLog(`📥 Loading finished: ${params.requestId} (target: ${targetRequestId})`);
   
   if (params.requestId !== targetRequestId) {
-    // debugLog(`⚠️ Ignoring loadingFinished for non-target request ${params.requestId}`);
+    debugLog(`⚠️ Ignoring loadingFinished for non-target request ${params.requestId}`);
     return;
   }
   
-  debugLog('🟢 Loading finished for DeepSeek API request - MARKING COMPLETE');
+  debugLog('🟢 Loading finished for DeepSeek API request - checking if completion already triggered');
+  
+  // Check if completion was already triggered by SSE event
+  if (completionTriggered) {
+    debugLog('🟡 Network completion handler - completion already triggered by SSE event, skipping');
+    return;
+  }
+  
+  completionTriggered = true;
+  debugLog('🟢 Network completion handler winning - WAITING FOR QUEUE TO EMPTY');
+  
+  // Wait for all chunks to be processed before marking complete
+  // This prevents race condition where completion signal arrives before all data is processed
+  const maxWaitTime = 10000; // 10 second maximum wait
+  const startTime = Date.now();
+  
+  while ((chunkQueue.length > 0 || isProcessingChunks) && (Date.now() - startTime < maxWaitTime)) {
+    // debugLog(`⏳ Waiting for chunk queue to empty... (queue: ${chunkQueue.length}, processing: ${isProcessingChunks})`);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  if (chunkQueue.length > 0 || isProcessingChunks) {
+    debugLog(`⚠️ Timeout waiting for chunks to process - proceeding anyway (queue: ${chunkQueue.length}, processing: ${isProcessingChunks})`);
+  } else {
+    debugLog('✅ All chunks processed - MARKING COMPLETE');
+  }
   
   // Notify local API about response end
   fetch(`${localApiUrl}/network/response-end`, {
@@ -386,7 +426,7 @@ function handleLoadingFinished(params) {
       timestamp: Date.now()
     })
   }).catch(err => {
-    // debugLog(`❌ Failed to send response end notification: ${err}`);
+    debugLog(`❌ Failed to send response end notification: ${err}`);
   });
   
   // Reset for next request
@@ -395,6 +435,40 @@ function handleLoadingFinished(params) {
   lastProcessedData = '';
   chunkQueue = [];
   isProcessingChunks = false;
+  completionTriggered = false;
+}
+
+// Wait for queue to empty and trigger completion (based on SSE events)
+async function waitForQueueAndTriggerCompletion() {
+  debugLog('🟢 Waiting for chunk queue to empty before triggering completion...');
+  
+  const maxWaitTime = 10000; // 10 second maximum wait
+  const startTime = Date.now();
+  
+  while ((chunkQueue.length > 0 || isProcessingChunks) && (Date.now() - startTime < maxWaitTime)) {
+    debugLog(`⏳ Waiting for chunk queue to empty before completion... (queue: ${chunkQueue.length}, processing: ${isProcessingChunks})`);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  if (chunkQueue.length > 0 || isProcessingChunks) {
+    debugLog(`⚠️ Timeout waiting for chunks before completion - proceeding anyway (queue: ${chunkQueue.length}, processing: ${isProcessingChunks})`);
+  } else {
+    debugLog('✅ All chunks processed before completion - MARKING COMPLETE');
+  }
+  
+  // Notify local API about response end
+  fetch(`${localApiUrl}/network/response-end`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      requestId: targetRequestId,
+      timestamp: Date.now()
+    })
+  }).catch(err => {
+    debugLog(`❌ Failed to send completion notification: ${err}`);
+  });
 }
 
 // Handle loading failed
@@ -424,6 +498,7 @@ function handleLoadingFailed(params) {
   lastProcessedData = '';
   chunkQueue = [];
   isProcessingChunks = false;
+  completionTriggered = false;
 }
 
 // Handle EventSource messages (the proper way!)
@@ -471,7 +546,7 @@ function parseAndForwardStreamData(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          // debugLog(`❌ Failed to forward stream data: ${err}`);
+          debugLog(`❌ Failed to forward stream data: ${err}`);
         });
         
       } else if (line.startsWith('event: ')) {
@@ -489,7 +564,7 @@ function parseAndForwardStreamData(data) {
             timestamp: Date.now()
           })
         }).catch(err => {
-          // debugLog(`❌ Failed to forward stream event: ${err}`);
+          debugLog(`❌ Failed to forward stream event: ${err}`);
         });
       }
     }
@@ -507,6 +582,7 @@ chrome.debugger.onDetach.addListener((source, reason) => {
     lastProcessedData = '';
     chunkQueue = [];
     isProcessingChunks = false;
+    completionTriggered = false;
   }
 });
 
