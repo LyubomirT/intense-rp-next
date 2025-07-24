@@ -54,8 +54,11 @@ I've completely reimagined the original project with a focus on **reliability**,
 Currently, only Windows binaries are available, but I'm actively working on Linux support. If you're interested in helping test the Linux version, please reach out!
 
 **For Source Code:**
-- 🐍 Python 3.8+ from [python.org](https://www.python.org/)
+- 🐍 Python 3.12+ from [python.org](https://www.python.org/)
 - 📚 Dependencies auto-install from `requirements.txt`
+
+> [!WARNING]
+> If on Linux, you should also install `scikit-build` alongside `CMake` and `tcl-dev` `tk-dev` packages if you want to have `tkextrafont` support for custom fonts. If you don't want to use custom fonts, it will still work but will fall back to Arial. You can simply remove the `tkextrafont` dependency from `requirements.txt` if you don't want to use custom fonts at all.
 
 ### 🎮 Getting Started
 
