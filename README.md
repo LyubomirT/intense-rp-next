@@ -112,6 +112,10 @@ Likely caused by Cloudflare's challenges. Most of the times this happens when yo
 
 Please note that the feature is still in beta and might not work perfectlly in all cases. Also, note that this has only been implemented and tested for Chrome. If you use Edge, it might not work as well, if at all. IntenseRP Next falls back to the old HTML to Markdown conversion if network interception fails, so you can still use it, but with less reliability.
 
+### Code Blocks Temporarily Pausing Streaming
+
+This is common and actually expected behavior for DOM Scraping (it works properly with CDP). The reason is that DeepSeek AI applies a lot of formatting and transformations to its code blocks, which makes true streaming produce garbled output when trying to convert it to Markdown. IntenseRP Next will automatically pause streaming when it detects a code block in the response and then send the rest of the response after it's completed. CDP doesn't have this issue because it deals with Markdown directly, without any formatting or messy DOM manipulation.
+
 ## 🤝 Contributing
 
 We'd love your help making IntenseRP Next even better! If you have:
