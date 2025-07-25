@@ -181,6 +181,8 @@ def deepseek_response(
         if streaming:
             def streaming_response() -> Generator[str, None, None]:
                 nonlocal last_sent_position, last_content_hash, stable_content
+                hybrid_mode = False  # Flag to track when we switch to hybrid mode
+                
                 try:
                     while deepseek.is_response_generating(state.driver):
                         if interrupted():
@@ -191,6 +193,13 @@ def deepseek_response(
                             time.sleep(0.2)
                             continue
                         
+                        # Check for code blocks in raw HTML to determine if we should switch to hybrid mode
+                        if not hybrid_mode:
+                            raw_html = deepseek.get_last_message_raw_html(state.driver)
+                            if raw_html and deepseek.has_code_block_in_html(raw_html):
+                                hybrid_mode = True
+                                state.show_message("[color:white]- [color:yellow]Code block detected, switching to hybrid mode...")
+                        
                         # Generate hash to detect content changes vs processing artifacts
                         current_hash = deepseek._get_content_hash(current_text)
                         
@@ -199,8 +208,8 @@ def deepseek_response(
                             last_content_hash = current_hash
                             stable_content = current_text
                             
-                            # Send incremental content based on position
-                            if len(current_text) > last_sent_position:
+                            # Only send incremental content if NOT in hybrid mode
+                            if not hybrid_mode and len(current_text) > last_sent_position:
                                 new_content = current_text[last_sent_position:]
                                 last_sent_position = len(current_text)
                                 yield create_response_streaming(new_content, pipeline)

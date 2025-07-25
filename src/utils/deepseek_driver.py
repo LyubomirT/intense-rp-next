@@ -210,6 +210,28 @@ def send_chat_message(driver: Driver, text: str, text_file: bool, prefix_content
 # HTML extraction and processing
 # =============================================================================================================================
 
+def get_last_message_raw_html(driver: Driver) -> Optional[str]:
+    """Get the raw HTML of the last message without processing"""
+    try:
+        time.sleep(0.2)
+        
+        messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
+        
+        if messages:
+            return messages[-1].get_attribute("innerHTML")
+        
+        return None
+    
+    except Exception as e:
+        print(f"Error when extracting raw HTML: {e}")
+        return None
+
+def has_code_block_in_html(raw_html: str) -> bool:
+    """Check if raw HTML contains any code block markers"""
+    if not raw_html:
+        return False
+    return 'md-code-block' in raw_html
+
 def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
     """Get the last message from the chat, optionally using pipeline for processing with caching"""
     try:
