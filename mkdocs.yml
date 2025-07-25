@@ -5,4 +5,16 @@ theme:
   name: material
 
 nav:
-  - Home: Home.md
+  - Home: index.md
+  - Welcome:
+      - Welcome to The Docs!: welcome/welcome.md
+      - What is IntenseRP Next?: welcome/what-is-intenserp-next.md
+      - Quick Start Guide:
+          - Download & Install: welcome/quick-start-guide/download-and-install.md
+          - Migration Guide: welcome/quick-start-guide/migration-guide.md
+          - Important Config: welcome/quick-start-guide/important-config.md
+          - Connect to SillyTavern: welcome/quick-start-guide/connect-to-sillytavern.md
+          - If it worked:
+              - Try out more features: welcome/quick-start-guide/if-it-worked/try-out-more-features.md
+          - If it didn't:
+              - Troubleshooting: welcome/quick-start-guide/if-it-didnt/troubleshooting.md
