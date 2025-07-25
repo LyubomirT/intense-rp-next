@@ -86,7 +86,7 @@ markdown_extensions:
   - md_in_html                 # Markdown in HTML
   - toc:
       permalink: true          # Add permalink anchors
-      permalink_title: "Apply permalink to this section"
+      permalink_title: "Link to this section"
       slugify: !!python/object/apply:pymdownx.slugs.slugify
         kwds:
           case: lower
