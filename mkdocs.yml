@@ -1,0 +1,8 @@
+site_name: IntenseRP Next
+site_author: LyubomirT
+
+theme:
+  name: material
+
+nav:
+  - Home: Home.md
