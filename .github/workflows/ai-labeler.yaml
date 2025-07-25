@@ -1,0 +1,127 @@
+name: "AI-Powered Issue Labeling"
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  models: read
+  contents: read
+
+jobs:
+  ai_labeling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Add Needs Triage Label
+        run: gh issue edit "$NUMBER" --add-label "$LABELS"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          LABELS: "➤ Needs Triage"
+
+      - name: AI Label Analysis
+        id: ai_analysis
+        uses: actions/ai-inference@v1
+        with:
+          prompt: |
+            You are an expert project manager analyzing GitHub issues to assign appropriate labels.
+            
+            **Available Labels (respond with comma-separated numbers only):**
+            1. Documentation - Improvements or additions to documentation
+            2. Duplicate - This issue or pull request already exists  
+            3. Enhancement - New feature or request
+            4. good first issue - Good for newcomers
+            5. help wanted - Extra attention is needed
+            6. invalid - This doesn't seem right
+            7. question - Further information is requested
+            8. wontfix - This will not be worked on
+            9. ⊘ CRITICAL - Must be resolved as soon as possible
+            10. ⚲ Planned - This is being planned to be worked on in the near future
+            11. ✓ Resolved - This has been resolved
+            12. ✗ Cancelled - Not being worked on anymore
+            13. ➥ Feature Request - This Issue includes a request for a potential improvement or feature
+            14. ⦻ Confirmed - This problem described is reproducible, valid, or confirmed
+            15. ⧖ In Progress - Enhancements or fixes are in progress for this
+            16. 𓆣 Bug - Something isn't working
+            17. 𖦏 Investigating - This is being looked into
+
+            **Issue to analyze:**
+            Title: ${{ github.event.issue.title }}
+            Body: ${{ github.event.issue.body }}
+
+            **Instructions:**
+            - Analyze the issue content carefully
+            - Select appropriate label numbers (1-17) that best categorize this issue
+            - You can select multiple labels if appropriate
+            - Respond with ONLY comma-separated numbers (e.g., "3,16" or "1,4,5")
+            - Do not include any explanations or additional text
+
+      - name: Parse and Apply Labels
+        run: |
+          # Parse AI response and convert to label names
+          response="${{ steps.ai_analysis.outputs.response }}"
+          echo "AI Response: $response"
+          
+          # Clean the response (remove any extra whitespace/newlines)
+          clean_response=$(echo "$response" | tr -d '\n\r' | xargs)
+          echo "Cleaned Response: $clean_response"
+          
+          # Array of labels corresponding to numbers 1-17
+          labels=(
+            "Documentation"
+            "Duplicate" 
+            "Enhancement"
+            "good first issue"
+            "help wanted"
+            "invalid"
+            "question"
+            "wontfix"
+            "⊘ CRITICAL"
+            "⚲ Planned"
+            "✓ Resolved"
+            "✗ Cancelled"
+            "➥ Feature Request"
+            "⦻ Confirmed"
+            "⧖ In Progress"
+            "𓆣 Bug"
+            "𖦏 Investigating"
+          )
+          
+          # Convert comma-separated numbers to labels
+          IFS=',' read -ra NUMBERS <<< "$clean_response"
+          selected_labels=""
+          
+          for num in "${NUMBERS[@]}"; do
+            # Remove whitespace and validate number
+            num=$(echo "$num" | xargs)
+            if [[ "$num" =~ ^[1-9]$|^1[0-7]$ ]]; then
+              # Convert to array index (subtract 1)
+              index=$((num - 1))
+              label="${labels[$index]}"
+              if [ -n "$selected_labels" ]; then
+                selected_labels="$selected_labels,$label"
+              else
+                selected_labels="$label"
+              fi
+              echo "Adding label: $label"
+            else
+              echo "Invalid number: $num"
+            fi
+          done
+          
+          # Apply the labels if any were selected
+          if [ -n "$selected_labels" ]; then
+            echo "Applying labels: $selected_labels"
+            gh issue edit "$ISSUE_NUMBER" --add-label "$selected_labels"
+          else
+            echo "No valid labels to apply"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
