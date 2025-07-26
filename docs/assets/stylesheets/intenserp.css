@@ -381,6 +381,33 @@ html {
   background-color: rgba(0, 0, 0, 0.3) !important;
 }
 
+/* Mobile sidebar fixes */
+
+/* Prevent horizontal scrollbars on md-nav__list in mobile sidebars */
+@media screen and (max-width: 76.1875em) {
+  .md-nav__list {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  .md-nav__item {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .md-nav__link {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
 /* Print styles */
 @media print {
   .md-typeset h1,
