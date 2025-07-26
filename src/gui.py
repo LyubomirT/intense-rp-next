@@ -13,7 +13,7 @@ from core import get_state_manager, StateEvent
 from config.config_manager import ConfigManager
 from config.config_ui_generator import ConfigUIGenerator
 
-__version__ = "1.0.5" 
+__version__ = "1.0.6" 
 
 # Local GUI state (not shared across modules)
 root = None
