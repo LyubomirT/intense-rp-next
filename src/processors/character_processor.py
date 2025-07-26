@@ -244,6 +244,25 @@ class MessageFormatter:
             
             formatted_messages.append(formatted_message)
         
+        # If we have prefix content, add it as a fake assistant message
+        if request.has_prefix():
+            # Create a fake assistant message for the prefix
+            from models.message_models import Message, MessageRole
+            fake_assistant_msg = Message(role=MessageRole.ASSISTANT, content=request.prefix_content, original_role="assistant")
+            
+            # Get both role and name for template substitution
+            literal_role = self._get_literal_role(fake_assistant_msg)
+            character_name = character_info.character_name
+            
+            # Apply pattern (presets use {role} for literal roles)
+            formatted_prefix = preset_config['pattern'].format(
+                role=literal_role,
+                name=character_name,
+                content=request.prefix_content.strip()
+            )
+            
+            formatted_messages.append(formatted_prefix)
+        
         # Join with separator
         result = preset_config['separator'].join(formatted_messages)
         
@@ -289,6 +308,28 @@ class MessageFormatter:
             )
             
             formatted_messages.append(formatted_message)
+        
+        # If we have prefix content, add it as a fake assistant message
+        if request.has_prefix():
+            # Create a fake assistant message for the prefix
+            from models.message_models import Message, MessageRole
+            fake_assistant_msg = Message(role=MessageRole.ASSISTANT, content=request.prefix_content, original_role="assistant")
+            
+            # Use assistant template for the prefix
+            template = char_template
+            
+            # Get both role and name for template substitution
+            literal_role = self._get_literal_role(fake_assistant_msg)
+            character_name = character_info.character_name
+            
+            # Apply template (supports both {role} and {name})
+            formatted_prefix = template.format(
+                role=literal_role,
+                name=character_name,
+                content=request.prefix_content.strip()
+            )
+            
+            formatted_messages.append(formatted_prefix)
         
         return '\n\n'.join(formatted_messages)
     

@@ -27,6 +27,8 @@ class Message:
     
     def is_custom_role(self) -> bool:
         """Check if this message has a custom role (not standard user/assistant/system)"""
+        if self.original_role is None:
+            return False
         return self.original_role.lower() not in ['user', 'assistant', 'system']
     
     def get_display_role(self) -> str:
