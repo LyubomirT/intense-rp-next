@@ -2,11 +2,11 @@
 
 IntenseRP Next is a bridge application that connects DeepSeek AI to SillyTavern, making it easy to use DeepSeek's powerful language models for roleplaying and creative writing. Think of it as a translator that sits between SillyTavern and DeepSeek's web interface; it handles all the technical details so you can focus on your conversations without worrying about the ~~absolute mess~~ complexities of browser automation.
 
-This project is a complete reimagining of the original IntenseRP API, built from the ground up with modern architecture and a focus on reliability. Whether you're new to using AI for creative writing or you're coming from the original IntenseRP, this documentation will help you get everything set up and running smoothly.
+This project is a complete reimagining of the original IntenseRP API, built from the ground up with modern architecture and a focus on reliability. No matter if you're new to using AI for creative writing or you're coming from the original IntenseRP, this documentation will help you get everything set up and running smoothly.
 
 ## What You'll Find Here
 
-The documentation is organized to get you up and running as quickly as possible, then dive deeper into the features and customization options available.
+The documentation is organized to get you up and running as quickly as possible, then go deeper into the features and customization options available.
 
 **If you're just starting out**, head over to the [Quick Start Guide](welcome/quick-start-guide/download-and-install.md) which will walk you through downloading, installing, and connecting everything to SillyTavern. The whole process usually takes just a few minutes.
 
@@ -18,7 +18,7 @@ The documentation is organized to get you up and running as quickly as possible,
 
 IntenseRP Next brings several major improvements over traditional browser automation approaches. The most significant is **network interception** using a Chrome extension that captures DeepSeek's responses directly from the network stream, which means more reliable streaming and better handling of formatted content like code blocks.
 
-The application also includes **persistent browser sessions** that remember your DeepSeek login between sessions, **flexible message formatting** that lets you customize how conversations are sent to DeepSeek, and **comprehensive logging and debugging tools** to help troubleshoot any issues.
+The application also includes **persistent browser sessions** that remember your DeepSeek login between sessions, **flexible message formatting** that lets you customize how conversations are sent to DeepSeek, and **much better logging and debugging tools** to help troubleshoot any issues.
 
 For technical users, there's a complete **modular architecture** that makes the codebase easier to maintain and extend, plus **schema-driven configuration** that automatically generates the settings interface.
 
