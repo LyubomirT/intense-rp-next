@@ -1,0 +1,173 @@
+site_name: IntenseRP Next
+site_author: LyubomirT
+site_description: Official documentation for IntenseRP Next, the powerful and flexible roleplay DeepSeek bridge and API.
+site_url: https://github.com/LyubomirT/intense-rp-next
+repo_url: https://github.com/LyubomirT/intense-rp-next
+repo_name: LyubomirT/intense-rp-next
+
+# Theme Configuration
+theme:
+  name: material
+  
+  # Color scheme and palette
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  
+  # Typography
+  font:
+    text: Blinker
+    code: Cascadia Mono
+
+  # Logo and favicon
+  logo: assets/newlogo2.png
+  favicon: assets/newlogo.ico
+  
+  # Language
+  language: en
+  
+  # Features to enable special components
+  features:
+    # Navigation
+    - navigation.sections       # Navigation sections
+    - navigation.expand         # Expand navigation by default
+    - navigation.path           # Show path in navigation
+    - navigation.indexes        # Section index pages
+    - navigation.top            # Back to top button
+    - navigation.footer         # Previous/next footer
+    
+    # Search
+    - search.suggest            # Search suggestions
+    - search.highlight          # Highlight search terms
+    - search.share              # Share search results
+    
+    # Header
+    - header.autohide          # Auto-hide header on scroll
+    
+    # Content
+    - content.tabs.link        # Link content tabs
+    - content.tooltips         # Enable tooltips
+    - content.footnote.tooltips # Footnote tooltips
+    - content.code.copy        # Copy code button
+    - content.code.select      # Select code button
+    - content.code.annotate    # Code annotations
+    
+    # Table of contents
+    - toc.follow               # Follow anchor links
+    - toc.integrate            # Integrate TOC with navigation
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+
+# Markdown Extensions
+markdown_extensions:
+  # Python Markdown extensions
+  - abbr                       # Abbreviations
+  - admonition                 # Admonitions (note, tip, warning, etc.)
+  - attr_list                  # Attribute lists
+  - def_list                   # Definition lists
+  - footnotes                  # Footnotes
+  - md_in_html                 # Markdown in HTML
+  - toc:
+      permalink: true          # Add permalink anchors
+      permalink_title: "Link to this section"
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  
+  # PyMdown Extensions
+  - pymdownx.arithmatex:       # Math notation
+      generic: true
+  - pymdownx.betterem:         # Better emphasis
+      smart_enable: all
+  - pymdownx.caret             # Superscript and insert
+  - pymdownx.details           # Collapsible details
+  - pymdownx.emoji:            # Emoji support
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:        # Syntax highlighting
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite      # Inline code highlighting
+  - pymdownx.keys              # Keyboard keys
+  - pymdownx.mark              # Mark/highlight text
+  - pymdownx.smartsymbols      # Smart symbols
+  - pymdownx.snippets:         # Include snippets
+      base_path: 
+        - docs/snippets
+        - docs
+  - pymdownx.superfences:      # Code blocks and diagrams
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:           # Content tabs
+      alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:         # Task lists
+      custom_checkbox: true
+  - pymdownx.tilde             # Subscript and delete
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+
+extra_css:
+  - https://fonts.googleapis.com/css2?family=Blinker:wght@100;200;300;400;600;700;800;900&display=swap
+  - https://fonts.googleapis.com/css2?family=Cascadia+Mono:wght@400;700&display=swap
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/LyubomirT/intense-rp-next
+      name: GitHub
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/the-orange-squad
+      name: Discord
+  
+  version:
+    provider: mike
+    default: latest
+  
+  consent:
+    title: Cookie consent
+    description: >- 
+      On this site, we use cookies to recognize your repeated visits and preferences,
+      and to analyze the effectiveness of the documentation. With your consent, and only
+      if you accept, we will use cookies to improve your experience. There's no penalty
+      for rejecting cookies, this is purely up to you.
+    accept: Accept cookies
+    reject: Reject cookies
+
+nav:
+  - Home: index.md
+  - Welcome:
+      - "Welcome to The Docs!": welcome/welcome.md
+      - "What is IntenseRP Next?": welcome/what-is-intenserp-next.md
+      - "Quick Start Guide:":
+          - "Download & Install": welcome/quick-start-guide/download-and-install.md
+          - "Migration Guide": welcome/quick-start-guide/migration-guide.md
+          - "Important Config": welcome/quick-start-guide/important-config.md
+          - "Connect to SillyTavern": welcome/quick-start-guide/connect-to-sillytavern.md
+          - "If it worked:":
+              - "Try out more features": welcome/quick-start-guide/if-it-worked/try-out-more-features.md
+          - "If it didn't:":
+              - "Troubleshooting": welcome/quick-start-guide/if-it-didnt/troubleshooting.md
+
+copyright: Copyright &copy; 2024-2025 Omega-Slender, 2025-present LyubomirT
