@@ -1,0 +1,395 @@
+/* IntenseRP Next Documentation Custom Styles */
+/* Brand colors: #000810 (dark) and #5daeff (light blue) */
+
+:root {
+  /* Brand-inspired color palette */
+  --intenserp-dark: #000810;
+  --intenserp-blue: #5daeff;
+  --intenserp-dark-soft: #0a1220;
+  --intenserp-blue-soft: #4a9ee8;
+  --intenserp-blue-muted: #3d8bc7;
+  --intenserp-accent: #6db4ff;
+}
+
+/* Custom color scheme for slate (dark) mode */
+[data-md-color-scheme="slate"] {
+  /* Primary colors */
+  --md-primary-fg-color: var(--intenserp-dark-soft);
+  --md-primary-fg-color--light: var(--intenserp-blue-soft);
+  --md-primary-fg-color--dark: var(--intenserp-dark);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  
+  /* Accent colors */
+  --md-accent-fg-color: var(--intenserp-blue);
+  --md-accent-fg-color--transparent: rgba(93, 174, 255, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+  
+  /* Enhanced text contrast for dark mode */
+  --md-default-fg-color: #f8f9fa;
+  --md-default-fg-color--light: #e9ecef;
+  --md-default-fg-color--lighter: #dee2e6;
+  --md-default-fg-color--lightest: rgba(255, 255, 255, 0.12);
+  
+  /* Link colors */
+  --md-typeset-a-color: var(--intenserp-blue);
+  
+  /* Code styling */
+  --md-code-fg-color: var(--intenserp-blue);
+  --md-code-bg-color: rgba(93, 174, 255, 0.1);
+  
+  /* Footer colors */
+  --md-footer-bg-color: var(--intenserp-dark);
+  --md-footer-fg-color: #f8f9fa;
+  --md-footer-fg-color--light: rgba(248, 249, 250, 0.7);
+  --md-footer-fg-color--lighter: rgba(248, 249, 250, 0.45);
+}
+
+/* Custom color scheme for default (light) mode */
+[data-md-color-scheme="default"] {
+  /* Primary colors */
+  --md-primary-fg-color: var(--intenserp-dark);
+  --md-primary-fg-color--light: var(--intenserp-blue-muted);
+  --md-primary-fg-color--dark: var(--intenserp-dark);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  
+  /* Accent colors */
+  --md-accent-fg-color: var(--intenserp-blue-muted);
+  --md-accent-fg-color--transparent: rgba(61, 139, 199, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+  
+  /* Enhanced text colors for light mode */
+  --md-default-fg-color: #2c3e50;
+  --md-default-fg-color--light: rgba(44, 62, 80, 0.7);
+  --md-default-fg-color--lighter: rgba(44, 62, 80, 0.5);
+  --md-default-fg-color--lightest: rgba(44, 62, 80, 0.12);
+  
+  /* Link colors */
+  --md-typeset-a-color: var(--intenserp-blue-muted);
+  
+  /* Code styling */
+  --md-code-fg-color: var(--intenserp-blue-muted);
+  --md-code-bg-color: rgba(61, 139, 199, 0.1);
+  
+  /* Footer colors */
+  --md-footer-bg-color: var(--intenserp-blue-muted);
+  --md-footer-fg-color: #ffffff;
+  --md-footer-fg-color--light: rgba(255, 255, 255, 0.7);
+  --md-footer-fg-color--lighter: rgba(255, 255, 255, 0.45);
+}
+
+/* Header improvements with brand gradient */
+.md-header {
+  background: linear-gradient(135deg, var(--intenserp-dark) 0%, var(--intenserp-dark-soft) 100%);
+  box-shadow: 0 2px 12px rgba(0, 8, 16, 0.3);
+}
+
+/* Typography improvements for headings */
+.md-typeset h1 {
+  font-weight: 800;
+  color: var(--intenserp-blue);
+  font-size: 2.2em;
+  margin-bottom: 1rem;
+}
+
+[data-md-color-scheme="default"] .md-typeset h1 {
+  color: var(--intenserp-blue-muted);
+}
+
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 700;
+}
+
+.md-typeset h2 {
+  font-size: 1.8em;
+  margin-top: 2rem;
+  margin-bottom: 0.8rem;
+}
+
+.md-typeset h3 {
+  font-size: 1.4em;
+  margin-top: 1.6rem;
+  margin-bottom: 0.6rem;
+}
+
+/* Enhanced link styling */
+.md-typeset a {
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.md-typeset a:hover {
+  color: var(--intenserp-accent);
+  text-decoration: underline;
+}
+
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: var(--intenserp-dark);
+}
+
+/* Code blocks with brand accent */
+.md-typeset .highlight {
+  border-left: 4px solid var(--intenserp-blue);
+}
+
+.md-typeset code {
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Search box improvements */
+.md-search__input {
+  background-color: rgba(93, 174, 255, 0.1);
+  border: 1px solid rgba(93, 174, 255, 0.3);
+  border-radius: 8px;
+}
+
+.md-search__input:focus {
+  border-color: var(--intenserp-blue);
+  box-shadow: 0 0 0 2px rgba(93, 174, 255, 0.2);
+}
+
+/* Table improvements */
+.md-typeset table:not([class]) {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--intenserp-dark-soft);
+  color: #f8f9fa;
+  font-weight: 700;
+}
+
+[data-md-color-scheme="default"] .md-typeset table:not([class]) th {
+  background-color: var(--intenserp-blue-muted);
+  color: white;
+}
+
+/* Navigation active state indicators */
+/* Pill background for active navigation items */
+.md-nav__link--active {
+  position: relative;
+  background: linear-gradient(90deg, 
+    rgba(93, 174, 255, 0.12) 0%, 
+    rgba(93, 174, 255, 0.08) 50%, 
+    rgba(93, 174, 255, 0.04) 100%
+  );
+  border-radius: 5px;
+  font-weight: 700;
+  color: var(--intenserp-blue);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.md_nav__item {
+    /* Empty for now */
+}
+
+/* Desktop sidebar - slightly wider to prevent text wrapping */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar {
+    width: 17rem; /* Fixed width instead of percentage */
+  }
+}
+
+/* Tablet/mobile sidebar - when drawer is open */
+@media screen and (max-width: 76.1875em) {
+  .md-sidebar--primary[data-md-state="open"] {
+    width: 50%;
+    max-width: 17rem; /* Cap the maximum width */
+  }
+}
+
+.md-nav__list {
+  position: relative;
+}
+
+/* Slightly more vertical padding for all nav items */
+.md-nav__link {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+  transition: all 0.3s ease;
+}
+
+.md-nav {
+    width: 100%;
+}
+
+.md-sidebar__scrollwrap {
+  padding-left: 0;
+  margin-left: -1.5rem; /* Align with the active link padding */
+  width: calc(100%); /* Adjust width to account for negative margin */
+}
+
+.md-sidebar__inner {
+  width: calc(100%); /* Adjust width to account for negative margin */
+  padding-right: 0 !important; /* Remove right padding */
+}
+
+[data-md-color-scheme="default"] .md-nav__link--active {
+  background: linear-gradient(90deg, 
+    rgba(61, 139, 199, 0.12) 0%, 
+    rgba(61, 139, 199, 0.08) 50%, 
+    rgba(61, 139, 199, 0.04) 100%
+  );
+  color: var(--intenserp-blue-muted);
+  transition: all 0.3s ease;
+}
+
+
+/* Base transition for secondary nav links */
+.md-nav--secondary .md-nav__link {
+  transition: all 0.3s ease;
+}
+
+/* Table of contents (secondary nav) active indicators */
+.md-nav--secondary .md-nav__link--active {
+  position: relative;
+  background: linear-gradient(90deg, 
+    rgba(93, 174, 255, 0.08) 0%, 
+    rgba(93, 174, 255, 0.04) 50%, 
+    transparent 100%
+  );
+  border-radius: 5px;
+  color: var(--intenserp-blue);
+  font-weight: 600;
+  padding-right: 1rem;
+  transition: all 0.3s ease;
+}
+
+[data-md-color-scheme="default"] .md-nav--secondary .md-nav__link--active {
+  background: linear-gradient(90deg, 
+    rgba(61, 139, 199, 0.08) 0%, 
+    rgba(61, 139, 199, 0.04) 50%, 
+    transparent 100%
+  );
+  color: var(--intenserp-blue-muted);
+  transition: all 0.3s ease;
+}
+
+
+/* Enhanced focus states for accessibility */
+.md-search__input:focus,
+.md-typeset a:focus {
+  outline: 2px solid var(--intenserp-blue);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Cookie consent banner fixes */
+/* Fix cookie consent buttons that inherit dark primary color */
+.md-consent__controls .md-button,
+.md-button[data-md-component="consent"] {
+  background-color: var(--intenserp-blue) !important;
+  color: var(--intenserp-dark) !important;
+  border: 1px solid var(--intenserp-blue) !important;
+  font-weight: 600;
+}
+
+.md-consent__controls .md-button:hover,
+.md-button[data-md-component="consent"]:hover {
+  background-color: var(--intenserp-accent) !important;
+  border-color: var(--intenserp-accent) !important;
+  color: var(--intenserp-dark) !important;
+}
+
+/* Light mode cookie consent buttons */
+[data-md-color-scheme="default"] .md-consent__controls .md-button,
+[data-md-color-scheme="default"] .md-button[data-md-component="consent"] {
+  background-color: var(--intenserp-blue-muted) !important;
+  color: white !important;
+  border-color: var(--intenserp-blue-muted) !important;
+}
+
+[data-md-color-scheme="default"] .md-consent__controls .md-button:hover,
+[data-md-color-scheme="default"] .md-button[data-md-component="consent"]:hover {
+  background-color: var(--intenserp-dark) !important;
+  border-color: var(--intenserp-dark) !important;
+  color: white !important;
+}
+
+/* Cookie consent banner background */
+.md-consent {
+  background-color: var(--md-default-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+[data-md-color-scheme="slate"] .md-consent {
+  background-color: var(--md-code-bg-color);
+  color: var(--md-default-fg-color);
+}
+
+/* Alternative selectors for different cookie consent implementations */
+.consent-banner button,
+.cookie-consent button,
+[data-consent] button {
+  background-color: var(--intenserp-blue) !important;
+  color: var(--intenserp-dark) !important;
+  border: 1px solid var(--intenserp-blue) !important;
+}
+
+[data-md-color-scheme="default"] .consent-banner button,
+[data-md-color-scheme="default"] .cookie-consent button,
+[data-md-color-scheme="default"] [data-consent] button {
+  background-color: var(--intenserp-blue-muted) !important;
+  color: white !important;
+  border-color: var(--intenserp-blue-muted) !important;
+}
+
+/* Custom scrollbar styling for navigation - override theme defaults */
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 3px !important;
+  transition: background-color 0.3s ease !important;
+  border: none !important;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Light mode scrollbar */
+[data-md-color-scheme="default"] .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-md-color-scheme="default"] .md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Print styles */
+@media print {
+  .md-typeset h1,
+  .md-typeset h2,
+  .md-typeset h3,
+  .md-typeset h4,
+  .md-typeset h5,
+  .md-typeset h6 {
+    color: #000;
+    font-weight: 700;
+  }
+}

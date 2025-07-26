@@ -131,6 +131,7 @@ extra_javascript:
 extra_css:
   - https://fonts.googleapis.com/css2?family=Blinker:wght@100;200;300;400;600;700;800;900&display=swap
   - https://fonts.googleapis.com/css2?family=Cascadia+Mono:wght@400;700&display=swap
+  - assets/stylesheets/intenserp.css
 
 extra:
   social:
