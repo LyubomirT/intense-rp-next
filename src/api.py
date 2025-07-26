@@ -222,10 +222,6 @@ def deepseek_response(
                     # Final processing - get the complete response
                     final_text = deepseek.wait_for_response_completion(state.driver, pipeline)
                     
-                    # Prepend prefix content if it exists
-                    if prefix_content and prefix_content.strip() and final_text:
-                        final_text = prefix_content + final_text
-                    
                     if final_text:
                         # Send any remaining content based on position
                         if len(final_text) > last_sent_position:
@@ -250,10 +246,6 @@ def deepseek_response(
             return Response(streaming_response(), content_type="text/event-stream")
         else:
             final_text = deepseek.wait_for_response_completion(state.driver, pipeline)
-            
-            # Prepend prefix content if it exists
-            if prefix_content and prefix_content.strip() and final_text:
-                final_text = prefix_content + final_text
             
             if interrupted():
                 return safe_interrupt_response()
@@ -361,10 +353,6 @@ def deepseek_network_response(
                         yield create_response_streaming("Error: Network response did not start", pipeline)
                         return
                     
-                    # Send prefix content as the first chunk if it exists
-                    if prefix_content and prefix_content.strip():
-                        yield create_response_streaming(prefix_content, pipeline)
-                    
                     # Stream the data as it arrives
                     last_processed_index = 0
                     finish_event_received = False
@@ -444,11 +432,6 @@ def deepseek_network_response(
                 # Combine all stream data
                 state.show_message(f"[color:cyan]Combining {len(network_data['stream_buffer'])} stream items...")
                 response_text = combine_network_stream_data(network_data['stream_buffer'], send_thoughts)
-                
-                # Prepend prefix content if it exists
-                if prefix_content and prefix_content.strip() and response_text:
-                    response_text = prefix_content + response_text
-                
                 state.show_message(f"[color:cyan]Final combined response length: {len(response_text)}")
             
             deepseek.disable_network_interception(state.driver)
