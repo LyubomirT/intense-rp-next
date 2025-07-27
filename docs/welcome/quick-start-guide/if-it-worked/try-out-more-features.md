@@ -58,11 +58,11 @@ This will:
 
 ## Common Questions
 
-"Do I need to restart IntenseRP Next after changing settings?"
-: Most settings take effect immediately, but some browser-related changes might require a restart. When in doubt, restart the application to ensure all your settings are applied.
+??? question "Do I need to restart IntenseRP Next after changing settings?"
+    Most settings take effect immediately, but some browser-related changes might require a restart. When in doubt, restart the application to ensure all your settings are applied.
 
-"Why does streaming pause sometimes during code blocks?"
-: This is normal when using DOM scraping (without Network Interception). DeepSeek applies complex formatting to code blocks, which can temporarily interrupt the stream. Network Interception fixes this issue.
+??? question "Why does streaming pause sometimes during code blocks?"
+    This is normal when using DOM scraping (without Network Interception). DeepSeek applies complex formatting to code blocks, which can temporarily interrupt the stream. Network Interception fixes this issue.
 
 ## Where to Go From Here
 

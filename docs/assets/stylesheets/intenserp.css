@@ -1085,3 +1085,12 @@ body .md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover,
 p {
   font-family: 'Rubik', sans-serif;
 }
+
+summary {
+  font-family: 'Rubik', sans-serif;
+  font-size: 0.8rem;
+}
+
+details p {
+  font-size: 0.8rem;
+}
