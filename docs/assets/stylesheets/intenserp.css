@@ -1091,6 +1091,6 @@ summary {
   font-size: 0.8rem;
 }
 
-details p {
-  font-size: 0.8rem;
+details p, li {
+  font-size: 0.7rem;
 }
