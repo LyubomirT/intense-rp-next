@@ -10,6 +10,9 @@ Getting IntenseRP Next up and running is pretty straightforward. You've got two 
     **Use the binary** if you're on Windows and want the simplest setup.  
     **Build from source** if you're on Linux/macOS, want the latest features, or need to customize something.
 
+!!! info "Binaries on Linux/macOS"
+    Right now I don't have pre-built binaries for Linux or macOS, but that's coming soon! At least for Linux, binaries are almost ready and likely to be available in the next few weeks. If you're on macOS, you'll need to build from source for now.
+
 ## :material-microsoft-windows: Binary Installation (Windows)
 
 The easiest way to get started on Windows is with our pre-built release. It's a portable package that includes everything you need.
