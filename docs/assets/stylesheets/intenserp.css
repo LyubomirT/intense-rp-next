@@ -1077,3 +1077,11 @@ body .md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover,
     font-weight: 700;
   }
 }
+
+.md-content li, h1, h2, h3, h4, h5, h6 {
+  font-family: 'Rubik', sans-serif;
+}
+
+p {
+  font-family: 'Rubik', sans-serif;
+}
