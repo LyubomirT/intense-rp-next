@@ -1094,3 +1094,7 @@ summary {
 details p, li {
   font-size: 0.7rem;
 }
+
+.nodeLabel p {
+  color: white !important;
+}
