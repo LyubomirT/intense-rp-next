@@ -171,5 +171,11 @@ nav:
               - "Try out more features": welcome/quick-start-guide/if-it-worked/try-out-more-features.md
           - "If it didn't:":
               - "Troubleshooting": welcome/quick-start-guide/if-it-didnt/troubleshooting.md
+  - Features:
+      - "DeepSeek Settings:":
+          - "Main Settings": features/deepseek-settings/main-settings.md
+          - "Network Interception": features/deepseek-settings/network-interception.md
+      - "Formatting Templates": features/formatting-templates.md
+      - "Advanced Configuration": features/advanced-configuration.md
 
 copyright: Copyright &copy; 2024-2025 Omega-Slender, 2025-present LyubomirT
