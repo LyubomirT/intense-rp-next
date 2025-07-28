@@ -125,7 +125,7 @@ If you're having issues, here are some things to check:
 
 The extension creates a fresh copy of itself each time IntenseRP Next starts to avoid Chrome's aggressive caching. Old copies are automatically cleaned up after a few hours. This approach ensures you're always running the latest version without manual updates.
 
-## Technical Deep Dive
+## Technical Details
 
 For those interested in the implementation details, here's how the system works under the hood:
 
