@@ -17,8 +17,6 @@ Network Interception is one of IntenseRP Next's most significant improvements ov
     6. Save your settings
     7. Restart IntenseRP Next **completely** (close and reopen the app, make sure to wait for it to fully close before reopening)
 
-# How Do
-
 ## Understanding the Two Methods
 
 IntenseRP Next offers two ways to capture responses from DeepSeek: the traditional DOM scraping method and the newer network interception approach. Understanding the difference helps explain why network interception provides a much better experience.
