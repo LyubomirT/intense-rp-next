@@ -182,5 +182,6 @@ nav:
   - Information:
       - "Rate Limits": information/rate-limits.md
       - "Model Handling": information/model-handling.md
+      - "FAQ": information/faq.md
 
 copyright: Copyright &copy; 2024-2025 Omega-Slender, 2025-present LyubomirT
