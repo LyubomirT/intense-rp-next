@@ -179,5 +179,8 @@ nav:
           - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
           - "Custom Templates": features/formatting-templates/custom-templates.md
       - "Advanced Configuration": features/advanced-configuration.md
+  - Information:
+      - "Rate Limits": information/rate-limits.md
+      - "Model Handling": information/model-handling.md
 
 copyright: Copyright &copy; 2024-2025 Omega-Slender, 2025-present LyubomirT
