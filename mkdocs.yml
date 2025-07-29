@@ -175,7 +175,9 @@ nav:
       - "DeepSeek Settings:":
           - "Main Settings": features/deepseek-settings/main-settings.md
           - "Network Interception": features/deepseek-settings/network-interception.md
-      - "Formatting Templates": features/formatting-templates.md
+      - "Formatting Templates":
+          - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
+          - "Custom Templates": features/formatting-templates/custom-templates.md
       - "Advanced Configuration": features/advanced-configuration.md
 
 copyright: Copyright &copy; 2024-2025 Omega-Slender, 2025-present LyubomirT
