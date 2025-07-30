@@ -156,7 +156,7 @@ class StorageManager:
     
     def create_temp_txt(self, content: str = "") -> str:
         try:
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', dir=self._paths["temp"])
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8', dir=self._paths["temp"])
             temp_file.write(content)
             temp_file.close()
             
