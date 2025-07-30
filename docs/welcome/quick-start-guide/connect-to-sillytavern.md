@@ -18,7 +18,7 @@ Once the application opens, click the **Start** button. This will:
 
 1. Open a browser window (Chrome, Firefox, or Edge, depending on your settings)
 2. Navigate to DeepSeek's website
-3. Initialize the local API server on port 5000
+3. Initialize the local API server (default port 5000, configurable in settings)
 
 !!! info "Browser Login"
     If this is your first time running IntenseRP Next (or you haven't enabled persistent cookies), you'll need to log in to DeepSeek when the browser opens. If you configured auto-login in the settings, this will happen automatically.
@@ -32,6 +32,9 @@ API IS NOW ACTIVE!
 WELCOME TO INTENSE RP API
 URL 1: http://127.0.0.1:5000/
 ```
+
+!!! note "Port Configuration"
+    The default port is 5000, but this can be changed in **Settings** → **Advanced Settings** → **Network Port** if needed (for example, if another application is using port 5000).
 
 If you enabled the "Show IP" option in settings, you'll also see a second URL with your local network IP address, which is useful for connecting from other devices on your network.
 
@@ -49,7 +52,8 @@ In SillyTavern, go to **API Connections** (the plug icon in the left sidebar).
 In the API settings:
 
 1. For **Chat Completion Source**, select **Custom (OpenAI-compatible)**
-2. For **Custom Endpoint**, enter `http://127.0.0.1:5000/` (or use the URL shown in IntenseRP Next)
+2. For **Custom Endpoint**, enter `http://127.0.0.1:5000/`
+   - If you changed the port in IntenseRP Next, use that port number instead of 5000.
 3. Leave **API Key** blank (not needed for IntenseRP Next)
 4. Click **Connect**
 
@@ -125,7 +129,7 @@ By default, IntenseRP Next is only accessible from the same device (via `127.0.0
 
 1. Enable the **Show IP** setting in IntenseRP Next
 2. Use the second URL that appears when you start the service (something like `http://192.168.x.x:5000/`)
-3. Make sure your firewall allows connections to port 5000
+3. Make sure your firewall allows connections to the configured port (default 5000)
 
 !!! warning "Security Note"
     When allowing network access, remember that anyone on your local network could potentially connect to your IntenseRP Next instance. Don't enable this in untrusted network environments.

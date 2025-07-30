@@ -60,7 +60,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     This usually means the browser driver (like chromedriver) is outdated or incompatible with your browser version. IntenseRP Next uses SeleniumBase which should handle driver updates automatically, but sometimes manual intervention is needed. Try updating your browser to the latest version or clearing the browser data in Advanced Settings.
 
 ??? question "Can I run multiple instances of IntenseRP Next?"
-    Not recommended. Each instance needs its own port (default 5000) and browser profile. Running multiple instances can cause conflicts and increase your chances of hitting rate limits. If you need multiple connections, consider using different DeepSeek accounts with a single instance instead.
+    Not recommended. Each instance needs its own port (configurable in Advanced Settings, default 5000) and browser profile. Running multiple instances can cause conflicts and increase your chances of hitting rate limits. If you need multiple connections, consider using different DeepSeek accounts with a single instance instead.
 
 ## Features & Settings
 

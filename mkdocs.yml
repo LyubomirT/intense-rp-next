@@ -179,6 +179,7 @@ nav:
       - "Formatting Templates":
           - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
           - "Custom Templates": features/formatting-templates/custom-templates.md
+      - "The Console": features/console.md
       - "Advanced Configuration": features/advanced-configuration.md
   - Information:
       - "Rate Limits": information/rate-limits.md
