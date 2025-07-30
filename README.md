@@ -27,14 +27,11 @@ I've completely reimagined the original project with a focus on **reliability**,
 - **⚙️ Schema-Driven Config**: Auto-generating configuration UI to make it easier for us developers to add new features
 - **💾 Persistent Sessions**: Keep your login sessions across app restarts (Chrome/Edge only)
 
-### 🎯 New Additions
+### 🎯 Recent Additions
 
 - **Send Thoughts**: Now you can toggle whether you want to see DeepSeek's thoughts in the response or not.
 - **`name` parameter**: Now IntenseRP Next supports the `name` parameter in the request, which allows you to specify the character name for the response and override `DATA1` and `DATA2` variables.
-
-- **STMP Support**: Handles custom roles appropriately for SillyTavern MultiPlayer
-- **Message Formatting Templates**: Custom formatting support for how messages are sent to DeepSeek
-- **CDP Extension**: Automatically loads the Chrome extension for network interception
+- **Official Docs!**: Now you can find all the information you need in the official documentation. It's currently hosted on ReadTheDocs and you can find it right here: [IntenseRP Next Documentation](https://intense-rp-next.readthedocs.io/en/latest/)
 
 > [!NOTE]
 > The project is in a "stable beta" state, meaning it's ready for daily use but may still have some rough edges. If you run into any issues, please report them on GitHub!
