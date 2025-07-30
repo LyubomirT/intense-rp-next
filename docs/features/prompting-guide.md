@@ -23,6 +23,8 @@ DATA1: "{{char}}"
 DATA2: "{{user}}"
 ```
 
+You can place those markers anywhere in your prompt, they don't impact the final output. The sole purpose of these markers is to help DeepSeek understand the context and roles involved.
+
 These lines act like name tags at a party. DATA1 tells DeepSeek which character it should roleplay as, while DATA2 identifies who's speaking to that character. The `{{char}}` and `{{user}}` placeholders get replaced automatically by SillyTavern with the actual character and user names.
 
 !!! info "Why These Specific Markers?"
@@ -102,35 +104,17 @@ These can go anywhere in your message and will be processed before sending to De
 
 ## Common Pitfalls
 
-**Missing DATA markers** is the biggest issue new users face. Without them, character names won't be extracted properly, leading to formatting problems and confused AI responses.
+- **Missing DATA markers** is the biggest issue new users face. Without them, character names won't be extracted properly, leading to formatting problems and confused AI responses.
 
-**Overcomplicating prompts** can backfire. DeepSeek works best with clear, direct instructions. Adding too many rules or contradictory guidelines can make responses inconsistent.
+- **Overcomplicating prompts** can backfire. DeepSeek works best with clear, direct instructions. Adding too many rules or contradictory guidelines can make responses inconsistent.
 
-**Forgetting context limits** matters too. While DeepSeek has a generous context window, extremely long prompts leave less room for actual conversation. Keep instructions concise when possible.
+- **Forgetting context limits** matters too. While DeepSeek has a generous context window, extremely long prompts leave less room for actual conversation. Keep instructions concise when possible. Try to aim for something within 64k tokens in total, including the chat history.
 
 !!! warning "The Temperature Illusion"
     Those `{{temperature}}` and `{{max_tokens}}` placeholders in prompts are purely cosmetic when using the chat interface. DeepSeek's web version uses fixed parameters that you can't change. Don't expect different creativity levels by adjusting these values – it's a limitation of using the free chat interface instead of the API.
 
-## A Practical Example
-
-Let's say you're setting up a character who's a medieval knight. Your customized main prompt might look like:
-
-```plaintext
-You are {{char}}, a noble knight from a medieval fantasy realm. Respond to {{user}}'s messages 
-while maintaining your knightly demeanor, code of honor, and medieval speech patterns. You may 
-engage in combat, romance, and adventure as appropriate to the story. Stay true to your 
-character's background and personality at all times. DATA1: "{{char}}" DATA2: "{{user}}"
-```
-
-Though, most of the time, the character card will already have a description of the character, so you can just use a simpler prompt like:
-
-```plaintext
-Continue the roleplay as {{char}}. Respond to {{user}}'s messages while staying in character. 
-DATA1: "{{char}}" DATA2: "{{user}}"
-```
-
-This keeps the essential elements while tailoring the instructions to your specific character type.
-
 ---
 
-Remember, good prompting is part science, part art. Start with proven examples, understand why they work, then adjust based on your needs. The DATA markers are non-negotiable, but everything else is yours to customize.
+## Just a Note About Presets
+
+The SillyTavern community has created some great pre-sets that can be used for nearly anything out there. They theoretically should work with IntenseRP Next, too. The only thing you'll likely have to do with all presets (like NemoEngine, PixiJB, Weep, Marinara's Preset, AvaniJB, etc.) is to add the DATA markers to the main prompt. This is because they were designed for other, "normal" APIs, not expecting the need for workarounds like this.
