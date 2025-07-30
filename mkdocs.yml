@@ -175,6 +175,7 @@ nav:
       - "DeepSeek Settings:":
           - "Main Settings": features/deepseek-settings/main-settings.md
           - "Network Interception": features/deepseek-settings/network-interception.md
+      - "Prompting Guide": features/prompting-guide.md
       - "Formatting Templates":
           - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
           - "Custom Templates": features/formatting-templates/custom-templates.md

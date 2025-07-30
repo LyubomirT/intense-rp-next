@@ -1098,3 +1098,7 @@ details p, li {
 .nodeLabel p {
   color: white !important;
 }
+
+.md-source__fact::before {
+  vertical-align: middle;
+}
