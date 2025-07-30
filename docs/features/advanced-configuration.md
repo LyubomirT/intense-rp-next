@@ -16,6 +16,7 @@ The Advanced Settings section contains options for power users who need more con
 Controls which port IntenseRP Next's API server uses. The default is port 5000, but you can change this if another application is already using that port or if you prefer a different port number.
 
 When you change the port:
+
 - IntenseRP Next will display the new port in its URLs when starting
 - You'll need to update SillyTavern's connection settings to use the new port
 - Any Chrome extension for network interception will be automatically updated to use the new port
