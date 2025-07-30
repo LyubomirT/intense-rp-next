@@ -36,6 +36,7 @@ class StateManager:
         # Application state - now just a reference to external config manager
         self._config_manager = None
         self._logging_manager = None
+        self._console_manager = None
         
         # Runtime state
         self._is_running = False

@@ -473,6 +473,11 @@ class ConfigUIGenerator:
             auto_login = ui_config.get("models", {}).get("deepseek", {}).get("auto_login", False)
             return auto_login
         
+        # Dump directory should only be validated if console dumping is enabled
+        if field.key == "console.dump_directory":
+            dump_enabled = ui_config.get("console", {}).get("dump_enabled", False)
+            return dump_enabled
+        
         # By default, validate the field
         return True
     
@@ -522,6 +527,7 @@ class ConfigUIGenerator:
             "models.deepseek.password": ["password", "Password"],
             "logging.max_file_size": ["Max file size", "file size", "File size"],
             "logging.max_files": ["Max files", "max files", "Files"],
+            "console.dump_directory": ["Dump Directory", "dump directory", "Directory"],
         }
         
         for field_key, keywords in error_mapping.items():

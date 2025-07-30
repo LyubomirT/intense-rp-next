@@ -18,6 +18,7 @@ class ConfigValidator:
             'password': self._validate_password,
             'file_size': self._validate_file_size,
             'max_files': self._validate_max_files,
+            'dump_directory': self._validate_dump_directory,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -49,6 +50,11 @@ class ConfigValidator:
         if field.key in ["models.deepseek.email", "models.deepseek.password"]:
             auto_login = config_data.get("models", {}).get("deepseek", {}).get("auto_login", False)
             return auto_login
+        
+        # Dump directory should only be validated if console dumping is enabled
+        if field.key == "console.dump_directory":
+            dump_enabled = config_data.get("console", {}).get("dump_enabled", False)
+            return dump_enabled
         
         # By default, validate the field
         return True
@@ -117,6 +123,38 @@ class ConfigValidator:
             return []
         except ValueError:
             return [f"{field.label} Max files must be a valid number"]
+    
+    def _validate_dump_directory(self, field: ConfigField, value: str) -> List[str]:
+        """Validate dump directory path"""
+        # Empty string is allowed (use default condumps/ directory)
+        if not value or not value.strip():
+            return []
+        
+        directory_path = value.strip()
+        
+        # Check if it's a valid path format
+        try:
+            import os
+            # Check if path is valid format
+            if not os.path.isabs(directory_path):
+                # Relative paths are allowed
+                pass
+            
+            # Check if directory exists
+            if not os.path.exists(directory_path):
+                return [f"{field.label} Directory does not exist: {directory_path}"]
+            
+            # Check if it's actually a directory
+            if not os.path.isdir(directory_path):
+                return [f"{field.label} Path is not a directory: {directory_path}"]
+            
+            # Check if directory is writable
+            if not os.access(directory_path, os.W_OK):
+                return [f"{field.label} Directory is not writable: {directory_path}"]
+            
+            return []
+        except Exception:
+            return [f"{field.label} Invalid directory path format"]
     
     @staticmethod
     def _parse_file_size(size_str: str) -> int:

@@ -156,6 +156,28 @@ def get_config_schema() -> List[ConfigSection]:
         ),
         
         ConfigSection(
+            id="dump_settings",
+            title="Dump Settings",
+            fields=[
+                ConfigField(
+                    key="console.dump_enabled",
+                    label="Enable Console Dumping:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Enable the 'Dump Console' menu option in the console window"
+                ),
+                ConfigField(
+                    key="console.dump_directory",
+                    label="Dump Directory:",
+                    field_type=ConfigFieldType.TEXT,
+                    default="",
+                    validation="dump_directory",
+                    help_text="Directory to save console dumps (leave empty to use 'condumps/' in project root)"
+                ),
+            ]
+        ),
+        
+        ConfigSection(
             id="message_formatting",
             title="Message Formatting",
             fields=[

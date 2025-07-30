@@ -196,6 +196,7 @@ class ConsoleManager:
         self.storage_manager = storage_manager
         self.console_window = None
         self.console_textbox = None
+        self.menu_frame = None
         self.settings = None
         self.original_stdout = sys.stdout
         self.original_stderr = sys.stderr
@@ -220,16 +221,29 @@ class ConsoleManager:
             )
             console_window.protocol("WM_DELETE_WINDOW", lambda: None)
             
+            # Create main container frame
+            main_frame = gui_builder.ctk.CTkFrame(console_window, fg_color="transparent")
+            main_frame.pack(expand=True, fill="both", padx=2, pady=2)
+            main_frame.grid_rowconfigure(0, weight=1)  # Console textbox gets full height
+            main_frame.grid_rowconfigure(1, weight=0)  # Menu frame fixed height
+            main_frame.grid_columnconfigure(0, weight=1)
+            
             # Create custom textbox with settings
             console_textbox = CustomConsoleTextbox(
-                console_window,
+                main_frame,
                 self.settings
             )
-            console_textbox.pack(expand=True, fill="both", padx=2, pady=2)
+            console_textbox.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+            
+            # Create menu frame if needed
+            menu_frame = self._create_menu_frame_if_needed(main_frame)
+            if menu_frame:
+                menu_frame.grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 0))
             
             # Store references
             self.console_window = console_window
             self.console_textbox = console_textbox
+            self.menu_frame = menu_frame
             
             # Update state manager
             self.state_manager.console_window = console_window
@@ -241,6 +255,88 @@ class ConsoleManager:
             
         except Exception as e:
             print(f"Error creating console window: {e}")
+    
+    def _create_menu_frame_if_needed(self, parent) -> Optional:
+        """Create menu frame if any menu-triggering settings are enabled"""
+        try:
+            # Check if console dumping is enabled using the proper StateManager method
+            dump_enabled = self.state_manager.get_config_value('console.dump_enabled', False)
+            
+            # If no menu options are enabled, don't create menu frame
+            if not dump_enabled:
+                return None
+            
+            # Create menu frame
+            menu_frame = gui_builder.ctk.CTkFrame(parent, height=40, fg_color=("gray95", "gray15"))
+            menu_frame.grid_propagate(False)  # Maintain fixed height
+            
+            # Create horizontal button container
+            button_container = gui_builder.ctk.CTkFrame(menu_frame, fg_color="transparent")
+            button_container.pack(expand=True, fill="both", padx=5, pady=5)
+            
+            button_column = 0
+            
+            # Add Dump Console button if enabled
+            if dump_enabled:
+                dump_button = gui_builder.ctk.CTkButton(
+                    button_container,
+                    text="Dump Console",
+                    command=self._dump_console,
+                    width=100,
+                    height=30,
+                    font=("Consolas", 12)
+                )
+                dump_button.grid(row=0, column=button_column, padx=(0, 5), sticky="w")
+                button_column += 1
+            
+            return menu_frame
+            
+        except Exception as e:
+            print(f"Error creating menu frame: {e}")
+            return None
+    
+    def _dump_console(self) -> None:
+        """Dump current console content to a file"""
+        try:
+            if not self.console_textbox:
+                print("[color:red]Error: Console textbox not available")
+                return
+            
+            # Get current console content
+            console_content = self.console_textbox.get("1.0", "end-1c")
+            
+            if not console_content.strip():
+                print("[color:yellow]Console is empty - nothing to dump")
+                return
+            
+            # Get dump directory from config
+            dump_directory = self.state_manager.get_config_value('console.dump_directory', '').strip()
+            
+            # Use default directory if not specified
+            if not dump_directory:
+                import os
+                # Get project root directory
+                project_root = self.storage_manager.get_base_path()
+                dump_directory = os.path.join(project_root, 'condumps')
+            
+            # Create directory if it doesn't exist
+            import os
+            os.makedirs(dump_directory, exist_ok=True)
+            
+            # Generate filename with timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"console_dump_{timestamp}.txt"
+            filepath = os.path.join(dump_directory, filename)
+            
+            # Write console content to file
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(console_content)
+            
+            print(f"[color:green]Console dumped successfully to: {filepath}")
+            
+        except Exception as e:
+            print(f"[color:red]Error dumping console: {e}")
     
     def _setup_output_redirection(self) -> None:
         """Setup stdout/stderr redirection to console"""
@@ -322,6 +418,40 @@ class ConsoleManager:
         
         if self.console_textbox:
             self.console_textbox.update_settings(new_settings)
+        
+        # Refresh menu in case dump settings changed
+        self._refresh_menu()
+    
+    def _refresh_menu(self) -> None:
+        """Refresh the console menu based on current settings"""
+        try:
+            if not self.console_window:
+                return
+            
+            # Get the main frame (parent of textbox and menu)
+            main_frame = None
+            for child in self.console_window.winfo_children():
+                if isinstance(child, gui_builder.ctk.CTkFrame):
+                    main_frame = child
+                    break
+            
+            if not main_frame:
+                return
+            
+            # Remove existing menu frame if it exists
+            if self.menu_frame:
+                self.menu_frame.destroy()
+                self.menu_frame = None
+            
+            # Create new menu frame if needed
+            new_menu_frame = self._create_menu_frame_if_needed(main_frame)
+            if new_menu_frame:
+                new_menu_frame.grid(row=1, column=0, sticky="ew", padx=2, pady=(2, 0))
+            
+            self.menu_frame = new_menu_frame
+            
+        except Exception as e:
+            print(f"Error refreshing console menu: {e}")
     
     def show(self, show: bool, root_window=None, center: bool = True) -> None:
         """Show or hide console window"""
@@ -367,3 +497,4 @@ class ConsoleManager:
             
         self.console_window = None
         self.console_textbox = None
+        self.menu_frame = None
