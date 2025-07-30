@@ -528,6 +528,7 @@ class ConfigUIGenerator:
             "logging.max_file_size": ["Max file size", "file size", "File size"],
             "logging.max_files": ["Max files", "max files", "Files"],
             "console.dump_directory": ["Dump Directory", "dump directory", "Directory"],
+            "api.port": ["Network Port", "Port", "port"],
         }
         
         for field_key, keywords in error_mapping.items():

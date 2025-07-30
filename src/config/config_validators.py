@@ -19,6 +19,7 @@ class ConfigValidator:
             'file_size': self._validate_file_size,
             'max_files': self._validate_max_files,
             'dump_directory': self._validate_dump_directory,
+            'port': self._validate_port,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -155,6 +156,29 @@ class ConfigValidator:
             return []
         except Exception:
             return [f"{field.label} Invalid directory path format"]
+    
+    def _validate_port(self, field: ConfigField, value) -> List[str]:
+        """Validate network port number"""
+        if value is None:
+            return [f"{field.label} Port number is required"]
+        
+        # Handle integer values (stored format)
+        if isinstance(value, int):
+            if value < 1024 or value > 65535:
+                return [f"{field.label} Port must be between 1024 and 65535"]
+            return []
+        
+        # Handle string values (user input format)
+        if not value or not str(value).strip():
+            return [f"{field.label} Port number is required"]
+        
+        try:
+            port = int(str(value).strip())
+            if port < 1024 or port > 65535:
+                return [f"{field.label} Port must be between 1024 and 65535"]
+            return []
+        except ValueError:
+            return [f"{field.label} Port must be a valid number"]
     
     @staticmethod
     def _parse_file_size(size_str: str) -> int:

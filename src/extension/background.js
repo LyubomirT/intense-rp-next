@@ -6,7 +6,8 @@ let activeTabId = null;
 let targetRequestId = null;
 let streamBuffer = [];
 let completionTriggered = false;
-const localApiUrl = 'http://127.0.0.1:5000';
+const DEFAULT_PORT = 5000;
+const localApiUrl = `http://127.0.0.1:${DEFAULT_PORT}`;
 
 // Debug helper to send logs to IntenseRP console
 function debugLog(message) {

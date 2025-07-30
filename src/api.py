@@ -955,15 +955,18 @@ def run_services() -> None:
             state.clear_messages()
             state.show_message("[color:red]API IS NOW ACTIVE!")
             state.show_message("[color:cyan]WELCOME TO INTENSE RP API")
-            state.show_message("[color:yellow]URL 1: [color:white]http://127.0.0.1:5000/")
+            
+            # Get configured API port
+            api_port = state.get_config_value("api.port", 5000)
+            state.show_message(f"[color:yellow]URL 1: [color:white]http://127.0.0.1:{api_port}/")
 
             # Check show_ip setting using new system
             if state.get_config_value("show_ip", False):
                 ip = socket.gethostbyname(socket.gethostname())
-                state.show_message(f"[color:yellow]URL 2: [color:white]http://{ip}:5000/")
+                state.show_message(f"[color:yellow]URL 2: [color:white]http://{ip}:{api_port}/")
 
             state.is_running = True
-            serve(app, host="0.0.0.0", port=5000, channel_request_lookahead=1)
+            serve(app, host="0.0.0.0", port=api_port, channel_request_lookahead=1)
         else:
             state.clear_messages()
             state.show_message("[color:red]Selenium failed to start.")

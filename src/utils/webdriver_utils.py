@@ -42,8 +42,13 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
             source_extension_dir = _get_extension_dir()
             if source_extension_dir and _validate_extension_structure(source_extension_dir):
                 print(f"[color:cyan]Network interception enabled - preparing fresh extension copy...")
+                # Get configured API port
+                api_port = 5000  # Default port
+                if config:
+                    api_config = config.get("api", {})
+                    api_port = api_config.get("port", 5000)
                 # Create a fresh copy of the extension to avoid Chrome caching issues
-                extension_dir = _create_fresh_extension_copy(source_extension_dir)
+                extension_dir = _create_fresh_extension_copy(source_extension_dir, api_port)
                 if extension_dir:
                     print(f"[color:cyan]Extension copied to: {extension_dir}")
                     # Clean up old extension copies and profiles
@@ -300,7 +305,7 @@ def _validate_extension_structure(extension_dir: str) -> bool:
         print(f"[color:red]Error validating extension structure: {e}")
         return False
 
-def _create_fresh_extension_copy(source_extension_dir: str) -> str:
+def _create_fresh_extension_copy(source_extension_dir: str, api_port: int = 5000) -> str:
     """Create a fresh copy of the extension to avoid Chrome caching issues"""
     try:
         # Create a unique temporary directory for this extension copy
@@ -316,6 +321,27 @@ def _create_fresh_extension_copy(source_extension_dir: str) -> str:
         # Copy the entire extension directory
         print(f"[color:cyan]Copying extension from {source_extension_dir} to {copy_path}")
         shutil.copytree(source_extension_dir, copy_path)
+        
+        # Replace port in background.js if different from default
+        if api_port != 5000:
+            background_js_path = os.path.join(copy_path, "background.js")
+            if os.path.exists(background_js_path):
+                try:
+                    print(f"[color:cyan]Updating extension port from 5000 to {api_port}")
+                    with open(background_js_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # Replace DEFAULT_PORT value
+                    content = content.replace('const DEFAULT_PORT = 5000;', f'const DEFAULT_PORT = {api_port};')
+                    
+                    with open(background_js_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    print(f"[color:green]Extension port updated successfully to {api_port}")
+                except Exception as e:
+                    print(f"[color:yellow]Warning: Could not update extension port: {e}")
+        else:
+            print(f"[color:cyan]Using default port {api_port}, no extension modification needed")
         
         # Verify the copy was successful
         if _validate_extension_structure(copy_path):

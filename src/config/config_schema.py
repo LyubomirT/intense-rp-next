@@ -241,6 +241,14 @@ def get_config_schema() -> List[ConfigSection]:
             title="Advanced Settings", 
             fields=[
                 ConfigField(
+                    key="api.port",
+                    label="Network Port:",
+                    field_type=ConfigFieldType.TEXT,
+                    default=5000,
+                    validation="port",
+                    help_text="Port number for the API server (1024-65535)"
+                ),
+                ConfigField(
                     key="browser",
                     label="Browser:",
                     field_type=ConfigFieldType.DROPDOWN,
