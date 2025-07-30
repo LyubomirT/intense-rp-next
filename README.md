@@ -11,6 +11,7 @@
 ![License](https://img.shields.io/github/license/LyubomirT/intense-rp-next?style=flat-square)
 ![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-next?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-next?style=flat-square)
+![Beta](https://img.shields.io/badge/status-beta-orange?style=flat-square)
 
 </div>
 
