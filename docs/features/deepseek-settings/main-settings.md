@@ -95,7 +95,7 @@ You can enable this globally with this toggle, or use it selectively by adding `
 
 ## Network Interception
 
-The **Intercept Network** toggle enables the Chrome extension-based network interception feature, which significantly improves response capture reliability. 
+The **Intercept Network** toggle enables the Chrome/Edge extension-based network interception feature, which significantly improves response capture reliability.
 
 !!! info "Dedicated Page"
     Network Interception has [its own dedicated page](network-interception.md) with complete details on how it works and how to use it effectively.
@@ -109,6 +109,6 @@ For most users, we recommend the following DeepSeek settings configuration:
 - Enable :material-thought-bubble: **Deepthink** if you prefer the writing style of the R1 model
 - Enable :material-send: **Send Thoughts** so that you can stop the model if it goes astray
 - Enable :fontawesome-solid-magnifying-glass: **Search** selectively if you frequently ask about current events or factual information
-- Enable :material-network: **Network Interception** if you're using Chrome (highly recommended)
+- Enable :material-network: **Network Interception** if you're using Chrome/Edge (highly recommended)
 
 Remember that you can always adjust these settings later based on what works best for you and your roleplay style.

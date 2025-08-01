@@ -39,7 +39,7 @@ Head to your **API Connections** in SillyTavern and make sure your Custom Endpoi
 When you start IntenseRP Next for the first time after migration, it will automatically detect and upgrade your old configuration format. You might see a message in the console about "migrating formatting presets" - this is normal and ensures your settings work with the new features.
 
 !!! tip "New Features Available"
-    After migrating, check out the Settings window to explore new options like network interception (Chrome only), persistent browser sessions, and custom message formatting templates. These weren't available in the original version but can significantly improve your experience.
+    After migrating, check out the Settings window to explore new options like network interception (Chrome/Edge), persistent browser sessions, and custom message formatting templates. These weren't available in the original version but can significantly improve your experience.
 
 ## From a Previous Version of IntenseRP Next
 
@@ -68,7 +68,7 @@ Most migrations go smoothly, but if you run into issues, here are the common fix
 **Browser login not persisting?** This is a new feature in IntenseRP Next. After migration, you'll need to enable "Persistent cookies" in Settings and log in once more. After that, your browser session will survive restarts.
 
 !!! warning "Chrome Extension Note"
-    If you're planning to use the network interception feature (Chrome only), you don't need to install anything manually. IntenseRP Next includes the extension and will load it automatically when you enable the feature in Settings.
+    If you're planning to use the network interception feature (Chrome/Edge), you don't need to install anything manually. IntenseRP Next includes the extension and will load it automatically when you enable the feature in Settings.
 
 ## What's Different?
 

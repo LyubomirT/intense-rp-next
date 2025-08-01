@@ -102,9 +102,9 @@ IntenseRP Next offers two methods for capturing responses from DeepSeek:
 
 ### Network Interception (Recommended)
 
-Network interception uses a Chrome extension to capture responses directly from the network traffic, before they're rendered on the page. This method:
+Network interception uses a Chrome/Edge extension to capture responses directly from the network traffic, before they're rendered on the page. This method:
 
-- Works only with Chrome browser
+- Works only with Chrome/Edge browsers
 - Provides more reliable streaming responses
 - Handles more complex content like code blocks, images, and LaTeX
 - Captures responses faster and more consistently

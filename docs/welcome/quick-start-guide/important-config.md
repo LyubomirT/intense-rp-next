@@ -44,9 +44,9 @@ Simply enter your email and password, then flip the **Auto login** switch to ena
 
 ### :material-star:{ .nice-to-have } Intercept Network
 
-This is a Chrome-only feature that significantly improves response capture reliability. When enabled, IntenseRP Next uses a Chrome extension to intercept DeepSeek's responses directly from the network stream instead of scraping them from the page.
+This is a Chrome/Edge feature that significantly improves response capture reliability. When enabled, IntenseRP Next uses a browser extension to intercept DeepSeek's responses directly from the network stream instead of scraping them from the page.
 
-You'll notice the difference most with streaming responses, complex structures, HTML tags, images, LaTeX, and code blocks - they come through cleanly without formatting issues. If you're using Chrome (which is recommended anyway), definitely turn this on.
+You'll notice the difference most with streaming responses, complex structures, HTML tags, images, LaTeX, and code blocks - they come through cleanly without formatting issues. If you're using Chrome or Edge (which are recommended), definitely turn this on.
 
 ### :material-palette:{ .subjective } Deepthink and Search
 
@@ -60,7 +60,7 @@ A few options here are worth considering even for new users.
 
 ### :material-check-circle:{ .recommended } Browser Selection
 
-IntenseRP Next supports Chrome, Firefox, Edge, and Safari (experimentally). Chrome is the recommended choice because it has the best Cloudflare bypass capabilities and supports all features including network interception.
+IntenseRP Next supports Chrome, Firefox, Edge, and Safari (experimentally). Chrome and Edge are the recommended choices because they have the best Cloudflare bypass capabilities and support all features including network interception.
 
 If you must use a different browser, Edge is the second-best option as it's also Chromium-based. Firefox works but may struggle more with Cloudflare challenges.
 
@@ -117,7 +117,7 @@ If you're in a hurry, here's a quick checklist to get IntenseRP Next configured 
 1. Open Settings
 2. Enter your DeepSeek email and password
 3. Enable Auto login
-4. If using Chrome, enable Intercept Network
+4. If using Chrome or Edge, enable Intercept Network
 5. Enable Persistent cookies (Chrome/Edge only)
 6. Click Save
 

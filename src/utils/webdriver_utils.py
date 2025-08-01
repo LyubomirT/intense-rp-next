@@ -35,10 +35,10 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         # Note: App mode disabled to ensure extension compatibility
         chromium_arg = None
         
-        # Set up extension loading for Chrome when network interception is enabled
+        # Set up extension loading for Chrome/Edge when network interception is enabled
         extension_dir = None
         clean_profile = False
-        if intercept_network and browser == "chrome":
+        if intercept_network and browser in ["chrome", "edge"]:
             source_extension_dir = _get_extension_dir()
             if source_extension_dir and _validate_extension_structure(source_extension_dir):
                 print(f"[color:cyan]Network interception enabled - preparing fresh extension copy...")
@@ -47,7 +47,7 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
                 if config:
                     api_config = config.get("api", {})
                     api_port = api_config.get("port", 5000)
-                # Create a fresh copy of the extension to avoid Chrome caching issues
+                # Create a fresh copy of the extension to avoid browser caching issues
                 extension_dir = _create_fresh_extension_copy(source_extension_dir, api_port)
                 if extension_dir:
                     print(f"[color:cyan]Extension copied to: {extension_dir}")
@@ -70,16 +70,16 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
             print(f"[color:cyan]Using persistent browser data directory: {user_data_dir}")
             
             # If network interception is enabled, clean any old extension installations first
-            if intercept_network and browser == "chrome":
+            if intercept_network and browser in ["chrome", "edge"]:
                 _remove_existing_extension_from_profile(user_data_dir)
                 
-        elif clean_profile and browser == "chrome":
+        elif clean_profile and browser in ["chrome", "edge"]:
             # Use a clean profile for extension management (when network interception enabled but persistent cookies disabled)
-            user_data_dir = _create_clean_extension_profile()
+            user_data_dir = _create_clean_extension_profile(browser)
             print(f"[color:cyan]Using clean extension profile: {user_data_dir}")
         else:
             # Default behavior - no special profile needed
-            if intercept_network and browser == "chrome":
+            if intercept_network and browser in ["chrome", "edge"]:
                 print(f"[color:yellow]Network interception enabled but no profile specified - using default profile")
 
         # Initialize driver with proper user data directory and extension
@@ -92,15 +92,15 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         if user_data_dir:
             driver_options["user_data_dir"] = user_data_dir
             
-        if extension_dir and intercept_network and browser == "chrome":
+        if extension_dir and intercept_network and browser in ("chrome", "edge"):
             driver_options["extension_dir"] = extension_dir
 
         print(f"[color:cyan]Creating Driver with options: {driver_options}")
         driver = Driver(**driver_options)
         print(f"[color:green]Driver created successfully")
-        
-        # If network interception is enabled and we're using Chrome, validate and reload the extension
-        if intercept_network and browser == "chrome" and extension_dir:
+
+        # If network interception is enabled and we're using Chrome or Edge, validate and reload the extension
+        if intercept_network and browser in ("chrome", "edge") and extension_dir:
             print("[color:cyan]Network interception enabled - validating extension installation...")
             if validate_extension_installation(driver):
                 print("[color:green]Extension already properly installed")
@@ -127,11 +127,11 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         
         # Log network interception status
         if intercept_network:
-            if browser == "chrome":
+            if browser in ("chrome", "edge"):
                 print(f"[color:green]Network interception enabled for {browser.title()}")
             else:
-                print(f"[color:yellow]Network interception requested but only supported for Chrome")
-        
+                print(f"[color:yellow]Network interception requested but only supported for Chrome and Edge")
+
         return driver
 
     except Exception as e:
@@ -141,9 +141,9 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         return None
 
 def _remove_existing_extension_from_profile(user_data_dir: str) -> None:
-    """Remove any existing IntenseRP extension installations from the Chrome profile"""
+    """Remove any existing IntenseRP extension installations from the Chrome/Edge profile"""
     try:
-        # Chrome stores extensions in Default/Extensions/
+        # Chrome/Edge stores extensions in Default/Extensions/
         extensions_dir = os.path.join(user_data_dir, "Default", "Extensions")
         
         if not os.path.exists(extensions_dir):
@@ -223,8 +223,8 @@ def _get_extension_data_dir() -> str:
         print(f"Error creating extension data directory: {e}")
         return os.path.join(tempfile.gettempdir(), "intenserp_extensions")
 
-def _create_clean_extension_profile() -> str:
-    """Create a clean Chrome profile with only our extension"""
+def _create_clean_extension_profile(browser: str = "chrome") -> str:
+    """Create a clean Chrome/Edge profile with only our extension"""
     try:
         extension_data_dir = _get_extension_data_dir()
         profile_name = f"intenserp_extension_{int(time.time())}"
@@ -245,7 +245,10 @@ def _create_clean_extension_profile() -> str:
         
     except Exception as e:
         print(f"Error creating clean extension profile: {e}")
-        return _get_browser_data_dir("chrome")
+        print(f"[color:red]WARNING!! THIS COULD BE DANGEROUS AS IT MAY DELETE YOUR {browser.upper()} PROFILE DATA")
+        print("[color:yellow]PROCEED AT YOUR OWN RISK, IT IS RECOMMENDED TO CLOSE THIS PROGRAM NOW")
+        print("[color:red]Falling back to default browser data directory")
+        return _get_browser_data_dir(browser)  # Fallback to default browser data directory
 
 def _cleanup_old_extension_profiles() -> None:
     """Clean up old extension profiles to prevent accumulation"""
@@ -396,7 +399,7 @@ def _cleanup_old_extension_copies() -> None:
         print(f"[color:yellow]Error cleaning up old extension copies: {e}")
 
 def _get_extension_dir() -> str:
-    """Get the path to the Chrome extension directory"""
+    """Get the path to the Chrome/Edge extension directory"""
     try:
         # Get the path relative to the current file location
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -535,7 +538,7 @@ def get_extension_status(driver) -> dict:
         }
 
 def get_chrome_extension_logs(driver) -> list:
-    """Get Chrome extension console logs for debugging"""
+    """Get Chrome/Edge extension console logs for debugging"""
     try:
         # Get browser logs that might contain extension messages
         logs = driver.get_log('browser')
@@ -558,9 +561,9 @@ def get_chrome_extension_logs(driver) -> list:
         return []
 
 def restart_chrome_with_extension(config: Optional[Dict[str, Any]] = None) -> Optional[Driver]:
-    """Restart Chrome with proper extension loading - replaces the old reload mechanism"""
+    """Restart Chrome/Edge with proper extension loading - replaces the old reload mechanism"""
     try:
-        print("[color:cyan]Restarting Chrome with clean extension loading...")
+        print("[color:cyan]Restarting Chrome/Edge with clean extension loading...")
         
         # Clean up old extension profiles first
         _cleanup_old_extension_profiles()
@@ -569,17 +572,17 @@ def restart_chrome_with_extension(config: Optional[Dict[str, Any]] = None) -> Op
         new_driver = initialize_webdriver("chrome", "https://chat.deepseek.com", config)
         
         if new_driver:
-            print("[color:green]Chrome restarted successfully with extension")
+            print("[color:green]Chrome/Edge restarted successfully with extension")
             return new_driver
         else:
-            print("[color:red]Failed to restart Chrome with extension")
+            print("[color:red]Failed to restart Chrome/Edge with extension")
             return None
             
     except Exception as e:
-        print(f"[color:red]Error restarting Chrome with extension: {e}")
+        print(f"[color:red]Error restarting Chrome/Edge with extension: {e}")
         return None
 
-# Legacy functions - deprecated in favor of Chrome profile + --load-extension approach
+# Legacy functions - deprecated in favor of Chrome/Edge profile + --load-extension approach
 # These functions are kept for compatibility but are no longer used
 
 def deprecated_reload_chrome_extension(driver) -> bool:

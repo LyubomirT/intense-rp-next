@@ -38,14 +38,14 @@ Before you troubleshoot, you can try some of these quick fixes. Many issues are 
 
 ??? failure "Responses stop in the middle or time out"
     1. Check your internet connection stability
-    2. If using Chrome, enable **Network Interception** in DeepSeek Settings
+    2. If using Chrome or Edge, enable **Network Interception** in DeepSeek Settings
     3. Try disabling streaming in SillyTavern
     4. Ensure your prompts aren't excessively long (DeepSeek has context limits)
 
 ??? failure "Code blocks look broken or cause streaming to pause"
     This is a known limitation when using DOM scraping. The solution is to:
-    
-    1. Switch to Chrome browser if you haven't already
+
+    1. Switch to Chrome or Edge browser if you haven't already
     2. Enable **Network Interception** in DeepSeek Settings
     3. Restart IntenseRP Next
 
@@ -108,7 +108,7 @@ To share log files when reporting an issue:
 
 Normally, IntenseRP Next should:
 
-- Only support Chrome for network interception
+- Only support Chrome/Edge for network interception
 - Connect to DeepSeek without frequent Cloudflare challenges
 - Provide reliable streaming responses without interruptions
 - Pause during code blocks only when using DOM scraping (without network interception)

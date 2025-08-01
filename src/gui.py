@@ -109,7 +109,6 @@ def start_services() -> None:
         state.show_message("[color:green]Please wait...")
         threading.Thread(target=api.run_services, daemon=True).start()
     except Exception as e:
-        state.clear_messages()
         state.show_message("[color:red]Selenium failed to start.")
         print(f"Error starting services: {e}")
 

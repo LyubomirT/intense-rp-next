@@ -26,7 +26,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     The application runs a local web server on port 5000 that mimics OpenAI's API format. When SillyTavern sends a request, IntenseRP Next launches a browser (Chrome, Firefox, or Edge), navigates to DeepSeek's chat interface, logs you in automatically (if configured), sends your message, and captures the response. This response is then formatted and sent back to SillyTavern. It's browser automation made seamless.
 
 ??? question "What's the difference between DOM scraping and network interception?"
-    DOM scraping extracts responses from the rendered HTML on the page. It works with all browsers but can struggle with complex content like code blocks. Network interception (Chrome only) captures responses directly from the network stream before they're rendered, providing much more reliable results. It's like the difference between taking a photo of a printed document versus getting the original digital file.
+    DOM scraping extracts responses from the rendered HTML on the page. It works with all browsers but can struggle with complex content like code blocks. Network interception (Chrome/Edge) captures responses directly from the network stream before they're rendered, providing much more reliable results. It's like the difference between taking a photo of a printed document versus getting the original digital file.
 
 ??? question "Why does IntenseRP Next need a browser window open?"
     Since we're using DeepSeek's chat interface rather than an API, we need an actual browser to interact with their website. The browser window is where the magic happens - it's not just for show. Closing it will break the connection. Think of it as IntenseRP Next's workspace where it types your messages and reads DeepSeek's responses.
@@ -37,7 +37,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
 ## Compatibility & Requirements
 
 ??? question "Which browsers work with IntenseRP Next?"
-    Chrome is the recommended browser and supports all features including network interception. Edge works well as a second choice. Firefox is supported but may have more issues with Cloudflare challenges. Safari support is experimental. For the best experience, use Chrome.
+    Chrome and Edge are the recommended browsers and support all features including network interception. Firefox is supported but may have more issues with Cloudflare challenges and doesn't support network interception. Safari support is experimental. For the best experience, use Chrome or Edge.
 
 ??? question "Does IntenseRP Next work on Mac or Linux?"
     The source code works on all platforms. Pre-built binaries are currently only available for Windows, but Linux binaries are coming soon. Mac users need to run from source for now. The core functionality is the same across all platforms.
@@ -68,7 +68,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     V3-0324 is DeepSeek's standard chat model - fast and efficient for general conversations. R1-0528 is their reasoning model that thinks through problems step-by-step. R1 (DeepThink mode) produces more thoughtful responses but takes longer. Use V3 for casual chat and R1 for complex questions or when you want to see the AI's reasoning process.
 
 ??? question "Should I use network interception?"
-    If you're using Chrome, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a non-Chrome browser.
+    If you're using Chrome or Edge, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a browser that doesn't support it (Firefox, Safari).
 
 ??? question "What do the different formatting presets actually do?"
     Formatting presets control how messages appear when sent to DeepSeek. "Classic (Name)" uses character names like "John: Hello" which feels natural for roleplay. "Wrapped" uses XML-style tags for clearer boundaries. "Divided" adds visual separators. The preset doesn't affect how messages appear in SillyTavern, only how they're formatted for DeepSeek to understand.

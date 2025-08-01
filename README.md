@@ -21,7 +21,7 @@ I've completely reimagined the original project with a focus on **reliability**,
 
 ### 🌟 Key Improvements
 
-- **🔌 Network Interception**: Chrome extension using CDP (Chrome DevTools Protocol) for way more reliable response capture (essentially skipping HTML to Markdown conversion)
+- **🔌 Network Interception**: Chrome/Edge extension using CDP (Chrome DevTools Protocol) for way more reliable response capture (essentially skipping HTML to Markdown conversion)
 - **🎨 Better UX**: Improved interface and console with multiple color themes (console for now), custom fonts, and intuitive configuration
 - **📝 Smart Message Processing**: Pipeline-based system that handles custom message formatting, character recognition, and content processing
 - **🛡️ Better Cloudflare Bypass**: Improved browser automation with persistent profiles and undetected Chrome mode
@@ -63,7 +63,7 @@ Currently, only Windows binaries are available, but I'm actively working on Linu
 1. **Download**: Grab the latest release from [Releases](https://github.com/LyubomirT/intense-rp-next/releases) or clone the repo
 2. **Run**: Double-click `Intense RP API.exe` or run `python src/main.pyw`
 3. **Configure**: Hit the Settings button and fill in your DeepSeek credentials
-4. **Choose Browser**: Chrome is recommended for best Cloudflare bypass and network interception
+4. **Choose Browser**: Chrome or Edge are recommended for best Cloudflare bypass and network interception
 5. **Start**: Click the big Start button and let the magic happen
 6. **Connect**: Use `http://127.0.0.1:5000/` in SillyTavern
 
@@ -104,11 +104,11 @@ IntenseRP Next is not stopping here! More stuff is coming in very soon:
 
 Likely caused by Cloudflare's challenges. Most of the times this happens when you frequently log in and out of DeepSeek. Technically, the best ways to fix this are:
 - **Use Persistent Profiles**: Enable persistent profiles in the settings to keep your session alive. ALSO, this lets the browser store cookies and session data, which helps with Cloudflare challenges.
-- **Use Undetected Chrome**: This, obviously, only works if you use Chrome. IntenseRP automatically enables undetected Chrome mode, which helps bypass Cloudflare's bot detection.
+- **Use Undetected Chrome**: This works with Chrome and Edge. IntenseRP automatically enables undetected Chrome mode, which helps bypass Cloudflare's bot detection.
 
 ### Network Interception Broken Or Unstable
 
-Please note that the feature is still in beta and might not work perfectlly in all cases. Also, note that this has only been implemented and tested for Chrome. If you use Edge, it might not work as well, if at all. IntenseRP Next falls back to the old HTML to Markdown conversion if network interception fails, so you can still use it, but with less reliability.
+Please note that the feature is still in beta and might not work perfectly in all cases. Network interception is now supported for both Chrome and Edge. IntenseRP Next falls back to the old HTML to Markdown conversion if network interception fails, so you can still use it, but with less reliability.
 
 ### Code Blocks Temporarily Pausing Streaming
 

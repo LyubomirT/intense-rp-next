@@ -104,7 +104,7 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Intercept Network:",
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
-                    help_text="Use network interception instead of DOM scraping (Chrome only)"
+                    help_text="Use network interception instead of DOM scraping (Chrome/Edge)"
                 ),
             ]
         ),

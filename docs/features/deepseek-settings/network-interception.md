@@ -13,7 +13,7 @@ Network Interception is one of IntenseRP Next's most significant improvements ov
     2. Go to the **DeepSeek Settings** section
     3. Enable **Intercept Network**
     4. Scroll down to **Advanced Settings**
-    5. Make sure you have the **Chrome** browser selected
+    5. Make sure you have **Chrome** or **Edge** browser selected
     6. Save your settings
     7. Restart IntenseRP Next **completely** (close and reopen the app, make sure to wait for it to fully close before reopening)
 
@@ -101,24 +101,24 @@ The extension is lightweight and only activates on DeepSeek's domain. It doesn't
 
 ## Browser Support
 
-Currently, network interception only works with Chrome. This limitation exists because:
+Network interception works with Chrome and Edge. Previously it was Chrome-only, but now both Chromium-based browsers are supported:
 
-1. **CDP is Chrome-specific** - The Chrome DevTools Protocol is built into Chromium-based browsers. While Edge also uses Chromium, its implementation differs enough that our extension doesn't work reliably there yet.
+1. **CDP in Chromium browsers** - The Chrome DevTools Protocol is built into Chromium-based browsers. Both Chrome and Edge implement the same CDP specification, making network interception possible on both.
 
-2. **Extension architecture** - Our network interception relies on Chrome's specific extension APIs and manifest v3 features. Other browsers either don't support these APIs or implement them differently.
+2. **Extension architecture** - Our network interception relies on Chromium's extension APIs and manifest v3 features. Firefox and Safari either don't support these APIs or implement them differently.
 
-3. **Testing and reliability** - We've focused on making the Chrome implementation rock-solid rather than spreading our efforts across multiple browsers with varying quality.
+3. **Testing and reliability** - We've focused on making the Chrome/Edge implementation rock-solid rather than spreading our efforts across multiple browsers with varying quality.
 
-Firefox has its own remote debugging protocol, but it would require a completely different implementation. Safari's extension system is even more different. Supporting these browsers is on our roadmap, but for now, we recommend using Chrome if you want network interception.
+Firefox has its own remote debugging protocol, but it would require a completely different implementation. Safari's extension system is even more different. Supporting these browsers is on our roadmap, but for now, we recommend using Chrome or Edge if you want network interception.
 
 ## Setup and Troubleshooting
 
-Network interception should work automatically when you enable it in settings and use Chrome. The extension loads in the background without any manual installation needed.
+Network interception should work automatically when you enable it in settings and use Chrome or Edge. The extension loads in the background without any manual installation needed.
 
 If you're having issues, here are some things to check:
 
 !!! tip "Quick Checks"
-    - Make sure you're using Chrome (not Edge or another Chromium browser)
+    - Make sure you're using Chrome or Edge (Firefox and Safari are not supported)
     - Check that "Intercept Network" is enabled in DeepSeek Settings
     - Look for any error messages in the console about extension loading
     - Try restarting IntenseRP Next if you just enabled the feature
@@ -194,7 +194,6 @@ Similarly, we cannot use `EventSource` interception, DeepSeek literally doesn't 
 
 While network interception already provides significant benefits, we have plans to make it even better:
 
-- **Edge support** - Adapting the extension for Microsoft Edge's quirks
 - **Firefox implementation** - Creating a separate extension using Firefox's WebExtensions API
 - **Guaranteed token delivery** - An intelligent optional system to make sure every token DeepSeek sends is captured, even if it fails to deliver in the expected order
 

@@ -19,7 +19,7 @@ When you change the port:
 
 - IntenseRP Next will display the new port in its URLs when starting
 - You'll need to update SillyTavern's connection settings to use the new port
-- Any Chrome extension for network interception will be automatically updated to use the new port
+- Any Chrome/Edge extension for network interception will be automatically updated to use the new port
 
 This setting doesn't impact performance whatsoever - it's purely for convenience and compatibility with other applications that might be using the default port.
 

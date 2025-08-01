@@ -4,7 +4,7 @@ Thanks for thinking about contributing! IntenseRP Next is a community project th
 
 ## Quick Overview
 
-This project is basically a bridge between SillyTavern and DeepSeek AI using browser automation. It's built with Python and has a Chrome extension for better response capture. Don't worry if that sounds complicated - there are lots of ways to help that don't require being a Python expert.
+This project is basically a bridge between SillyTavern and DeepSeek AI using browser automation. It's built with Python and has a Chrome/Edge extension for better response capture. Don't worry if that sounds complicated - there are lots of ways to help that don't require being a Python expert.
 
 ## Ways to Contribute
 
@@ -31,7 +31,7 @@ See something confusing in the docs? Know how to explain a feature better? Docum
 - Writing troubleshooting tips
 
 ### 💻 Code Contributions
-If you want to dive into the code, that's awesome! The project is mostly Python with some JavaScript for the Chrome extension. Take a look at our documentation - it has detailed technical info about how everything works.
+If you want to dive into the code, that's awesome! The project is mostly Python with some JavaScript for the Chrome/Edge extension. Take a look at our documentation - it has detailed technical info about how everything works.
 
 ### ⭐ Just Want to Help?
 That's great too! You can help by spreading the word, sharing your experiences, or just giving us a star on GitHub. Every little bit helps!
@@ -46,7 +46,7 @@ That's great too! You can help by spreading the word, sharing your experiences, 
 
 ### Project Structure
 - `src/` - Main Python code
-- `src/extension/` - Chrome extension for network interception
+- `src/extension/` - Chrome/Edge extension for network interception
 - `src/config/` - Configuration system (pretty cool, it auto-generates UI)
 - `src/processors/` - Message processing pipeline
 - `src/utils/` - Various utility modules

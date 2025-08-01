@@ -968,7 +968,6 @@ def run_services() -> None:
             state.is_running = True
             serve(app, host="0.0.0.0", port=api_port, channel_request_lookahead=1)
         else:
-            state.clear_messages()
             state.show_message("[color:red]Selenium failed to start.")
     except Exception as e:
         print(f"Error starting Selenium: {e}")
