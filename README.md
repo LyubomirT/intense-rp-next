@@ -90,9 +90,8 @@ IntenseRP Next is not stopping here! More stuff is coming in very soon:
 
 | Feature | Status | Priority |
 |---------|---------|----------|
-| 🔄 **Immediate Streaming for CDP** | Planning | High |
+| 🔄 **Immediate Streaming for CDP** | Complete ✅ | High |
 | 🖥️ **Switch to Qt6** | Research | Medium |
-| 🎭 **Puppeteer Integration** | Planned | Medium |
 | 🐧 **Linux Binaries** | Planned | High |
 | 🔄 **Auto-updater for Binaries** | Planning | Medium |
 | 🌐 **Cloudflare Tunnels Support** | Research | Medium |
