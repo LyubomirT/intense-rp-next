@@ -46,6 +46,8 @@ This is useful when you want to connect to IntenseRP Next from another device on
 !!! warning "Security Consideration"
     Enabling network access means any device on your local network can potentially connect to your IntenseRP Next instance. Only use this on trusted networks.
 
+Also see [API Key Authentication](#api-key-authentication) for securing access, it pairs very well with this feature.
+
 ## Debugging & Monitoring
 
 ### :material-console: Show Console
@@ -106,10 +108,6 @@ These features are planned for future releases:
 ### :material-tunnel: Cloudflare Tunnels
 
 Will allow you to expose your IntenseRP Next instance to the internet securely through Cloudflare's tunnel service. This eliminates the need for port forwarding or dealing with dynamic IP addresses when accessing IntenseRP Next remotely.
-
-### :material-key-variant: API Key Authentication
-
-Will add an authentication layer requiring API keys to connect to IntenseRP Next. You'll be able to generate and manage multiple keys, perfect for shared environments or when exposing the service beyond your local network.
 
 ### :material-format-list-checks: IP Whitelist
 

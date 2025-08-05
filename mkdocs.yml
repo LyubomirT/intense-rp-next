@@ -181,6 +181,8 @@ nav:
           - "Custom Templates": features/formatting-templates/custom-templates.md
       - "The Console": features/console.md
       - "Advanced Configuration": features/advanced-configuration.md
+  - Security:
+      - "API Key Authentication": security/api-keys.md
   - Information:
       - "Rate Limits": information/rate-limits.md
       - "Model Handling": information/model-handling.md
