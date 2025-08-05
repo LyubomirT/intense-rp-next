@@ -26,10 +26,10 @@ class ConfigUIGenerator:
         self.window.create(
             visible=True,
             title="Settings",
-            width=750,
-            height=500,
-            min_width=650,
-            min_height=450,
+            width=900,
+            height=600,
+            min_width=800,
+            min_height=550,
             icon=icon_path
         )
         

@@ -164,8 +164,8 @@ def create_tooltip(widget: ctk.CTkBaseClass, text: str) -> Optional[SimpleToolti
 # =============================================================================================================================
 
 class UIConstants:
-    SIDEBAR_WIDTH = 180
-    SIDEBAR_SCROLLABLE_WIDTH = 150
+    SIDEBAR_WIDTH = 220
+    SIDEBAR_SCROLLABLE_WIDTH = 190
     SIDEBAR_TITLE_HEIGHT = 60
     
     BUTTON_HEIGHT = 35
