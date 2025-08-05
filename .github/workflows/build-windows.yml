@@ -43,7 +43,7 @@ jobs:
         if (!(Test-Path "src\assets")) { throw "Missing assets directory" }
         if (!(Test-Path "LICENSE")) { throw "Missing LICENSE file" }
         if (!(Test-Path "src\newlogo.png")) { throw "Missing newlogo.png" }
-        Write-Host "✓ All required files found"
+        Write-Host "[OK] All required files found"
       shell: powershell
       
     - name: Clean previous builds
@@ -51,7 +51,7 @@ jobs:
         if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
         if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
         if (Test-Path "main.spec") { Remove-Item -Force "main.spec" }
-        Write-Host "✓ Build directories cleaned"
+        Write-Host "[OK] Build directories cleaned"
       shell: powershell
       
     - name: Build with PyInstaller
@@ -72,7 +72,7 @@ jobs:
         if (!(Test-Path "dist\main\main.exe")) { 
           throw "Build failed - executable not found" 
         }
-        Write-Host "✓ Executable created successfully"
+        Write-Host "[OK] Executable created successfully"
       shell: powershell
       
     - name: Copy additional assets
@@ -99,7 +99,7 @@ jobs:
         Copy-Item -Path "src\newlogo.png" -Destination "dist\main\" -Force
         Copy-Item -Path "src\newlogo.ico" -Destination "dist\main\" -Force
         
-        Write-Host "✓ Additional assets copied"
+        Write-Host "[OK] Additional assets copied"
       shell: powershell
       
     - name: Rename executable and folder
@@ -110,7 +110,7 @@ jobs:
         # Rename folder
         Move-Item -Path "dist\main" -Destination "dist\intenserp-next-win32-amd64" -Force
         
-        Write-Host "✓ Files and folders renamed"
+        Write-Host "[OK] Files and folders renamed"
       shell: powershell
       
     - name: Create zip archive
@@ -121,7 +121,7 @@ jobs:
         # Get file size for info
         $zipSize = (Get-Item $zipPath).Length
         $zipSizeMB = [math]::Round($zipSize / 1MB, 2)
-        Write-Host "✓ Zip archive created ($zipSizeMB MB)"
+        Write-Host "[OK] Zip archive created ($zipSizeMB MB)"
       shell: powershell
       
     - name: Upload build artifacts

@@ -30,7 +30,7 @@ jobs:
           build-essential \
           libffi-dev \
           libssl-dev
-        echo "✓ System dependencies installed"
+        echo "[OK] System dependencies installed"
         
     - name: Setup Python 3.13
       uses: actions/setup-python@v5
@@ -42,22 +42,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install scikit-build pyinstaller
-        echo "✓ Python dependencies installed"
+        echo "[OK] Python dependencies installed"
       
     - name: Verify required files
       run: |
         # Check all required files exist
-        if [ ! -f "src/main.pyw" ]; then echo "✗ Missing main.pyw"; exit 1; fi
-        if [ ! -d "src/extension" ]; then echo "✗ Missing extension directory"; exit 1; fi
-        if [ ! -d "src/assets" ]; then echo "✗ Missing assets directory"; exit 1; fi
-        if [ ! -f "LICENSE" ]; then echo "✗ Missing LICENSE file"; exit 1; fi
-        if [ ! -f "src/newlogo.png" ]; then echo "✗ Missing newlogo.png"; exit 1; fi
-        echo "✓ All required files found"
+        if [ ! -f "src/main.pyw" ]; then echo "[ERROR] Missing main.pyw"; exit 1; fi
+        if [ ! -d "src/extension" ]; then echo "[ERROR] Missing extension directory"; exit 1; fi
+        if [ ! -d "src/assets" ]; then echo "[ERROR] Missing assets directory"; exit 1; fi
+        if [ ! -f "LICENSE" ]; then echo "[ERROR] Missing LICENSE file"; exit 1; fi
+        if [ ! -f "src/newlogo.png" ]; then echo "[ERROR] Missing newlogo.png"; exit 1; fi
+        echo "[OK] All required files found"
       
     - name: Clean previous builds
       run: |
         rm -rf dist build main.spec
-        echo "✓ Build directories cleaned"
+        echo "[OK] Build directories cleaned"
       
     - name: Build with PyInstaller
       run: |
@@ -69,15 +69,15 @@ jobs:
           --hidden-import "tkextrafont" \
           --collect-data "tkextrafont" \
           "src/main.pyw"
-        echo "✓ PyInstaller build completed"
+        echo "[OK] PyInstaller build completed"
       
     - name: Verify build output
       run: |
         if [ ! -f "dist/main/main" ]; then
-          echo "✗ Build failed - executable not found"
+          echo "[ERROR] Build failed - executable not found"
           exit 1
         fi
-        echo "✓ Executable created successfully"
+        echo "[OK] Executable created successfully"
         
     - name: Copy additional assets
       run: |
@@ -93,7 +93,7 @@ jobs:
         # Copy logo files to root
         cp "src/newlogo.png" "dist/main/"
         
-        echo "✓ Additional assets copied"
+        echo "[OK] Additional assets copied"
       
     - name: Rename executable and folder
       run: |
@@ -106,7 +106,7 @@ jobs:
         # Rename folder
         mv "dist/main" "dist/intenserp-next-linux-amd64"
         
-        echo "✓ Files and folders renamed"
+        echo "[OK] Files and folders renamed"
       
     - name: Create installation script
       run: |
@@ -148,7 +148,7 @@ jobs:
         EOF
         
         chmod +x "dist/intenserp-next-linux-amd64/install.sh"
-        echo "✓ Installation script created"
+        echo "[OK] Installation script created"
       
     - name: Create README
       run: |
@@ -190,7 +190,7 @@ jobs:
         This software is distributed under the MIT License.
         See LICENSE file for details.
         EOF
-        echo "✓ README created"
+        echo "[OK] README created"
       
     - name: Create tar.gz archive
       run: |
@@ -199,12 +199,12 @@ jobs:
         
         # Get file size for info
         size=$(du -h "intenserp-next-linux-amd64.tar.gz" | cut -f1)
-        echo "✓ Tar.gz archive created ($size)"
+        echo "[OK] Tar.gz archive created ($size)"
         
         # Also create a zip for consistency
         zip -r "intenserp-next-linux-amd64.zip" "intenserp-next-linux-amd64"
         zip_size=$(du -h "intenserp-next-linux-amd64.zip" | cut -f1)
-        echo "✓ Zip archive created ($zip_size)"
+        echo "[OK] Zip archive created ($zip_size)"
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
