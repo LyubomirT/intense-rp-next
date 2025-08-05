@@ -33,7 +33,7 @@ jobs:
         echo "✓ System dependencies installed"
         
     - name: Setup Python 3.13
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.13'
         
@@ -207,7 +207,7 @@ jobs:
         echo "✓ Zip archive created ($zip_size)"
       
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: intenserp-next-linux
         path: |
@@ -218,22 +218,8 @@ jobs:
         
     - name: Upload release assets (if release)
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dist/intenserp-next-linux-amd64.tar.gz
-        asset_name: intenserp-next-linux-amd64.tar.gz
-        asset_content_type: application/gzip
-        
-    - name: Upload zip release asset (if release)
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: dist/intenserp-next-linux-amd64.zip
-        asset_name: intenserp-next-linux-amd64.zip
-        asset_content_type: application/zip
+        files: |
+          dist/intenserp-next-linux-amd64.tar.gz
+          dist/intenserp-next-linux-amd64.zip
