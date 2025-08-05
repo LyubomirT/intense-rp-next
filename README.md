@@ -48,20 +48,24 @@ I've completely reimagined the original project with a focus on **reliability**,
 - 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-next/releases)
 
 **For Linux Users:**
+- 🖥️ Linux x64 (Tested on Ubuntu 22.04+)
+- 🌐 GLIBC 2.18+
+- 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-next/releases)
 
-Currently, only Windows binaries are available, but I'm actively working on Linux support. If you're interested in helping test the Linux version, please reach out!
+Currently, we have both Windows and Linux binaries available (as of v1.1.5). However, they're still in beta, so please report any issues you encounter, I'll try to fix them as soon as possible.
 
 **For Source Code:**
 - 🐍 Python 3.12+ from [python.org](https://www.python.org/)
 - 📚 Dependencies auto-install from `requirements.txt`
 
 > [!WARNING]
-> If on Linux, you should also install `scikit-build` (via `pip`) alongside `CMake` and `tcl-dev` `tk-dev` (via your package manager) packages if you want to have `tkextrafont` support for custom fonts. If you don't want to use custom fonts, it will still work but will fall back to Arial. You can simply remove the `tkextrafont` dependency from `requirements.txt` if you don't want to use custom fonts at all.
+> If on Linux, you should also install `scikit-build` (via `pip`) alongside `CMake` and `tcl-dev` `tk-dev` (via your package manager) packages if you want to have `tkextrafont` support for custom fonts. If you don't want to use custom fonts, it will still work but will fall back to Arial. You can simply remove the `tkextrafont` dependency from `requirements.txt` if you don't want to use custom fonts at all. Note that at least `GLIBC 2.18+` is required.
 
 ### 🎮 Getting Started
 
 1. **Download**: Grab the latest release from [Releases](https://github.com/LyubomirT/intense-rp-next/releases) or clone the repo
 2. **Run**: Double-click `Intense RP API.exe` or run `python src/main.pyw`
+    - **For Linux Users**: Run `setup.sh` to prepare the executable, then run `./intenserp-next` in the terminal
 3. **Configure**: Hit the Settings button and fill in your DeepSeek credentials
 4. **Choose Browser**: Chrome or Edge are recommended for best Cloudflare bypass and network interception
 5. **Start**: Click the big Start button and let the magic happen
@@ -92,7 +96,7 @@ IntenseRP Next is not stopping here! More stuff is coming in very soon:
 |---------|---------|----------|
 | 🔄 **Immediate Streaming for CDP** | Complete ✅ | High |
 | 🖥️ **Switch to Qt6** | Research | Medium |
-| 🐧 **Linux Binaries** | Planned | High |
+| 🐧 **Linux Binaries** | Complete ✅ | High |
 | 🔄 **Auto-updater for Binaries** | Planning | Medium |
 | 🌐 **Cloudflare Tunnels Support** | Research | Medium |
 | 📡 **Local Network Availability** | Planned | Medium |
