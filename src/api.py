@@ -7,6 +7,7 @@ from typing import Generator
 from waitress import serve
 from core import get_state_manager, StateEvent
 from pipeline.message_pipeline import MessagePipeline, ProcessingError
+from functools import wraps
 
 app = Flask(__name__)
 # Enable CORS for all routes to allow extension communication
@@ -25,7 +26,94 @@ network_data = {
     'thinking_started': False
 }
 
+# =============================================================================================================================
+# Authentication Functions
+# =============================================================================================================================
+
+def get_valid_api_keys():
+    """Get list of valid API keys from configuration"""
+    state = get_state_manager()
+    api_keys_text = state.get_config_value("security.api_keys", "")
+    
+    if not api_keys_text or not api_keys_text.strip():
+        return []
+    
+    # Parse API keys from textarea (one per line)
+    lines = api_keys_text.strip().split('\n')
+    valid_keys = []
+    
+    for line in lines:
+        key = line.strip()
+        if key and len(key) >= 16:  # Only include non-empty keys with minimum length
+            valid_keys.append(key)
+    
+    return valid_keys
+
+def is_api_auth_enabled():
+    """Check if API authentication is enabled"""
+    state = get_state_manager()
+    return state.get_config_value("security.api_auth_enabled", False)
+
+def validate_api_key(provided_key):
+    """Validate provided API key against configured keys"""
+    if not provided_key:
+        return False
+    
+    valid_keys = get_valid_api_keys()
+    return provided_key in valid_keys
+
+def require_auth(f):
+    """Decorator to require API key authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Skip authentication if not enabled
+        if not is_api_auth_enabled():
+            return f(*args, **kwargs)
+        
+        # Check for Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({
+                "error": {
+                    "message": "Missing Authorization header. Please provide Bearer token.",
+                    "type": "authentication_error",
+                    "code": "missing_authorization"
+                }
+            }), 401
+        
+        # Extract Bearer token
+        if not auth_header.startswith('Bearer '):
+            return jsonify({
+                "error": {
+                    "message": "Invalid Authorization header format. Use: Authorization: Bearer <your-api-key>",
+                    "type": "authentication_error", 
+                    "code": "invalid_authorization_format"
+                }
+            }), 401
+        
+        api_key = auth_header[7:]  # Remove "Bearer " prefix
+        
+        # Validate API key
+        if not validate_api_key(api_key):
+            return jsonify({
+                "error": {
+                    "message": "Invalid API key. Please check your Bearer token.",
+                    "type": "authentication_error",
+                    "code": "invalid_api_key"
+                }
+            }), 401
+        
+        # Authentication successful, proceed with original function
+        return f(*args, **kwargs)
+    
+    return decorated_function
+
+# =============================================================================================================================
+# API Endpoints
+# =============================================================================================================================
+
 @app.route("/models", methods=["GET"])
+@require_auth
 def model() -> Response:
     state = get_state_manager()
     
@@ -42,6 +130,7 @@ def model() -> Response:
         return jsonify({}), 500
 
 @app.route("/chat/completions", methods=["POST"])
+@require_auth
 def bot_response() -> Response:
     state = get_state_manager()
     

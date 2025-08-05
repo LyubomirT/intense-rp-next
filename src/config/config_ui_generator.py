@@ -478,6 +478,11 @@ class ConfigUIGenerator:
             dump_enabled = ui_config.get("console", {}).get("dump_enabled", False)
             return dump_enabled
         
+        # API keys should only be validated if API authentication is enabled
+        if field.key == "security.api_keys":
+            api_auth_enabled = ui_config.get("security", {}).get("api_auth_enabled", False)
+            return api_auth_enabled
+        
         # By default, validate the field
         return True
     
@@ -505,6 +510,9 @@ class ConfigUIGenerator:
         # Mark fields mentioned in errors
         for error in errors:
             self._mark_field_error_by_message(error)
+        
+        # Show error messages to user
+        self._show_validation_errors(errors)
     
     def _reset_field_colors(self) -> None:
         """Reset all field border colors to normal"""
@@ -529,12 +537,13 @@ class ConfigUIGenerator:
             "logging.max_files": ["Max files", "max files", "Files"],
             "console.dump_directory": ["Dump Directory", "dump directory", "Directory"],
             "api.port": ["Network Port", "Port", "port"],
+            "security.api_keys": ["API Keys:", "API Keys", "API key"],  # Added colon variant
         }
         
         for field_key, keywords in error_mapping.items():
             if any(keyword in error_message for keyword in keywords):
                 self._mark_field_error(field_key)
-                break
+                return
     
     def _mark_field_error(self, field_key: str) -> None:
         """Mark a specific field as having an error"""
@@ -547,6 +556,38 @@ class ConfigUIGenerator:
             for field in section.fields:
                 if field.key == field_key:
                     widget = frame.get_widget(field_key)
+                    
                     if widget and hasattr(widget, 'configure'):
                         widget.configure(border_color="red")
+                        
+                        # For textarea, make border thicker to be more visible
+                        if field.field_type == ConfigFieldType.TEXTAREA:
+                            try:
+                                widget.configure(border_width=2)
+                            except Exception:
+                                pass  # Ignore if border_width not supported
                     return
+    
+    def _show_validation_errors(self, errors: list) -> None:
+        """Show validation errors to the user"""
+        try:
+            import tkinter.messagebox as messagebox
+            
+            if len(errors) == 1:
+                title = "Configuration Error"
+                message = f"Please fix the following issue:\n\n{errors[0]}"
+            else:
+                title = "Configuration Errors"
+                message = f"Please fix the following issues:\n\n" + "\n".join(f"• {error}" for error in errors)
+            
+            # ConfigWindow inherits from CTkToplevel, so use self.window directly as parent
+            parent_window = self.window if self.window else None
+            
+            # Show dialog on top of the settings window
+            messagebox.showerror(title, message, parent=parent_window)
+            
+        except Exception as e:
+            # Fallback: print to console
+            print("[color:yellow]Settings validation errors:")
+            for error in errors:
+                print(f"  - {error}")

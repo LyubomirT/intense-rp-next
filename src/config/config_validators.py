@@ -20,6 +20,7 @@ class ConfigValidator:
             'max_files': self._validate_max_files,
             'dump_directory': self._validate_dump_directory,
             'port': self._validate_port,
+            'api_keys': self._validate_api_keys,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -56,6 +57,11 @@ class ConfigValidator:
         if field.key == "console.dump_directory":
             dump_enabled = config_data.get("console", {}).get("dump_enabled", False)
             return dump_enabled
+        
+        # API keys should only be validated if API authentication is enabled
+        if field.key == "security.api_keys":
+            api_auth_enabled = config_data.get("security", {}).get("api_auth_enabled", False)
+            return api_auth_enabled
         
         # By default, validate the field
         return True
@@ -197,6 +203,34 @@ class ConfigValidator:
         except (ValueError, IndexError):
             raise ValueError("Invalid file size format")
     
+    def _validate_api_keys(self, field: ConfigField, value: str) -> List[str]:
+        """Validate API keys"""
+        if not value or not value.strip():
+            return [f"{field.label} At least one API key is required when authentication is enabled"]
+        
+        lines = value.strip().split('\n')
+        valid_keys = []
+        
+        for i, line in enumerate(lines, 1):
+            key = line.strip()
+            if not key:
+                continue  # Skip empty lines
+            
+            # Basic validation - API key should be at least 16 characters for security
+            if len(key) < 16:
+                return [f"{field.label} API key on line {i} is too short (minimum 16 characters)"]
+            
+            # Check for duplicates
+            if key in valid_keys:
+                return [f"{field.label} Duplicate API key found on line {i}"]
+            
+            valid_keys.append(key)
+        
+        if not valid_keys:
+            return [f"{field.label} At least one valid API key is required"]
+        
+        return []
+
     @staticmethod
     def format_file_size(size_bytes: int) -> str:
         """Convert bytes to human readable format (same logic as original)"""

@@ -237,6 +237,38 @@ def get_config_schema() -> List[ConfigSection]:
         ),
         
         ConfigSection(
+            id="security_settings",
+            title="Security Settings",
+            fields=[
+                ConfigField(
+                    key="security.api_auth_enabled",
+                    label="Enable API Authentication:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Require Bearer token authentication for API requests"
+                ),
+                ConfigField(
+                    key="security.api_keys",
+                    label="API Keys:",
+                    field_type=ConfigFieldType.TEXTAREA,
+                    default="",
+                    validation="api_keys",
+                    depends_on="security.api_auth_enabled",
+                    help_text="List of valid API keys (one per line). Requests must include Authorization: Bearer <key>"
+                ),
+                ConfigField(
+                    key="security.generate_api_key",
+                    label="Generate API Key",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="generate_api_key",
+                    depends_on="security.api_auth_enabled",
+                    help_text="Generate a new secure API key and add it to the list above"
+                ),
+            ]
+        ),
+        
+        ConfigSection(
             id="advanced_settings",
             title="Advanced Settings", 
             fields=[
