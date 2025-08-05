@@ -1,0 +1,239 @@
+name: Build Linux Binary
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Only triggers on published releases, not drafts
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          python3-tk \
+          python3-dev \
+          tcl-dev \
+          tk-dev \
+          build-essential \
+          libffi-dev \
+          libssl-dev
+        echo "✓ System dependencies installed"
+        
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install scikit-build pyinstaller
+        echo "✓ Python dependencies installed"
+      
+    - name: Verify required files
+      run: |
+        # Check all required files exist
+        if [ ! -f "src/main.pyw" ]; then echo "✗ Missing main.pyw"; exit 1; fi
+        if [ ! -d "src/extension" ]; then echo "✗ Missing extension directory"; exit 1; fi
+        if [ ! -d "src/assets" ]; then echo "✗ Missing assets directory"; exit 1; fi
+        if [ ! -f "LICENSE" ]; then echo "✗ Missing LICENSE file"; exit 1; fi
+        if [ ! -f "src/newlogo.png" ]; then echo "✗ Missing newlogo.png"; exit 1; fi
+        echo "✓ All required files found"
+      
+    - name: Clean previous builds
+      run: |
+        rm -rf dist build main.spec
+        echo "✓ Build directories cleaned"
+      
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onedir --windowed \
+          --add-data "src/extension:extension/" \
+          --add-data "src/assets:assets/" \
+          --add-data "LICENSE:." \
+          --add-data "src/newlogo.png:." \
+          --hidden-import "tkextrafont" \
+          --collect-data "tkextrafont" \
+          "src/main.pyw"
+        echo "✓ PyInstaller build completed"
+      
+    - name: Verify build output
+      run: |
+        if [ ! -f "dist/main/main" ]; then
+          echo "✗ Build failed - executable not found"
+          exit 1
+        fi
+        echo "✓ Executable created successfully"
+        
+    - name: Copy additional assets
+      run: |
+        # Create assets structure in dist
+        mkdir -p "dist/main/assets/fonts"
+        
+        # Copy font files
+        cp src/assets/fonts/*.ttf "dist/main/assets/fonts/"
+        
+        # Copy contributors.json
+        cp "src/assets/contributors.json" "dist/main/assets/"
+        
+        # Copy logo files to root
+        cp "src/newlogo.png" "dist/main/"
+        
+        echo "✓ Additional assets copied"
+      
+    - name: Rename executable and folder
+      run: |
+        # Rename executable to be more descriptive
+        mv "dist/main/main" "dist/main/intenserp-next"
+        
+        # Make executable
+        chmod +x "dist/main/intenserp-next"
+        
+        # Rename folder
+        mv "dist/main" "dist/intenserp-next-linux-amd64"
+        
+        echo "✓ Files and folders renamed"
+      
+    - name: Create installation script
+      run: |
+        cat > "dist/intenserp-next-linux-amd64/install.sh" << 'EOF'
+        #!/bin/bash
+        # IntenseRP Next Linux Installation Script
+        
+        echo "IntenseRP Next Linux Setup"
+        echo "=========================="
+        
+        # Make executable if not already
+        chmod +x ./intenserp-next
+        
+        # Check for required system packages
+        echo "Checking system dependencies..."
+        
+        if ! command -v python3 &> /dev/null; then
+            echo "⚠️  Python 3 is required but not installed"
+            echo "Please install Python 3.12+ from your package manager"
+            exit 1
+        fi
+        
+        # Check if tkinter is available
+        if ! python3 -c "import tkinter" 2>/dev/null; then
+            echo "⚠️  tkinter is required but not available"
+            echo "Please install python3-tk from your package manager:"
+            echo "  Ubuntu/Debian: sudo apt install python3-tk"
+            echo "  CentOS/RHEL: sudo yum install tkinter"
+            echo "  Arch: sudo pacman -S tk"
+            exit 1
+        fi
+        
+        echo "✓ All dependencies satisfied"
+        echo ""
+        echo "To run IntenseRP Next:"
+        echo "  ./intenserp-next"
+        echo ""
+        echo "Or create a desktop shortcut to this executable."
+        EOF
+        
+        chmod +x "dist/intenserp-next-linux-amd64/install.sh"
+        echo "✓ Installation script created"
+      
+    - name: Create README
+      run: |
+        cat > "dist/intenserp-next-linux-amd64/README.txt" << 'EOF'
+        IntenseRP Next - Linux Distribution
+        ==================================
+        
+        QUICK START:
+        1. Run ./install.sh to check dependencies
+        2. Run ./intenserp-next to start the application
+        
+        SYSTEM REQUIREMENTS:
+        - Python 3.12 or newer
+        - python3-tk (tkinter)
+        - Modern Linux distribution (Ubuntu 20.04+, CentOS 8+, etc.)
+        
+        INSTALLATION:
+        The application is self-contained but requires system Python and tkinter.
+        
+        On Ubuntu/Debian:
+          sudo apt install python3 python3-tk
+        
+        On CentOS/RHEL:
+          sudo yum install python3 tkinter
+        
+        On Arch Linux:
+          sudo pacman -S python tk
+        
+        RUNNING:
+        Execute: ./intenserp-next
+        
+        The application will create a configuration window where you can set up
+        your DeepSeek credentials and browser preferences.
+        
+        SUPPORT:
+        For issues, visit: https://github.com/LyubomirT/intense-rp-next/issues
+        
+        LICENSE:
+        This software is distributed under the MIT License.
+        See LICENSE file for details.
+        EOF
+        echo "✓ README created"
+      
+    - name: Create tar.gz archive
+      run: |
+        cd dist
+        tar -czf "intenserp-next-linux-amd64.tar.gz" "intenserp-next-linux-amd64"
+        
+        # Get file size for info
+        size=$(du -h "intenserp-next-linux-amd64.tar.gz" | cut -f1)
+        echo "✓ Tar.gz archive created ($size)"
+        
+        # Also create a zip for consistency
+        zip -r "intenserp-next-linux-amd64.zip" "intenserp-next-linux-amd64"
+        zip_size=$(du -h "intenserp-next-linux-amd64.zip" | cut -f1)
+        echo "✓ Zip archive created ($zip_size)"
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: intenserp-next-linux
+        path: |
+          dist/intenserp-next-linux-amd64.tar.gz
+          dist/intenserp-next-linux-amd64.zip
+          dist/intenserp-next-linux-amd64/
+        retention-days: 30
+        
+    - name: Upload release assets (if release)
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/intenserp-next-linux-amd64.tar.gz
+        asset_name: intenserp-next-linux-amd64.tar.gz
+        asset_content_type: application/gzip
+        
+    - name: Upload zip release asset (if release)
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/intenserp-next-linux-amd64.zip
+        asset_name: intenserp-next-linux-amd64.zip
+        asset_content_type: application/zip

@@ -1,0 +1,145 @@
+name: Build Windows Binary
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Only triggers on published releases, not drafts
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install system dependencies
+      run: |
+        # Install Visual C++ redistributable (usually already available)
+        echo "Windows system dependencies ready"
+      
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install scikit-build pyinstaller
+      
+    - name: Verify required files
+      run: |
+        # Check all required files exist (mirroring PowerShell script)
+        if (!(Test-Path "src\main.pyw")) { throw "Missing main.pyw" }
+        if (!(Test-Path "src\newlogo.ico")) { throw "Missing newlogo.ico" }
+        if (!(Test-Path "src\extension")) { throw "Missing extension directory" }
+        if (!(Test-Path "src\assets")) { throw "Missing assets directory" }
+        if (!(Test-Path "LICENSE")) { throw "Missing LICENSE file" }
+        if (!(Test-Path "src\newlogo.png")) { throw "Missing newlogo.png" }
+        Write-Host "✓ All required files found"
+      shell: powershell
+      
+    - name: Clean previous builds
+      run: |
+        if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+        if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+        if (Test-Path "main.spec") { Remove-Item -Force "main.spec" }
+        Write-Host "✓ Build directories cleaned"
+      shell: powershell
+      
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onedir --windowed `
+          --icon "src\newlogo.ico" `
+          --add-data "src\extension;extension/" `
+          --add-data "src\assets;assets/" `
+          --add-data "LICENSE;." `
+          --add-data "src\newlogo.png;." `
+          --hidden-import "tkextrafont" `
+          --collect-data "tkextrafont" `
+          "src\main.pyw"
+      shell: powershell
+      
+    - name: Verify build output
+      run: |
+        if (!(Test-Path "dist\main\main.exe")) { 
+          throw "Build failed - executable not found" 
+        }
+        Write-Host "✓ Executable created successfully"
+      shell: powershell
+      
+    - name: Copy additional assets
+      run: |
+        # Create assets structure in dist
+        $assetsTargetDir = "dist\main\assets"
+        if (!(Test-Path $assetsTargetDir)) {
+          New-Item -ItemType Directory -Path $assetsTargetDir -Force | Out-Null
+        }
+        
+        # Copy fonts directory
+        $fontsTargetDir = "$assetsTargetDir\fonts"
+        if (!(Test-Path $fontsTargetDir)) {
+          New-Item -ItemType Directory -Path $fontsTargetDir -Force | Out-Null
+        }
+        
+        # Copy all font files
+        Copy-Item -Path "src\assets\fonts\*.ttf" -Destination $fontsTargetDir -Force
+        
+        # Copy contributors.json
+        Copy-Item -Path "src\assets\contributors.json" -Destination $assetsTargetDir -Force
+        
+        # Copy logo files to root
+        Copy-Item -Path "src\newlogo.png" -Destination "dist\main\" -Force
+        Copy-Item -Path "src\newlogo.ico" -Destination "dist\main\" -Force
+        
+        Write-Host "✓ Additional assets copied"
+      shell: powershell
+      
+    - name: Rename executable and folder
+      run: |
+        # Rename executable
+        Rename-Item -Path "dist\main\main.exe" -NewName "IntenseRP Next.exe"
+        
+        # Rename folder
+        Move-Item -Path "dist\main" -Destination "dist\intenserp-next-win32-amd64" -Force
+        
+        Write-Host "✓ Files and folders renamed"
+      shell: powershell
+      
+    - name: Create zip archive
+      run: |
+        $zipPath = "dist\intenserp-next-win32-amd64.zip"
+        Compress-Archive -Path "dist\intenserp-next-win32-amd64" -DestinationPath $zipPath -CompressionLevel Optimal
+        
+        # Get file size for info
+        $zipSize = (Get-Item $zipPath).Length
+        $zipSizeMB = [math]::Round($zipSize / 1MB, 2)
+        Write-Host "✓ Zip archive created ($zipSizeMB MB)"
+      shell: powershell
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: intenserp-next-windows
+        path: |
+          dist/intenserp-next-win32-amd64.zip
+          dist/intenserp-next-win32-amd64/
+        retention-days: 30
+        
+    - name: Upload release asset (if release)
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: dist/intenserp-next-win32-amd64.zip
+        asset_name: intenserp-next-win32-amd64.zip
+        asset_content_type: application/zip
