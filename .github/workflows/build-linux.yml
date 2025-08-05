@@ -8,7 +8,7 @@ on:
         default: false
         type: boolean
   release:
-    types: [published]  # Only triggers on published releases, not drafts
+    types: [created, edited, published]  # Triggers on all release events
 
 jobs:
   build-linux:
