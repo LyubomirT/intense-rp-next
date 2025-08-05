@@ -22,11 +22,6 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.13'
-        
-    - name: Install system dependencies
-      run: |
-        # Install Visual C++ redistributable (usually already available)
-        echo "Windows system dependencies ready"
       
     - name: Install Python dependencies
       run: |
@@ -128,9 +123,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: intenserp-next-windows
-        path: |
-          dist/intenserp-next-win32-amd64.zip
-          dist/intenserp-next-win32-amd64/
+        path: dist/intenserp-next-win32-amd64.zip
         retention-days: 30
         
     - name: Upload release asset (if release)

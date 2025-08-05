@@ -138,8 +138,8 @@ jobs:
             echo "  Arch: sudo pacman -S tk"
             exit 1
         fi
-        
-        echo "✓ All dependencies satisfied"
+
+        echo "[OK] All dependencies satisfied"
         echo ""
         echo "To run IntenseRP Next:"
         echo "  ./intenserp-next"
@@ -206,14 +206,18 @@ jobs:
         zip_size=$(du -h "intenserp-next-linux-amd64.zip" | cut -f1)
         echo "[OK] Zip archive created ($zip_size)"
       
-    - name: Upload build artifacts
+    - name: Upload tar.gz artifact
       uses: actions/upload-artifact@v4
       with:
-        name: intenserp-next-linux
-        path: |
-          dist/intenserp-next-linux-amd64.tar.gz
-          dist/intenserp-next-linux-amd64.zip
-          dist/intenserp-next-linux-amd64/
+        name: intenserp-next-linux-targz
+        path: dist/intenserp-next-linux-amd64.tar.gz
+        retention-days: 30
+        
+    - name: Upload zip artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-next-linux-zip
+        path: dist/intenserp-next-linux-amd64.zip
         retention-days: 30
         
     - name: Upload release assets (if release)
