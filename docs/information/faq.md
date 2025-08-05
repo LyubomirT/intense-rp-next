@@ -40,7 +40,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     Chrome and Edge are the recommended browsers and support all features including network interception. Firefox is supported but may have more issues with Cloudflare challenges and doesn't support network interception. Safari support is experimental. For the best experience, use Chrome or Edge.
 
 ??? question "Does IntenseRP Next work on Mac or Linux?"
-    The source code works on all platforms. Pre-built binaries are currently only available for Windows, but Linux binaries are coming soon. Mac users need to run from source for now. The core functionality is the same across all platforms.
+    The source code works on all platforms. Pre-built binaries are currently only available for Windows and Linux. Mac users need to run from source for now. The core functionality is the same across all platforms.
 
 ??? question "What Python version do I need if building from source?"
     Python 3.12 or higher is required. The application uses modern Python features and type hints that aren't available in older versions. Most dependencies are pure Python, so they should install easily with pip.

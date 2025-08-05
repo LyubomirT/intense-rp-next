@@ -7,19 +7,25 @@ icon: material/download
 Getting IntenseRP Next up and running is pretty straightforward. You've got two main options: grab a pre-built binary if you're on Windows, or build from source if you want the latest features or you're on a different platform. Let's walk through both approaches.
 
 !!! tip "Quick Decision Helper"
-    **Use the binary** if you're on Windows and want the simplest setup.  
-    **Build from source** if you're on Linux/macOS, want the latest features, or need to customize something.
+    **Use the binary** if you're on Windows/Linux and want the simplest setup.  
+    **Build from source** if you're on macOS, want the latest features, or need to customize something.
 
 !!! info "Binaries on Linux/macOS"
-    Right now I don't have pre-built binaries for Linux or macOS, but that's coming soon! At least for Linux, binaries are almost ready and likely to be available in the next few weeks. If you're on macOS, you'll need to build from source for now.
+    As of version 1.1.5, we now have pre-built binaries for Linux! macOS support is still experimental, so if you're a Mac user and want to help test, please reach out.
 
 ## :material-microsoft-windows: Binary Installation (Windows)
 
 The easiest way to get started on Windows is with our pre-built release. It's a portable package that includes everything you need.
 
-### Step 1: Download the Latest Release
+### Step 1: Download the Latest Release (:material-windows: Windows)
 
 Head over to the [Releases page](https://github.com/LyubomirT/intense-rp-next/releases) and grab the latest `intenserp-next-win32-amd64.zip` file. Look for the one with the green "Latest" tag.
+
+### Step 1: Download the Latest Release (:material-linux: Linux)
+
+For Linux users, download the `intenserp-next-linux-x64.zip` file from the [Releases page](https://github.com/LyubomirT/intense-rp-next/releases).
+
+Alternatively, you can grab the `.tar.gz` file if you prefer that format. Both contain the same files, so pick whichever you like.
 
 ### Step 2: Extract the Archive
 
@@ -77,6 +83,9 @@ Windows users who want to run from source will need Python and Git. Here's the p
 That's it! The app should start up just like the binary version.
 
 ### :material-linux: Building on Linux
+
+!!! tip "Linux Users"
+    This used to be essential for running the app, but now we have pre-built binaries for Linux too! If you prefer building from source or want to customize, you can still follow these steps.
 
 Linux installation is similar to Windows, but with a few platform-specific tweaks. Most distros will have Python pre-installed, so you're already halfway there.
 
