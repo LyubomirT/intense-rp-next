@@ -451,14 +451,24 @@ class ConfigFrame(ctk.CTkFrame):
         frame.grid(row=row, column=1, padx=UIConstants.PADDING_LARGE, pady=8, sticky="ew")
         frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
 
-        entry = ctk.CTkEntry(frame, show="*", border_color="gray", font=get_font_tuple("Blinker", 14))
+        # Create entry without show parameter initially to insert the actual text
+        entry = ctk.CTkEntry(frame, border_color="gray", font=get_font_tuple("Blinker", 14))
         entry.grid(row=0, column=0, padx=(0, UIConstants.PADDING_SMALL), sticky="ew")
         entry.insert(0, default_value)
-
+        
+        # Now configure to hide the password
+        entry.configure(show="*")
+        
         def toggle():
             show_state = entry.cget("show")
-            entry.configure(show="" if show_state == "*" else "*")
-            toggle_btn.configure(text="Show" if show_state == "*" else "Hide")
+            if show_state == "*":
+                # Currently hidden, show the password
+                entry.configure(show="")
+                toggle_btn.configure(text="Hide")
+            else:
+                # Currently visible, hide the password
+                entry.configure(show="*")
+                toggle_btn.configure(text="Show")
 
         toggle_btn = ctk.CTkButton(frame, text="Show", width=60, command=toggle, font=get_font_tuple("Blinker", 12))
         toggle_btn.grid(row=0, column=1, sticky="e")
