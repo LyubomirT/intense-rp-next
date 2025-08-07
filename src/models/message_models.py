@@ -23,7 +23,21 @@ class Message:
         original_role = data.get('role', 'user')  # Store original case-preserved role
         role = MessageRole(role_str) if role_str in [r.value for r in MessageRole] else MessageRole.USER
         name = data.get('name')  # Extract optional name field
-        return cls(role=role, content=data.get('content', ''), original_role=original_role, name=name)
+        
+        # Handle both string and multimodal content formats
+        content = data.get('content', '')
+        if isinstance(content, list):
+            # Multimodal content - extract text parts and ignore images
+            text_parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'text':
+                    text_parts.append(block.get('text', ''))
+            content = ' '.join(text_parts)
+        elif not isinstance(content, str):
+            # Fallback for any other unexpected content format
+            content = str(content)
+            
+        return cls(role=role, content=content, original_role=original_role, name=name)
     
     def is_custom_role(self) -> bool:
         """Check if this message has a custom role (not standard user/assistant/system)"""
