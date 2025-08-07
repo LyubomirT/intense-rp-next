@@ -1,5 +1,5 @@
 // CDP-based background service worker for network interception
-// console.log('IntenseRP CDP Network Interceptor background service worker loaded');
+console.log('IntenseRP CDP Network Interceptor background service worker loaded');
 
 let isIntercepting = false;
 let activeTabId = null;
@@ -86,7 +86,22 @@ async function startCDPInterception(tabId) {
     // Set up event listeners
     chrome.debugger.onEvent.addListener(onCDPEvent);
     
-    console.log('🟢 CDP network interception started');
+    // Signal readiness to API - CDP is now fully attached and ready
+    fetch(`${localApiUrl}/network/ready`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        ready: true, 
+        tabId: tabId,
+        timestamp: Date.now() 
+      })
+    }).then(() => {
+      debugLog('✅ CDP readiness confirmed with API');
+    }).catch(err => {
+      debugLog(`⚠️ Failed to signal CDP readiness: ${err}`);
+    });
+    
+    console.log('🟢 CDP network interception started and ready');
     
   } catch (error) {
     console.error('❌ Error starting CDP interception:', error);
@@ -115,6 +130,16 @@ async function stopCDPInterception() {
     chunkQueue = [];
     isProcessingChunks = false;
     completionTriggered = false;
+    
+    // Reset readiness in API 
+    fetch(`${localApiUrl}/network/ready`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        ready: false, 
+        timestamp: Date.now() 
+      })
+    }).catch(() => {}); // Silent fail
     
     console.log('🔴 CDP network interception stopped');
     

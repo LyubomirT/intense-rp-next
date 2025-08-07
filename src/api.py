@@ -8,6 +8,7 @@ from waitress import serve
 from core import get_state_manager, StateEvent
 from pipeline.message_pipeline import MessagePipeline, ProcessingError
 from functools import wraps
+import time
 
 app = Flask(__name__)
 # Enable CORS for all routes to allow extension communication
@@ -23,8 +24,11 @@ network_data = {
     'error': None,
     'thinking_active': False,
     'thinking_buffer': "",
-    'thinking_started': False
+    'thinking_started': False,
+    'ready': False  # CDP readiness flag
 }
+
+# Note for self: STOP CONFUSING THE NETWORK PARAMETER NAMES
 
 # =============================================================================================================================
 # Authentication Functions
@@ -401,10 +405,26 @@ def deepseek_network_response(
         network_data['thinking_active'] = False
         network_data['thinking_buffer'] = ""
         network_data['thinking_started'] = False
+        network_data['ready'] = False  # Reset readiness flag
+        # ^^ CDP READINESS FLAG ^^
         
         # Enable network interception
         deepseek.enable_network_interception(state.driver)
-        state.show_message("[color:white]- [color:cyan]CDP network interception enabled.")
+        state.show_message("[color:white]- [color:cyan]CDP network interception starting...")
+
+        # Wait for extension to signal readiness
+        readiness_timeout = 10.0  # 10 second timeout
+        start_time = time.time()
+        
+        state.show_message("[color:yellow]Waiting for CDP to become ready...")
+        while not network_data['ready'] and (time.time() - start_time) < readiness_timeout:
+            time.sleep(0.1)  # Check every 100ms
+            
+        if network_data['ready']:
+            state.show_message("[color:green]CDP ready! Adding 500ms buffer before proceeding...")
+            time.sleep(0.5)  # Additional buffer for extra safety
+        else:
+            state.show_message("[color:yellow]CDP readiness timeout - proceeding anyway (may lose first chunk)")
 
         # Configure chat and send message
         deepseek.configure_chat(state.driver, deepthink, search)
@@ -857,6 +877,7 @@ def network_request():
             network_data['thinking_active'] = False
             network_data['thinking_buffer'] = ""
             network_data['thinking_started'] = False
+            # Note: Don't reset 'ready' here as this endpoint is called after readiness is confirmed
             print(f"[color:cyan]Network request intercepted: {data.get('requestId', 'unknown')}")
         return jsonify({"status": "received"}), 200
     except Exception as e:
@@ -948,6 +969,24 @@ def network_debug_log():
     except Exception as e:
         state = get_state_manager()
         state.show_message(f"[color:red]Error handling debug log: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/network/ready", methods=["POST"])
+def network_ready():
+    """Handle readiness confirmation from extension"""
+    try:
+        data = request.get_json()
+        if data and 'ready' in data:
+            network_data['ready'] = bool(data['ready'])
+            state = get_state_manager()
+            if data['ready']:
+                state.show_message("[color:green]CDP network interception ready")
+            else:
+                state.show_message("[color:cyan]CDP network interception stopped")
+        return jsonify({"status": "confirmed"}), 200
+    except Exception as e:
+        state = get_state_manager()
+        state.show_message(f"[color:red]Error handling readiness confirmation: {e}")
         return jsonify({"error": str(e)}), 500
 
 # =============================================================================================================================
