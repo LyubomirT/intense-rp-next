@@ -13,38 +13,52 @@ class DeepSeekProcessor(BaseProcessor):
     def process(self, request: ChatRequest) -> ChatRequest:
         """Process DeepSeek-specific settings"""
         
-        # Priority: API parameters > message content detection > config settings
+        # Priority: Model suffix > API parameters > message content detection > config settings
         
-        # Check for API parameters first (highest priority)
-        if request.api_use_r1 is not None:
-            request.use_deepthink = request.api_use_r1
-        elif request.api_use_search is not None:
-            # If no r1 parameter but search is provided, use detected settings for deepthink
-            detected_settings = DeepSeekSettings.detect_from_messages(request.messages)
-            request.use_deepthink = detected_settings.deepthink
+        # Check for model suffix overrides first (highest priority)
+        if request.is_chat_model():
+            # -chat model: Force reasoning OFF, ignore all other sources
+            request.use_deepthink = False
+        elif request.is_reasoner_model():
+            # -reasoner model: Force reasoning ON, but still respect Send Thoughts setting
+            request.use_deepthink = True
         else:
-            # Auto-detect settings from messages
-            detected_settings = DeepSeekSettings.detect_from_messages(request.messages)
-            request.use_deepthink = detected_settings.deepthink
+            # Normal model: Use existing priority logic
+            
+            # Check for API parameters first
+            if request.api_use_r1 is not None:
+                request.use_deepthink = request.api_use_r1
+            elif request.api_use_search is not None:
+                # If no r1 parameter but search is provided, use detected settings for deepthink
+                detected_settings = DeepSeekSettings.detect_from_messages(request.messages)
+                request.use_deepthink = detected_settings.deepthink
+            else:
+                # Auto-detect settings from messages
+                detected_settings = DeepSeekSettings.detect_from_messages(request.messages)
+                request.use_deepthink = detected_settings.deepthink
+            
+            # Override with config settings if no API parameters or detection
+            config_settings = self._get_config_settings()
+            
+            # Apply config fallbacks only if not set by API params or detection
+            if request.api_use_r1 is None and not request.use_deepthink:
+                request.use_deepthink = config_settings.deepthink
         
-        # Handle search parameter
+        # Handle search parameter (not affected by model suffixes)
         if request.api_use_search is not None:
             request.use_search = request.api_use_search
         else:
             # Auto-detect from messages or use config
             detected_settings = DeepSeekSettings.detect_from_messages(request.messages)
             request.use_search = detected_settings.search
-        
-        # Override with config settings if no API parameters or detection
-        config_settings = self._get_config_settings()
-        
-        # Apply config fallbacks only if not set by API params or detection
-        if request.api_use_r1 is None and not request.use_deepthink:
-            request.use_deepthink = config_settings.deepthink
-        if request.api_use_search is None and not request.use_search:
-            request.use_search = config_settings.search
+            
+            # Apply config fallbacks
+            config_settings = self._get_config_settings()
+            if not request.use_search:
+                request.use_search = config_settings.search
         
         # Text file setting comes from config only
+        config_settings = self._get_config_settings()
         request.use_text_file = config_settings.text_file
         
         # Clean directives from message content

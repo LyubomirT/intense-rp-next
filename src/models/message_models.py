@@ -66,6 +66,7 @@ class ChatRequest:
     temperature: float = 1.0
     max_tokens: int = 300
     stream: bool = False
+    model: str = "intense-rp-next-1"  # Model name from request
     
     # DeepSeek specific settings
     use_deepthink: bool = False
@@ -100,6 +101,7 @@ class ChatRequest:
             temperature=data.get('temperature', 1.0),
             max_tokens=data.get('max_tokens', 300),
             stream=data.get('stream', False),
+            model=data.get('model', 'intense-rp-next-1'),
             # Extract API parameters with priority over content detection
             api_char_name=data.get('char_name') or data.get('DATA1'),
             api_user_name=data.get('user_name') or data.get('DATA2'),
@@ -138,6 +140,26 @@ class ChatRequest:
     def has_multiple_users(self) -> bool:
         """Check if this conversation has multiple users (STMP-style)"""
         return len(self.get_unique_user_names()) > 1
+    
+    def has_model_suffix(self, suffix: str) -> bool:
+        """Check if model name has a specific suffix"""
+        return self.model.endswith(f"-{suffix}")
+    
+    def is_chat_model(self) -> bool:
+        """Check if this is a -chat model (forces reasoning OFF)"""
+        return self.has_model_suffix("chat")
+    
+    def is_reasoner_model(self) -> bool:
+        """Check if this is a -reasoner model (forces reasoning ON)"""
+        return self.has_model_suffix("reasoner")
+    
+    def get_base_model_name(self) -> str:
+        """Get base model name without suffix"""
+        if self.is_chat_model():
+            return self.model[:-5]  # Remove "-chat"
+        elif self.is_reasoner_model():
+            return self.model[:-9]  # Remove "-reasoner"
+        return self.model
 
 
 @dataclass
