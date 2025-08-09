@@ -27,7 +27,7 @@
   --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
   
   /* Enhanced text contrast for dark mode */
-  --md-default-fg-color: #f8f9fa;
+  --md-default-fg-color: #e1e1e1;
   --md-default-fg-color--light: #e9ecef;
   --md-default-fg-color--lighter: #dee2e6;
   --md-default-fg-color--lightest: rgba(255, 255, 255, 0.12);
