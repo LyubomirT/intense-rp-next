@@ -44,9 +44,9 @@ Simply enter your email and password, then flip the **Auto login** switch to ena
 
 ### :material-star:{ .nice-to-have } Intercept Network
 
-This is a Chrome/Edge feature that significantly improves response capture reliability. When enabled, IntenseRP Next uses a browser extension to intercept DeepSeek's responses directly from the network stream instead of scraping them from the page.
+This is a Chrome/Edge/Brave feature that significantly improves response capture reliability. When enabled, IntenseRP Next uses a browser extension to intercept DeepSeek's responses directly from the network stream instead of scraping them from the page.
 
-You'll notice the difference most with streaming responses, complex structures, HTML tags, images, LaTeX, and code blocks - they come through cleanly without formatting issues. If you're using Chrome or Edge (which are recommended), definitely turn this on.
+You'll notice the difference most with streaming responses, complex structures, HTML tags, images, LaTeX, and code blocks - they come through cleanly without formatting issues. If you're using Chrome, Edge, or Brave (which are recommended), definitely turn this on.
 
 ### :material-palette:{ .subjective } Deepthink and Search
 
@@ -60,13 +60,13 @@ A few options here are worth considering even for new users.
 
 ### :material-check-circle:{ .recommended } Browser Selection
 
-IntenseRP Next supports Chrome, Firefox, Edge, and Safari (experimentally). Chrome and Edge are the recommended choices because they have the best Cloudflare bypass capabilities and support all features including network interception.
+IntenseRP Next supports Chrome, Firefox, Edge, Safari (experimentally), and Brave. Chrome, Edge, and Brave are the recommended choices because they have the best Cloudflare bypass capabilities and support all features including network interception.
 
-If you must use a different browser, Edge is the second-best option as it's also Chromium-based. Firefox works but may struggle more with Cloudflare challenges.
+If you must use a different browser, all Chromium-based browsers (Chrome, Edge, Brave) are good options. Firefox works but may struggle more with Cloudflare challenges.
 
 ### :material-star:{ .nice-to-have } Persistent Cookies
 
-Available for Chrome and Edge only, this feature saves your browser session between IntenseRP Next restarts. Enable this and you won't need to deal with Cloudflare challenges as often - your browser will remember that it's already been verified.
+Available for Chrome, Edge, and Brave, this feature saves your browser session between IntenseRP Next restarts. Enable this and you won't need to deal with Cloudflare challenges as often - your browser will remember that it's already been verified.
 
 Additionally, this allows you to stay logged into DeepSeek without needing to re-enter your credentials every time you start IntenseRP Next, and decreases chances of getting blocked by Cloudflare by a huge margin.
 

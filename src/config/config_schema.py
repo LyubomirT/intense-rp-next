@@ -104,7 +104,7 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Intercept Network:",
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
-                    help_text="Use network interception instead of DOM scraping (Chrome/Edge)"
+                    help_text="Use network interception instead of DOM scraping (Chrome/Edge/Brave)"
                 ),
             ]
         ),
@@ -285,7 +285,7 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Browser:",
                     field_type=ConfigFieldType.DROPDOWN,
                     default="Chrome",
-                    options=["Chrome", "Firefox", "Edge", "Safari"],
+                    options=["Chrome", "Firefox", "Edge", "Safari", "Brave"],
                     help_text="Browser to use for automation"
                 ),
                 ConfigField(
@@ -293,7 +293,7 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Persistent cookies:",
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
-                    help_text="Enable persistent cookies to bypass Cloudflare and store login sessions (Chrome/Edge only)"
+                    help_text="Enable persistent cookies to bypass Cloudflare and store login sessions (Chrome/Edge/Brave only)"
                 ),
                 ConfigField(
                     key="clear_browser_data",
