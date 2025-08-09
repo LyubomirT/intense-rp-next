@@ -80,7 +80,7 @@ Maintains browser cookies and session data between IntenseRP Next restarts. This
 - Reducing Cloudflare challenge frequency
 - Preserving browser state and preferences
 
-Currently works with Chrome and Edge only. The browser data is stored in a dedicated directory within your system's temporary folder.
+Currently works with Chrome, Edge, and Brave. The browser data is stored in a dedicated directory within your system's temporary folder.
 
 ### :material-broom: Clear Browser Data
 

@@ -37,7 +37,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
 ## Compatibility & Requirements
 
 ??? question "Which browsers work with IntenseRP Next?"
-    Chrome and Edge are the recommended browsers and support all features including network interception. Firefox is supported but may have more issues with Cloudflare challenges and doesn't support network interception. Safari support is experimental. For the best experience, use Chrome or Edge.
+    Chrome, Edge, and Brave are the recommended browsers and support all features including network interception. Firefox is supported but may have more issues with Cloudflare challenges and doesn't support network interception. Safari support is experimental. For the best experience, use Chrome, Edge, or Brave.
 
 ??? question "Does IntenseRP Next work on Mac or Linux?"
     The source code works on all platforms. Pre-built binaries are currently only available for Windows and Linux. Mac users need to run from source for now. The core functionality is the same across all platforms.
@@ -68,7 +68,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     V3-0324 is DeepSeek's standard chat model - fast and efficient for general conversations. R1-0528 is their reasoning model that thinks through problems step-by-step. R1 (DeepThink mode) produces more thoughtful responses but takes longer. Use V3 for casual chat and R1 for complex questions or when you want to see the AI's reasoning process.
 
 ??? question "Should I use network interception?"
-    If you're using Chrome or Edge, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a browser that doesn't support it (Firefox, Safari).
+    If you're using Chrome, Edge, or Brave, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a browser that doesn't support it (Firefox, Safari).
 
 ??? question "What do the different formatting presets actually do?"
     Formatting presets control how messages appear when sent to DeepSeek. "Classic (Name)" uses character names like "John: Hello" which feels natural for roleplay. "Wrapped" uses XML-style tags for clearer boundaries. "Divided" adds visual separators. The preset doesn't affect how messages appear in SillyTavern, only how they're formatted for DeepSeek to understand.
