@@ -17,6 +17,17 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
             print(f"[color:cyan]Config intercept_network: {config.get('models', {}).get('deepseek', {}).get('intercept_network', False)}")
         browser = custom_browser.lower()
         chromium_arg = None
+        binary_location = None
+        
+        # Handle Custom Chromium browser selection
+        if custom_browser == "Custom Chromium":
+            browser = "chrome"  # Use chrome driver for Custom Chromium
+            if config and config.get('browser_path'):
+                binary_location = config.get('browser_path')
+                print(f"[color:cyan]Using custom Chromium binary: {binary_location}")
+            else:
+                print(f"[color:red]Custom Chromium selected but no browser path specified in config")
+                return None
         
         # Check if persistent cookies are enabled
         persistent_cookies = False
@@ -94,6 +105,9 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
             
         if extension_dir and intercept_network and browser in ("chrome", "edge"):
             driver_options["extension_dir"] = extension_dir
+        
+        if binary_location:
+            driver_options["binary_location"] = binary_location
 
         print(f"[color:cyan]Creating Driver with options: {driver_options}")
         driver = Driver(**driver_options)
@@ -568,8 +582,17 @@ def restart_chrome_with_extension(config: Optional[Dict[str, Any]] = None) -> Op
         # Clean up old extension profiles first
         _cleanup_old_extension_profiles()
         
+        # Determine browser type from config
+        browser_type = "chrome"  # Default
+        if config:
+            configured_browser = config.get("browser", "Chrome")
+            if configured_browser.lower() in ["edge"]:
+                browser_type = "edge"
+            elif configured_browser == "Custom Chromium":
+                browser_type = "Custom Chromium"  # Will be handled by initialize_webdriver
+        
         # Initialize a new driver instance with extension
-        new_driver = initialize_webdriver("chrome", "https://chat.deepseek.com", config)
+        new_driver = initialize_webdriver(browser_type, "https://chat.deepseek.com", config)
         
         if new_driver:
             print("[color:green]Chrome/Edge restarted successfully with extension")

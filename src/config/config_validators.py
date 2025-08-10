@@ -21,6 +21,7 @@ class ConfigValidator:
             'dump_directory': self._validate_dump_directory,
             'port': self._validate_port,
             'api_keys': self._validate_api_keys,
+            'browser_path': self._validate_browser_path,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -62,6 +63,11 @@ class ConfigValidator:
         if field.key == "security.api_keys":
             api_auth_enabled = config_data.get("security", {}).get("api_auth_enabled", False)
             return api_auth_enabled
+        
+        # Browser path should only be validated if Custom Chromium browser is selected
+        if field.key == "browser_path":
+            browser = config_data.get("browser", "Chrome")
+            return browser == "Custom Chromium"
         
         # By default, validate the field
         return True
@@ -230,6 +236,43 @@ class ConfigValidator:
             return [f"{field.label} At least one valid API key is required"]
         
         return []
+    
+    def _validate_browser_path(self, field: ConfigField, value: str) -> List[str]:
+        """Validate custom browser binary path"""
+        if not value or not value.strip():
+            return [f"{field.label} Browser path is required when using Custom Chromium"]
+        
+        browser_path = value.strip()
+        
+        # Check if file exists
+        try:
+            import os
+            if not os.path.exists(browser_path):
+                return [f"{field.label} Browser executable not found: {browser_path}"]
+            
+            # Check if it's a file (not directory)
+            if not os.path.isfile(browser_path):
+                return [f"{field.label} Path is not a file: {browser_path}"]
+            
+            # Check if file is executable (on Unix systems)
+            if hasattr(os, 'access'):
+                if not os.access(browser_path, os.X_OK):
+                    return [f"{field.label} Browser executable is not executable: {browser_path}"]
+            
+            # Basic filename validation for common browser executables
+            filename = os.path.basename(browser_path).lower()
+            valid_names = ['chrome', 'chromium', 'msedge', 'brave', 'opera', 'vivaldi']
+            
+            # Check if filename contains any known browser names
+            is_valid_browser = any(name in filename for name in valid_names) or filename.endswith('.exe')
+            
+            if not is_valid_browser:
+                return [f"{field.label} File does not appear to be a Chromium-based browser executable. Expected names: {', '.join(valid_names)}"]
+            
+            return []
+            
+        except Exception as e:
+            return [f"{field.label} Error validating browser path: {str(e)}"]
 
     @staticmethod
     def format_file_size(size_bytes: int) -> str:

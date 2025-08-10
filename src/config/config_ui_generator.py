@@ -96,7 +96,7 @@ class ConfigUIGenerator:
         else:
             display_value = str(current_value) if current_value is not None else ""
         
-        frame.create_entry(
+        entry = frame.create_entry(
             id=field.key,
             label_text=field.label,
             default_value=display_value,
@@ -104,6 +104,13 @@ class ConfigUIGenerator:
             row_grid=True,
             tooltip=field.help_text
         )
+        
+        # Special handling for browser path field - initially hide if not Custom Chromium
+        if field.key == "browser_path":
+            current_browser = self.config_manager.get('browser', 'Chrome')
+            if current_browser != "Custom Chromium":
+                entry.grid_remove()  # Actually hide the field
+                entry.delete(0, "end")  # Clear the field
     
     def _create_password_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
         """Create a password field"""
@@ -160,6 +167,23 @@ class ConfigUIGenerator:
             
             # Configure callback for preset changes
             menu.configure(command=on_preset_change)
+        # Special handling for browser dropdown
+        elif field.key == "browser":
+            def on_browser_change(value):
+                self._update_browser_path_visibility(value)
+            
+            menu = frame.create_option_menu(
+                id=field.key,
+                label_text=field.label,
+                default_value=display_value,
+                options=field.options or [],
+                row=row,
+                row_grid=True,
+                tooltip=field.help_text
+            )
+            
+            # Configure callback for browser changes
+            menu.configure(command=on_browser_change)
         else:
             frame.create_option_menu(
                 id=field.key,
@@ -177,7 +201,7 @@ class ConfigUIGenerator:
         if field.command and field.command in self.command_handlers:
             command = self.command_handlers[field.command]
         
-        frame.create_button(
+        button = frame.create_button(
             id=field.key or f"{field.label.lower().replace(' ', '_')}_btn",
             text=field.label,
             command=command,
@@ -185,6 +209,12 @@ class ConfigUIGenerator:
             row_grid=True,
             tooltip=field.help_text
         )
+        
+        # Special handling for browser path browse button - initially hide if not Custom Chromium
+        if field.key == "browser_path_browse":
+            current_browser = self.config_manager.get('browser', 'Chrome')
+            if current_browser != "Custom Chromium":
+                button.grid_remove()  # Actually hide the button
     
     def _create_textarea_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
         """Create a textarea field"""
@@ -289,6 +319,35 @@ class ConfigUIGenerator:
                         state="disabled",
                         text_color=("gray60", "gray40")
                     )
+    
+    def _update_browser_path_visibility(self, browser_value: str) -> None:
+        """Update browser path field visibility based on browser selection"""
+        # Find the browser path field and browse button in the advanced settings section
+        for section in get_config_schema():
+            frame = self.frames.get(section.id)
+            if not frame:
+                continue
+                
+            browser_path_widget = frame.get_widget("browser_path")
+            browse_button_widget = frame.get_widget("browser_path_browse")
+            
+            if browser_path_widget:
+                if browser_value == "Custom Chromium":
+                    # Show the browser path field
+                    browser_path_widget.configure(state="normal")
+                    browser_path_widget.grid()  # Make sure it's in the grid
+                    # Show the browse button if it exists
+                    if browse_button_widget:
+                        browse_button_widget.configure(state="normal")
+                        browse_button_widget.grid()  # Make sure it's in the grid
+                else:
+                    # Actually hide the browser path field
+                    browser_path_widget.grid_remove()  # Remove from grid layout
+                    browser_path_widget.delete(0, "end")  # Clear the field
+                    # Actually hide the browse button if it exists
+                    if browse_button_widget:
+                        browse_button_widget.grid_remove()  # Remove from grid layout
+                break
     
     def _get_preset_templates(self, preset: str) -> dict:
         """Get the templates for a specific preset"""
@@ -483,6 +542,11 @@ class ConfigUIGenerator:
             api_auth_enabled = ui_config.get("security", {}).get("api_auth_enabled", False)
             return api_auth_enabled
         
+        # Browser path should only be validated if Custom Chromium is selected
+        if field.key == "browser_path":
+            browser = ui_config.get("browser", "Chrome")
+            return browser == "Custom Chromium"
+        
         # By default, validate the field
         return True
     
@@ -538,6 +602,7 @@ class ConfigUIGenerator:
             "console.dump_directory": ["Dump Directory", "dump directory", "Directory"],
             "api.port": ["Network Port", "Port", "port"],
             "security.api_keys": ["API Keys:", "API Keys", "API key"],  # Added colon variant
+            "browser_path": ["Browser Path", "browser path", "Browser executable", "browser executable"],
         }
         
         for field_key, keywords in error_mapping.items():

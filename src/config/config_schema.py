@@ -285,8 +285,24 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Browser:",
                     field_type=ConfigFieldType.DROPDOWN,
                     default="Chrome",
-                    options=["Chrome", "Firefox", "Edge", "Safari"],
+                    options=["Chrome", "Firefox", "Edge", "Safari", "Custom Chromium"],
                     help_text="Browser to use for automation"
+                ),
+                ConfigField(
+                    key="browser_path",
+                    label="Browser Path:",
+                    field_type=ConfigFieldType.TEXT,
+                    default="",
+                    validation="browser_path",
+                    help_text="Full path to custom Chromium-based browser executable"
+                ),
+                ConfigField(
+                    key="browser_path_browse",
+                    label="Browse",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="browse_browser_path",
+                    help_text="Browse for Chromium-based browser executable"
                 ),
                 ConfigField(
                     key="browser_persistent_cookies",

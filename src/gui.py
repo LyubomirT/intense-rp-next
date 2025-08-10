@@ -241,6 +241,52 @@ def generate_api_key() -> None:
     except Exception as e:
         print(f"[color:red]Error generating API key: {e}")
 
+def browse_browser_path() -> None:
+    """Browse for a custom browser executable path"""
+    state = get_state_manager()
+    
+    try:
+        # Get reference to current UI generator
+        current_ui_generator = getattr(state, 'current_ui_generator', None)
+        if not current_ui_generator:
+            print("[color:red]Error: Settings window not available")
+            return
+        
+        # Import file dialog
+        from tkinter import filedialog
+        
+        # Define file types for browser executables
+        if platform.system() == "Windows":
+            filetypes = [
+                ("Executable files", "*.exe"),
+                ("All files", "*.*")
+            ]
+        else:
+            filetypes = [
+                ("All files", "*.*")
+            ]
+        
+        # Open file dialog
+        file_path = filedialog.askopenfilename(
+            title="Select Chromium-based Browser Executable",
+            filetypes=filetypes,
+            parent=current_ui_generator.window
+        )
+        
+        if file_path:
+            # Find the browser_path field and update it
+            for section in current_ui_generator.frames.values():
+                browser_path_widget = section.get_widget("browser_path")
+                if browser_path_widget:
+                    # Clear current value and set new path
+                    browser_path_widget.delete(0, "end")
+                    browser_path_widget.insert(0, file_path)
+                    print(f"[color:green]Browser path updated: {file_path}")
+                    break
+    
+    except Exception as e:
+        print(f"[color:red]Error browsing for browser path: {e}")
+
 def open_config_window() -> None:
     """Open configuration window using the new modular system"""
     global root, config_manager
@@ -253,6 +299,7 @@ def open_config_window() -> None:
             'preview_console_changes': preview_console_changes,
             'clear_browser_data': clear_browser_data,
             'generate_api_key': generate_api_key,
+            'browse_browser_path': browse_browser_path,
         }
         
         # Create UI generator
