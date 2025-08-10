@@ -30,9 +30,8 @@ I've completely reimagined the original project with a focus on **reliability**,
 
 ### 🎯 Recent Additions
 
-- **Official Docs!**: Now you can find all the information you need in the official documentation. It's currently hosted on ReadTheDocs and you can find it right here: [IntenseRP Next Documentation](https://intense-rp-next.readthedocs.io/en/latest/)
-- **Send Thoughts**: Now you can toggle whether you want to see DeepSeek's thoughts in the response or not.
-- **`name` parameter**: Now IntenseRP Next supports the `name` parameter in the request, which allows you to specify the character name for the response and override `DATA1` and `DATA2` variables.
+- **Custom Chromium Browser**: Now you can use a custom Chromium browser for better compatibility and performance by selecting the binary path in the settings and picking `Custom Chromium` as your browser.
+- **API Keys**: You can now secure the API with API keys so that no shady requests can be made without authentication.
 
 > [!NOTE]
 > The project is in a "stable beta" state, meaning it's ready for daily use but may still have some rough edges. If you run into any issues, please report them on GitHub!
@@ -49,7 +48,8 @@ I've completely reimagined the original project with a focus on **reliability**,
 
 **For Linux Users:**
 - 🖥️ Linux x64 (Tested on Ubuntu 22.04+)
-- 🌐 GLIBC 2.18+
+- 🌐 A browser (Chrome is recommended)
+- 🛠️ GLIBC 2.18+
 - 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-next/releases)
 
 Currently, we have both Windows and Linux binaries available (as of v1.1.5). However, they're still in beta, so please report any issues you encounter, I'll try to fix them as soon as possible.
