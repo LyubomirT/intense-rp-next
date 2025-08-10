@@ -289,6 +289,14 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Browser to use for automation"
                 ),
                 ConfigField(
+                    key="browser_custom_path",
+                    label="Custom Browser Path:",
+                    field_type=ConfigFieldType.TEXT,
+                    default="",
+                    validation="executable_path",
+                    help_text="Optional: full path to the browser executable (e.g., Brave). Leave empty to auto-detect."
+                ),
+                ConfigField(
                     key="browser_persistent_cookies",
                     label="Persistent cookies:",
                     field_type=ConfigFieldType.SWITCH,

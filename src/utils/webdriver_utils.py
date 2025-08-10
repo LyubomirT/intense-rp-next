@@ -6,6 +6,13 @@ import tempfile
 import shutil
 import time
 import json
+from config import (
+    get_browser_engine,
+    get_chromium_browser_path,
+    is_chromium_browser,
+    requires_binary_location,
+    uses_undetected_chromium,
+)
 
 # =============================================================================================================================
 # Initialize SeleniumBase and open browser
@@ -18,11 +25,8 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
             print(f"[color:cyan]Config intercept_network: {config.get('models', {}).get('deepseek', {}).get('intercept_network', False)}")
         browser = custom_browser.lower()
 
-        # Map Brave to Chrome for SeleniumBase compatibility
-        actual_browser = browser
-        if browser == "brave":
-            actual_browser = "chrome"
-            # We'll handle Brave executable path later
+        # Resolve actual SeleniumBase engine via declarative alias map
+        actual_browser = get_browser_engine(browser)
 
         chromium_arg = None
         
@@ -43,10 +47,10 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         # Note: App mode disabled to ensure extension compatibility
         chromium_arg = None
 
-        # Set up extension loading for Chrome/Edge/Brave when network interception is enabled
+        # Set up extension loading for Chromium browsers when network interception is enabled
         extension_dir = None
         clean_profile = False
-        if intercept_network and browser in ["chrome", "edge", "brave"]:
+        if intercept_network and is_chromium_browser(browser):
             source_extension_dir = _get_extension_dir()
             if source_extension_dir and _validate_extension_structure(source_extension_dir):
                 print(f"[color:cyan]Network interception enabled - preparing fresh extension copy...")
@@ -73,56 +77,56 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
         
         # Set up data directory for Chromium browsers
         user_data_dir = None
-        if persistent_cookies and browser in ("chrome", "edge", "brave"):
+        if persistent_cookies and is_chromium_browser(browser):
             user_data_dir = _get_browser_data_dir(browser)
             print(f"[color:cyan]Using persistent browser data directory: {user_data_dir}")
-            
+
             # If network interception is enabled, clean any old extension installations first
-            if intercept_network and browser in ["chrome", "edge", "brave"]:
+            if intercept_network and is_chromium_browser(browser):
                 _remove_existing_extension_from_profile(user_data_dir)
 
-        elif clean_profile and browser in ["chrome", "edge", "brave"]:
+        elif clean_profile and is_chromium_browser(browser):
             # Use a clean profile for extension management (when network interception enabled but persistent cookies disabled)
             user_data_dir = _create_clean_extension_profile(browser)
             print(f"[color:cyan]Using clean extension profile: {user_data_dir}")
         else:
             # Default behavior - no special profile needed
-            if intercept_network and browser in ["chrome", "edge", "brave"]:
+            if intercept_network and is_chromium_browser(browser):
                 print(f"[color:yellow]Network interception enabled but no profile specified - using default profile")
 
-        # Handle Brave browser executable path
-        brave_executable = None
-        if browser == "brave":
-            brave_executable = _get_brave_executable_path()
-            if brave_executable:
-                print(f"[color:cyan]Using Brave executable at: {brave_executable}")
+        # Handle browser executable path when required (e.g., Brave)
+        browser_executable = None
+        if requires_binary_location(browser):
+            browser_executable = _get_browser_executable_path(browser)
+            if browser_executable:
+                print(f"[color:cyan]Using {browser.title()} executable at: {browser_executable}")
             else:
-                print(f"[color:red]Brave executable not found! Please install Brave browser.")
+                print(f"[color:red]{browser.title()} executable not found! Please install the browser or adjust configuration.")
                 return None
 
         # Initialize driver with proper user data directory and extension
         driver_options = {
             "browser": actual_browser,
             "chromium_arg": chromium_arg,
-            "uc": (browser in ["chrome", "brave"]),  # Use undetected Chrome for Chrome and Brave
+            "uc": uses_undetected_chromium(browser),  # Declarative undetected-chromium support
         }
 
-        # Set binary location for Brave
-        if browser == "brave" and brave_executable:
-            driver_options["binary_location"] = brave_executable
+        # Set binary location when required by the browser
+        if requires_binary_location(browser) and browser_executable:
+            driver_options["binary_location"] = browser_executable
 
         if user_data_dir:
             driver_options["user_data_dir"] = user_data_dir
 
-        if extension_dir and intercept_network and browser in ("chrome", "edge", "brave"):
+        if extension_dir and intercept_network and is_chromium_browser(browser):
             driver_options["extension_dir"] = extension_dir
 
         print(f"[color:cyan]Creating Driver with options: {driver_options}")
         driver = Driver(**driver_options)
         print(f"[color:green]Driver created successfully")
 
-        # If network interception is enabled and we're using Chrome, Edge, or Brave, validate and reload the extension
-        if intercept_network and browser in ("chrome", "edge", "brave") and extension_dir:
+        # If network interception is enabled for a Chromium browser, validate and reload the extension
+        if intercept_network and is_chromium_browser(browser) and extension_dir:
             print("[color:cyan]Network interception enabled - validating extension installation...")
             if validate_extension_installation(driver):
                 print("[color:green]Extension already properly installed")
@@ -142,17 +146,17 @@ def initialize_webdriver(custom_browser: str = "chrome", url: Optional[str] = No
 
         # Log cookie persistence status
         if persistent_cookies:
-            if browser in ("chrome", "edge", "brave"):
+            if is_chromium_browser(browser):
                 print(f"[color:green]Persistent cookies enabled for {browser.title()}")
             else:
                 print(f"[color:yellow]Persistent cookies requested but not supported for {browser.title()}")
         
         # Log network interception status
         if intercept_network:
-            if browser in ("chrome", "edge", "brave"):
+            if is_chromium_browser(browser):
                 print(f"[color:green]Network interception enabled for {browser.title()}")
             else:
-                print(f"[color:yellow]Network interception requested but only supported for Chrome, Edge, and Brave")
+                print(f"[color:yellow]Network interception requested but only supported for Chromium-based browsers")
 
         return driver
 
@@ -214,50 +218,12 @@ def _remove_existing_extension_from_profile(user_data_dir: str) -> None:
         print(f"[color:yellow]Error checking/removing existing extensions: {e}")
 
 
-def _get_brave_executable_path() -> Optional[str]:
-    """Get the path to Brave browser executable"""
-    system = platform.system()
-
+def _get_browser_executable_path(browser: str) -> Optional[str]:
+    """Resolve the executable path for the given browser using declarative config."""
     try:
-        if system == "Windows":
-            # Windows paths for Brave
-            paths = [
-                os.path.join(os.environ.get("PROGRAMFILES", ""), "BraveSoftware", "Brave-Browser", "Application",
-                             "brave.exe"),
-                os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "BraveSoftware", "Brave-Browser", "Application",
-                             "brave.exe"),
-                os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "Application",
-                             "brave.exe"),
-            ]
-        elif system == "Darwin":  # macOS
-            paths = [
-                "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-            ]
-        else:  # Linux and others
-            # Try common Linux paths and check PATH
-            paths = [
-                "/usr/bin/brave-browser",
-                "/usr/bin/brave",
-                "/snap/bin/brave",
-                "/opt/brave.com/brave/brave-browser",
-                "/usr/local/bin/brave-browser",
-                "/usr/local/bin/brave",
-            ]
-
-            # Also check if brave is in PATH
-            brave_in_path = shutil.which("brave-browser") or shutil.which("brave")
-            if brave_in_path:
-                paths.insert(0, brave_in_path)
-
-        # Check each path
-        for path in paths:
-            if os.path.exists(path) and os.access(path, os.X_OK):
-                return path
-
-        return None
-
+        return get_chromium_browser_path(browser)
     except Exception as e:
-        print(f"[color:yellow]Error detecting Brave executable: {e}")
+        print(f"[color:yellow]Error detecting {browser.title()} executable: {e}")
         return None
 
 

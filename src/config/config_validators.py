@@ -3,6 +3,7 @@ Configuration validation functions for IntenseRP API
 Handles all validation logic for configuration fields
 """
 
+import os
 import re
 from typing import List, Any
 from config.config_schema import ConfigField
@@ -21,6 +22,7 @@ class ConfigValidator:
             'dump_directory': self._validate_dump_directory,
             'port': self._validate_port,
             'api_keys': self._validate_api_keys,
+            'executable_path': self._validate_executable_path,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -230,6 +232,23 @@ class ConfigValidator:
             return [f"{field.label} At least one valid API key is required"]
         
         return []
+
+    def _validate_executable_path(self, field: ConfigField, value: str) -> List[str]:
+        """Validate optional executable file path"""
+        # Empty is allowed (auto-detect will be used)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return []
+        try:
+            path = str(value).strip()
+            if not os.path.exists(path):
+                return [f"{field.label} File does not exist: {path}"]
+            if not os.path.isfile(path):
+                return [f"{field.label} Path is not a file: {path}"]
+            if os.name != 'nt' and not os.access(path, os.X_OK):
+                return [f"{field.label} File is not executable: {path}"]
+            return []
+        except Exception:
+            return [f"{field.label} Invalid file path"]
 
     @staticmethod
     def format_file_size(size_bytes: int) -> str:
