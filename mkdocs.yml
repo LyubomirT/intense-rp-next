@@ -172,6 +172,7 @@ nav:
           - "If it didn't:":
               - "Troubleshooting": welcome/quick-start-guide/if-it-didnt/troubleshooting.md
   - Features:
+      - "Browser Selection": features/browser-selection.md
       - "DeepSeek Settings:":
           - "Main Settings": features/deepseek-settings/main-settings.md
           - "Network Interception": features/deepseek-settings/network-interception.md
