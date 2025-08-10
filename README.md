@@ -138,9 +138,9 @@ Just open an issue or submit a PR. We value all of the contributors for their ti
 
 <div align="center">
 
-| [<img src="https://avatars.githubusercontent.com/u/127299159?s=100&v=4" width="100px;"/><br /><sub><b>LyubomirT</b></sub>](https://github.com/LyubomirT) | [<img src="https://avatars.githubusercontent.com/u/134849645?s=100&v=4" width="100px;"/><br /><sub><b>Omega-Slender</b></sub>](https://github.com/Omega-Slender) | [<img src="https://avatars.githubusercontent.com/u/103206423?s=100&v=4" width="100px;"/><br /><sub><b>Deaquay</b></sub>](https://github.com/Deaquay) | [<img src="https://avatars.githubusercontent.com/u/131772052?s=100&v=4" width="100px;"/><br /><sub><b>Vova12344weq</b></sub>](https://github.com/Vova12344weq) |
+| [<img src="https://avatars.githubusercontent.com/u/127299159?s=100&v=4" width="100px;"/><br /><sub><b>LyubomirT</b></sub>](https://github.com/LyubomirT) | [<img src="https://avatars.githubusercontent.com/u/134849645?s=100&v=4" width="100px;"/><br /><sub><b>Omega-Slender</b></sub>](https://github.com/Omega-Slender) | [<img src="https://avatars.githubusercontent.com/u/103206423?s=100&v=4" width="100px;"/><br /><sub><b>Deaquay</b></sub>](https://github.com/Deaquay) | [<img src="https://avatars.githubusercontent.com/u/96440827?s=100&v=4" width="100px;"/><br /><sub><b>fushigipururin</b></sub>](https://github.com/fushigipururin) |
 |:---:|:---:|:---:|:---:|
-| Lead Developer | Original Creator | Contributor | Testing & QA |
+| Lead Developer | Original Creator | Contributor | Contributor |
 
 
 Find all of our contributors on [GitHub](https://github.com/LyubomirT/intense-rp-next/graphs/contributors)
