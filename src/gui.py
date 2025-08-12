@@ -113,6 +113,42 @@ def start_services() -> None:
         state.show_message("[color:red]Selenium failed to start.")
         print(f"Error starting services: {e}")
 
+def stop_services() -> None:
+    state = get_state_manager()
+    
+    try:
+        state.clear_messages()
+        state.show_message("[color:yellow]Stopping services...")
+        api.close_selenium()
+        state.show_message("[color:cyan]Services stopped successfully.")
+    except Exception as e:
+        state.show_message("[color:red]Error stopping services.")
+        print(f"Error stopping services: {e}")
+
+def toggle_services() -> None:
+    """Toggle between starting and stopping services based on current state"""
+    state = get_state_manager()
+    
+    if state.driver:
+        stop_services()
+    else:
+        start_services()
+
+def update_start_button_state(state_change) -> None:
+    """Observer function to update start button text based on browser state"""
+    global root
+    
+    try:
+        if root:
+            start_button = root.get_widget("start")
+            if start_button:
+                if state_change.event_type == StateEvent.BROWSER_STARTED:
+                    start_button.configure(text="Stop")
+                elif state_change.event_type == StateEvent.BROWSER_STOPPED:
+                    start_button.configure(text="Start")
+    except Exception as e:
+        print(f"Error updating start button state: {e}")
+
 # =============================================================================================================================
 # Config Window - Now Using Modular System
 # =============================================================================================================================
@@ -477,7 +513,10 @@ def create_gui() -> None:
         
         root.create_title(id="title", text=f"INTENSE RP NEXT V{__version__}", row=0)
         textbox = root.create_textbox(id="textbox", row=1, row_grid=True, bg_color="#272727")
-        root.create_button(id="start", text="Start", command=start_services, row=2)
+        
+        # Create start/stop button - initial text will be updated by observer
+        initial_button_text = "Stop" if state.driver else "Start"
+        root.create_button(id="start", text=initial_button_text, command=toggle_services, row=2)
         root.create_button(id="settings", text="Settings", command=open_config_window, row=3)
         root.create_button(id="credits", text="Credits", command=open_credits, row=4)
         
@@ -485,6 +524,9 @@ def create_gui() -> None:
         
         # Update state with UI components
         state.textbox = textbox
+        
+        # Subscribe to state changes for button updates
+        state.subscribe(update_start_button_state)
         
         # Create console window after config is loaded
         create_console_window()
