@@ -7,7 +7,7 @@ A modern CLI tool with colored widgets for managing IntenseRP Next installations
 Supports installation, updating, and release information display.
 
 Huge thanks to the open-source community for overfilling Python with amazing
-libraries and frameworks, this file has 0 external dependencies and is insanely
+libraries and frameworks, this file has only one external dependency and is insanely
 lightweight thanks to that.
 """
 

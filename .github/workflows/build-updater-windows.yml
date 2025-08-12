@@ -1,0 +1,137 @@
+name: Build IntenseRP Updater (Windows)
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Triggers on all release events
+
+jobs:
+  build-updater-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+      
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests pyinstaller
+      
+    - name: Verify required files
+      run: |
+        # Check that the updater file exists
+        if (!(Test-Path "intenserp_updater.py")) { throw "Missing intenserp_updater.py" }
+        if (!(Test-Path "src\newlogo.ico")) { throw "Missing newlogo.ico" }
+        Write-Host "[OK] IntenseRP Updater file and icon found"
+      shell: powershell
+      
+    - name: Clean previous builds
+      run: |
+        if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+        if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+        if (Test-Path "intenserp_updater.spec") { Remove-Item -Force "intenserp_updater.spec" }
+        Write-Host "[OK] Build directories cleaned"
+      shell: powershell
+      
+    - name: Build IntenseRP Updater with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onefile --console `
+          --name "IntenseRP-Updater" `
+          --icon "src\newlogo.ico" `
+          "intenserp_updater.py"
+        Write-Host "[OK] Updater build completed"
+      shell: powershell
+      
+    - name: Verify build output
+      run: |
+        if (!(Test-Path "dist\IntenseRP-Updater.exe")) { 
+          throw "Build failed - updater executable not found" 
+        }
+        Write-Host "[OK] Updater executable created successfully"
+        
+        # Get file size for info
+        $size = (Get-Item "dist\IntenseRP-Updater.exe").Length
+        $sizeMB = [math]::Round($size / 1MB, 2)
+        Write-Host "[INFO] Updater size: $sizeMB MB"
+      shell: powershell
+      
+    - name: Create release package
+      run: |
+        # Create a directory for the release package
+        $packageDir = "dist\intenserp-updater-win32-amd64"
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+        
+        # Copy the executable
+        Copy-Item -Path "dist\IntenseRP-Updater.exe" -Destination $packageDir -Force
+        
+        # Create a simple README for the updater
+        $readmeContent = @'
+IntenseRP Next Updater - Windows
+================================
+
+QUICK START
+1. Run IntenseRP-Updater.exe
+2. Follow the on-screen prompts to install or update IntenseRP Next
+
+FEATURES
+- Install IntenseRP Next to any directory
+- Update existing installations while preserving save data
+- Check latest release information
+- Automatic backup and restore of user data during updates
+
+SYSTEM REQUIREMENTS
+- Windows 10 or Windows 11
+- Internet connection for downloading updates
+- A little bit of patience
+
+USAGE
+Simply double-click IntenseRP-Updater.exe to launch the updater.
+The updater will guide you through the process with a colored CLI interface.
+
+SUPPORT
+For issues, visit https://github.com/LyubomirT/intense-rp-next/issues
+
+LICENSE
+This software is distributed under the MIT License.
+'@
+        
+        Set-Content -Path "$packageDir\README.txt" -Value $readmeContent -Encoding UTF8
+        
+        Write-Host "[OK] Release package created"
+      shell: powershell
+      
+    - name: Create zip archive
+      run: |
+        $zipPath = "dist\intenserp-updater-win32-amd64.zip"
+        Compress-Archive -Path "dist\intenserp-updater-win32-amd64" -DestinationPath $zipPath -CompressionLevel Optimal
+        
+        # Get file size for info
+        $zipSize = (Get-Item $zipPath).Length
+        $zipSizeMB = [math]::Round($zipSize / 1MB, 2)
+        Write-Host "[OK] Updater zip archive created ($zipSizeMB MB)"
+      shell: powershell
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-updater-windows
+        path: dist/intenserp-updater-win32-amd64.zip
+        retention-days: 30
+        
+    - name: Upload release asset (if release)
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/intenserp-updater-win32-amd64.zip
