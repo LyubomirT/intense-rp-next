@@ -1135,6 +1135,8 @@ def close_selenium() -> None:
     state = get_state_manager()
     try:
         if state.driver:
+            # Increment driver ID first to stop the monitor thread cleanly
+            state.increment_driver_id()
             state.driver.quit()
             state.driver = None
     except Exception:
