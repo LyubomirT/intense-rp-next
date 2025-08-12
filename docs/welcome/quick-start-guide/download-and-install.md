@@ -18,7 +18,7 @@ Getting IntenseRP Next up and running is pretty straightforward. You've got two 
 The easiest way to get started on Windows is with our pre-built release. It's a portable package that includes everything you need.
 
 !!! note "Using the Updater"
-   If you're on Windows, it's much faster and easier to use the installer/updater tool instead of doing this manually. See [IntenseRP Updater](features/updater.md) for more information.
+      If you're on Windows, it's much faster and easier to use the installer/updater tool instead of doing this manually. See [IntenseRP Updater](features/updater.md) for more information.
 
 ### Step 1: Download the Latest Release (:material-windows: Windows)
 
