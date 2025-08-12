@@ -94,6 +94,9 @@ jobs:
         Copy-Item -Path "src\newlogo.png" -Destination "dist\main\" -Force
         Copy-Item -Path "src\newlogo.ico" -Destination "dist\main\" -Force
         
+        # Copy version.txt to root for updater compatibility
+        Copy-Item -Path "version.txt" -Destination "dist\main\" -Force
+        
         Write-Host "[OK] Additional assets copied"
       shell: powershell
       

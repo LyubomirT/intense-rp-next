@@ -93,6 +93,9 @@ jobs:
         # Copy logo files to root
         cp "src/newlogo.png" "dist/main/"
         
+        # Copy version.txt to root for updater compatibility
+        cp "version.txt" "dist/main/"
+        
         echo "[OK] Additional assets copied"
       
     - name: Rename executable and folder
