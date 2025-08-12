@@ -17,6 +17,9 @@ Getting IntenseRP Next up and running is pretty straightforward. You've got two 
 
 The easiest way to get started on Windows is with our pre-built release. It's a portable package that includes everything you need.
 
+!!! note "Using the Updater"
+   If you're on Windows, it's much faster and easier to use the installer/updater tool instead of doing this manually. See [IntenseRP Updater](features/updater.md) for more information.
+
 ### Step 1: Download the Latest Release (:material-windows: Windows)
 
 Head over to the [Releases page](https://github.com/LyubomirT/intense-rp-next/releases) and grab the latest `intenserp-next-win32-amd64.zip` file. Look for the one with the green "Latest" tag.

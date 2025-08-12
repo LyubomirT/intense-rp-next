@@ -181,6 +181,7 @@ nav:
           - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
           - "Custom Templates": features/formatting-templates/custom-templates.md
       - "The Console": features/console.md
+      - "IntenseRP Updater": features/updater.md
       - "Advanced Configuration": features/advanced-configuration.md
   - Security:
       - "API Key Authentication": security/api-keys.md
