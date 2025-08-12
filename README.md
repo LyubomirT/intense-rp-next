@@ -175,3 +175,4 @@ Made with ❤️ for the SillyTavern community
 ⭐ **Like the project? Give it a star!** ⭐
 
 </div>
+
