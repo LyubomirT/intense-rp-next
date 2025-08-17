@@ -181,6 +181,7 @@ nav:
           - "Pre-Defined Templates": features/formatting-templates/pre-defined-templates.md
           - "Custom Templates": features/formatting-templates/custom-templates.md
       - "The Console": features/console.md
+      - "Auto Refresh": features/auto-refresh.md
       - "IntenseRP Updater": features/updater.md
       - "Advanced Configuration": features/advanced-configuration.md
   - Security:
