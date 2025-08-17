@@ -603,6 +603,8 @@ class ConfigUIGenerator:
             "api.port": ["Network Port", "Port", "port"],
             "security.api_keys": ["API Keys:", "API Keys", "API key"],  # Added colon variant
             "browser_path": ["Browser Path", "browser path", "Browser executable", "browser executable"],
+            "refresh_timer.idle_timeout": ["Idle Timeout", "idle timeout", "Idle timeout"],
+            "refresh_timer.grace_period": ["Grace Period", "grace period", "Grace period"],
         }
         
         for field_key, keywords in error_mapping.items():

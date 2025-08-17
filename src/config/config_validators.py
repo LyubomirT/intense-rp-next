@@ -22,6 +22,8 @@ class ConfigValidator:
             'port': self._validate_port,
             'api_keys': self._validate_api_keys,
             'browser_path': self._validate_browser_path,
+            'refresh_idle_timeout': self._validate_refresh_idle_timeout,
+            'refresh_grace_period': self._validate_refresh_grace_period,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
@@ -68,6 +70,19 @@ class ConfigValidator:
         if field.key == "browser_path":
             browser = config_data.get("browser", "Chrome")
             return browser == "Custom Chromium"
+        
+        # Refresh timer fields should only be validated if refresh timer is enabled
+        if field.key and field.key.startswith("refresh_timer.") and field.key != "refresh_timer.enabled":
+            refresh_enabled = config_data.get("refresh_timer", {}).get("enabled", False)
+            if not refresh_enabled:
+                return False
+            
+            # Grace period field should only be validated if "use grace period" is enabled
+            if field.key == "refresh_timer.grace_period":
+                use_grace_period = config_data.get("refresh_timer", {}).get("use_grace_period", True)
+                return use_grace_period
+            
+            return True
         
         # By default, validate the field
         return True
@@ -273,6 +288,52 @@ class ConfigValidator:
             
         except Exception as e:
             return [f"{field.label} Error validating browser path: {str(e)}"]
+
+    def _validate_refresh_idle_timeout(self, field: ConfigField, value) -> List[str]:
+        """Validate refresh idle timeout in minutes"""
+        if value is None:
+            return [f"{field.label} Idle timeout is required"]
+        
+        # Handle integer values (stored format)
+        if isinstance(value, int):
+            if value < 1 or value > 60:
+                return [f"{field.label} Idle timeout must be between 1 and 60 minutes"]
+            return []
+        
+        # Handle string values (user input format)
+        if not value or not str(value).strip():
+            return [f"{field.label} Idle timeout is required"]
+        
+        try:
+            timeout = int(str(value).strip())
+            if timeout < 1 or timeout > 60:
+                return [f"{field.label} Idle timeout must be between 1 and 60 minutes"]
+            return []
+        except ValueError:
+            return [f"{field.label} Idle timeout must be a valid number"]
+
+    def _validate_refresh_grace_period(self, field: ConfigField, value) -> List[str]:
+        """Validate refresh grace period in seconds"""
+        if value is None:
+            return [f"{field.label} Grace period is required"]
+        
+        # Handle integer values (stored format)
+        if isinstance(value, int):
+            if value < 5 or value > 120:
+                return [f"{field.label} Grace period must be between 5 and 120 seconds"]
+            return []
+        
+        # Handle string values (user input format)
+        if not value or not str(value).strip():
+            return [f"{field.label} Grace period is required"]
+        
+        try:
+            grace = int(str(value).strip())
+            if grace < 5 or grace > 120:
+                return [f"{field.label} Grace period must be between 5 and 120 seconds"]
+            return []
+        except ValueError:
+            return [f"{field.label} Grace period must be a valid number"]
 
     @staticmethod
     def format_file_size(size_bytes: int) -> str:

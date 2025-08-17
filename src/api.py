@@ -119,6 +119,13 @@ def require_auth(f):
 @app.route("/models", methods=["GET"])
 @require_auth
 def model() -> Response:
+    # Record API activity for refresh timer
+    try:
+        import utils.deepseek_driver as deepseek
+        deepseek.record_activity()
+    except Exception:
+        pass  # Don't let activity tracking failures break the API
+    
     state = get_state_manager()
     
     if not state.driver:
@@ -136,6 +143,13 @@ def model() -> Response:
 @app.route("/chat/completions", methods=["POST"])
 @require_auth
 def bot_response() -> Response:
+    # Record API activity for refresh timer
+    try:
+        import utils.deepseek_driver as deepseek
+        deepseek.record_activity()
+    except Exception:
+        pass  # Don't let activity tracking failures break the API
+    
     state = get_state_manager()
     
     try:
@@ -1110,6 +1124,12 @@ def run_services() -> None:
                 ip = socket.gethostbyname(socket.gethostname())
                 state.show_message(f"[color:yellow]URL 2: [color:white]http://{ip}:{api_port}/")
 
+            # Start refresh timer if enabled
+            try:
+                deepseek.start_refresh_timer()
+            except Exception as e:
+                print(f"Warning: Could not start refresh timer: {e}")
+
             state.is_running = True
             serve(app, host="0.0.0.0", port=api_port, channel_request_lookahead=1)
         else:
@@ -1125,6 +1145,12 @@ def monitor_driver(driver_id: int) -> None:
     
     while driver_id == state.last_driver:
         if state.driver and not selenium.is_browser_open(state.driver):
+            # Stop refresh timer when browser connection is lost
+            try:
+                deepseek.stop_refresh_timer()
+            except Exception as e:
+                print(f"Warning: Could not stop refresh timer: {e}")
+            
             state.clear_messages()
             state.show_message("[color:red]Browser connection lost!")
             state.driver = None
@@ -1135,6 +1161,12 @@ def close_selenium() -> None:
     state = get_state_manager()
     try:
         if state.driver:
+            # Stop refresh timer before closing driver
+            try:
+                deepseek.stop_refresh_timer()
+            except Exception as e:
+                print(f"Warning: Could not stop refresh timer: {e}")
+            
             # Increment driver ID first to stop the monitor thread cleanly
             state.increment_driver_id()
             state.driver.quit()

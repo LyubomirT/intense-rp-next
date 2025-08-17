@@ -90,6 +90,9 @@ def _set_button_state(driver: Driver, xpath: str, activate: bool) -> None:
         print(f"Error setting button state: {e}")
 
 def configure_chat(driver: Driver, deepthink: bool, search: bool) -> None:
+    # Record activity since user is configuring chat
+    record_activity()
+    
     global manager
     if manager and manager.get_temp_files():
         manager.delete_file("temp", manager.get_last_temp_file())
@@ -167,6 +170,9 @@ def _send_chat_text(driver: Driver, text: str) -> bool:
 
 
 def send_chat_message(driver: Driver, text: str, text_file: bool, prefix_content: str = None) -> bool:
+    # Record activity since user is sending a message
+    record_activity()
+    
     # Send the main message (prefix_content is now handled in message formatting, not here)
     if text_file:
         success = _send_chat_file(driver, text)
@@ -369,3 +375,149 @@ def is_response_generating(driver: Driver) -> bool:
         return button.get_attribute("aria-disabled") == "false"
     except Exception:
         return False
+
+# =============================================================================================================================
+# Page refresh functionality
+# =============================================================================================================================
+
+def refresh_page(driver: Driver) -> bool:
+    """
+    Refresh the DeepSeek page to prevent session timeouts.
+    
+    This function:
+    1. Refreshes the page
+    2. Waits for it to load
+    3. Handles any login requirements
+    4. Clears content cache
+    
+    Returns:
+        bool: True if refresh was successful, False otherwise
+    """
+    try:
+        print("[color:cyan]Refreshing page to prevent session timeout...")
+        
+        # Clear content cache since we're refreshing
+        _clear_content_cache()
+        
+        # Refresh the page
+        driver.refresh()
+        
+        # Wait for page to load
+        time.sleep(3)
+        
+        # Check if we need to login again
+        try:
+            # Look for login form
+            login_form = driver.find_elements("xpath", "//input[@type='text']")
+            if login_form:
+                print("[color:yellow]Login form detected after refresh - attempting auto-login")
+                
+                # Get login credentials from state manager
+                from core import get_state_manager
+                state = get_state_manager()
+                
+                email = state.get_config_value("models.deepseek.email", "")
+                password = state.get_config_value("models.deepseek.password", "")
+                auto_login = state.get_config_value("models.deepseek.auto_login", False)
+                
+                if auto_login and email and password:
+                    login(driver, email, password)
+                    time.sleep(2)
+                    print("[color:green]Auto-login completed after refresh")
+                else:
+                    print("[color:orange]Auto-login not configured - manual login may be required")
+                    
+        except Exception as login_error:
+            print(f"Note: Could not check login status after refresh: {login_error}")
+        
+        # Verify page loaded successfully by looking for chat interface
+        try:
+            chat_input = driver.find_element("id", "chat-input")
+            if chat_input:
+                print("[color:green]Page refresh successful - chat interface ready")
+                return True
+        except Exception:
+            pass
+        
+        # Alternative check - look for any DeepSeek-specific elements
+        try:
+            deepseek_elements = driver.find_elements("xpath", "//div[contains(@class, 'ds-')]")
+            if deepseek_elements:
+                print("[color:green]Page refresh successful - DeepSeek interface loaded")
+                return True
+        except Exception:
+            pass
+        
+        print("[color:orange]Page refresh completed but interface status unclear")
+        return True
+        
+    except Exception as e:
+        print(f"[color:red]Error refreshing page: {e}")
+        return False
+
+def start_refresh_timer() -> None:
+    """Start the refresh timer if enabled in configuration."""
+    try:
+        from core import get_state_manager
+        from utils.refresh_timer import start_refresh_timer as start_timer
+        
+        state = get_state_manager()
+        
+        # Check if refresh timer is enabled
+        if not state.get_config_value("refresh_timer.enabled", False):
+            return
+        
+        # Check if we have a driver
+        if not state.driver:
+            print("[color:yellow]Cannot start refresh timer - no browser driver available")
+            return
+        
+        def refresh_callback():
+            """Callback function for refresh timer."""
+            driver = state.driver
+            if driver:
+                refresh_page(driver)
+            else:
+                print("[color:red]Cannot refresh - no browser driver available")
+        
+        def grace_period_callback():
+            """Callback for when grace period starts."""
+            # Only show grace period message if grace period is enabled
+            use_grace_period = state.get_config_value("refresh_timer.use_grace_period", True)
+            if not use_grace_period:
+                return  # Don't show grace period message if it's disabled
+            
+            try:
+                idle_timeout = int(state.get_config_value("refresh_timer.idle_timeout", 5))
+            except (ValueError, TypeError):
+                idle_timeout = 5
+            
+            try:
+                grace_period = int(state.get_config_value("refresh_timer.grace_period", 25))
+            except (ValueError, TypeError):
+                grace_period = 25
+            
+            print(f"[color:orange]No activity for {idle_timeout} minutes. Page will refresh in {grace_period} seconds unless activity is detected.")
+        
+        # Start the timer
+        start_timer(refresh_callback, grace_period_callback)
+        
+    except Exception as e:
+        print(f"Error starting refresh timer: {e}")
+
+def stop_refresh_timer() -> None:
+    """Stop the refresh timer."""
+    try:
+        from utils.refresh_timer import stop_refresh_timer as stop_timer
+        stop_timer()
+    except Exception as e:
+        print(f"Error stopping refresh timer: {e}")
+
+def record_activity() -> None:
+    """Record activity to reset the refresh timer."""
+    try:
+        from utils.refresh_timer import record_activity as record
+        record()
+    except Exception as e:
+        # Don't log errors for activity recording to avoid spam
+        pass

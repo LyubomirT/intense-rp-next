@@ -341,6 +341,39 @@ def get_config_schema() -> List[ConfigSection]:
                     default=False,
                     help_text="Display local IP address in startup message"
                 ),
+                ConfigField(
+                    key="refresh_timer.enabled",
+                    label="Auto Refresh Page:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Automatically refresh DeepSeek page when idle to prevent session timeouts"
+                ),
+                ConfigField(
+                    key="refresh_timer.idle_timeout",
+                    label="Idle Timeout (minutes):",
+                    field_type=ConfigFieldType.TEXT,
+                    default=5,
+                    validation="refresh_idle_timeout",
+                    depends_on="refresh_timer.enabled",
+                    help_text="Minutes of inactivity before starting refresh countdown (1-60 minutes)"
+                ),
+                ConfigField(
+                    key="refresh_timer.grace_period",
+                    label="Grace Period (seconds):",
+                    field_type=ConfigFieldType.TEXT,
+                    default=25,
+                    validation="refresh_grace_period",
+                    depends_on="refresh_timer.enabled",
+                    help_text="Seconds to wait after idle timeout before refreshing (5-120 seconds)"
+                ),
+                ConfigField(
+                    key="refresh_timer.use_grace_period",
+                    label="Use Grace Period:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=True,
+                    depends_on="refresh_timer.enabled",
+                    help_text="When enabled, warns before refreshing. When disabled, refreshes immediately after idle timeout."
+                ),
             ]
         ),
     ]
