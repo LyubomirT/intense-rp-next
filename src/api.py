@@ -116,6 +116,17 @@ def require_auth(f):
 # API Endpoints
 # =============================================================================================================================
 
+@app.route("/", methods=["GET"])
+def health_check():
+    # Note: This it technically not needed, but Cloudflare is really picky about health checks
+    # At least I got TryCloudflare working despite the political mess
+    # So this isn't as bad as it seems
+    """Health check endpoint for Cloudflare Tunnel"""
+    return jsonify({
+          "status": "ok",
+          "service": "IntenseRP Next"
+    })
+
 @app.route("/models", methods=["GET"])
 @require_auth
 def model() -> Response:
@@ -1124,6 +1135,24 @@ def run_services() -> None:
                 ip = socket.gethostbyname(socket.gethostname())
                 state.show_message(f"[color:yellow]URL 2: [color:white]http://{ip}:{api_port}/")
 
+            # Start TryCloudflare tunnel if enabled
+            tunnel_enabled = state.get_config_value("tunnel.enabled", False)
+            auto_start_tunnel = state.get_config_value("tunnel.auto_start", True)
+            
+            if tunnel_enabled and auto_start_tunnel:
+                state.show_message("[color:cyan]Starting TryCloudflare tunnel...")
+                try:
+                    # Start tunnel in background
+                    if state.start_tunnel(api_port):
+                        state.show_message("[color:green]TryCloudflare tunnel startup initiated")
+                        # Give tunnel a moment to start (URL will be displayed via callback)
+                        threading.Timer(2.0, lambda: None).start()
+                    else:
+                        state.show_message("[color:yellow]TryCloudflare tunnel was already active or failed to start")
+                except Exception as e:
+                    state.show_message(f"[color:red]Error starting TryCloudflare tunnel: {e}")
+                    print(f"Warning: Could not start tunnel: {e}")
+
             # Start refresh timer if enabled
             try:
                 deepseek.start_refresh_timer()
@@ -1169,6 +1198,15 @@ def close_selenium() -> None:
                 deepseek.stop_refresh_timer()
             except Exception as e:
                 print(f"Warning: Could not stop refresh timer: {e}")
+            
+            # Stop tunnel if active
+            try:
+                if state.is_tunnel_active():
+                    state.show_message("[color:cyan]Stopping TryCloudflare tunnel...")
+                    state.stop_tunnel()
+                    state.show_message("[color:green]TryCloudflare tunnel stopped")
+            except Exception as e:
+                print(f"Warning: Could not stop tunnel: {e}")
             
             # Increment driver ID first to stop the monitor thread cleanly
             state.increment_driver_id()

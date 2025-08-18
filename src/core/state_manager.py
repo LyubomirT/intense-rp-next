@@ -9,6 +9,10 @@ class StateEvent(Enum):
     CONFIG_UPDATED = "config_updated"
     MESSAGE_LOGGED = "message_logged"
     RESPONSE_GENERATED = "response_generated"
+    TUNNEL_STARTED = "tunnel_started"
+    TUNNEL_STOPPED = "tunnel_stopped"
+    TUNNEL_URL_READY = "tunnel_url_ready"
+    TUNNEL_ERROR = "tunnel_error"
 
 @dataclass
 class StateChange:
@@ -37,6 +41,11 @@ class StateManager:
         self._config_manager = None
         self._logging_manager = None
         self._console_manager = None
+        
+        # Tunnel state
+        self._tunnel_manager = None
+        self._tunnel_url = None
+        self._tunnel_active = False
         
         # Runtime state
         self._is_running = False
@@ -212,6 +221,108 @@ class StateManager:
         with self._lock:
             self._console_manager = value
     
+    # Tunnel management
+    @property
+    def tunnel_manager(self):
+        with self._lock:
+            return self._tunnel_manager
+    
+    @tunnel_manager.setter
+    def tunnel_manager(self, value):
+        with self._lock:
+            self._tunnel_manager = value
+    
+    def initialize_tunnel_manager(self):
+        """Initialize tunnel manager with callbacks"""
+        if self._tunnel_manager is None:
+            from utils.tunnel_manager import get_tunnel_manager
+            with self._lock:
+                self._tunnel_manager = get_tunnel_manager()
+                # Set up callbacks to update state
+                self._tunnel_manager.set_callbacks(
+                    url_callback=self._on_tunnel_url,
+                    error_callback=self._on_tunnel_error
+                )
+    
+    def _on_tunnel_url(self, url: str):
+        """Callback for when tunnel URL becomes available"""
+        with self._lock:
+            self._tunnel_url = url
+            self._tunnel_active = True
+        
+        # Display tunnel URL in console
+        self.show_message(f"[color:yellow]Tunnel URL: [color:white]{url}")
+        self._notify_observers(StateEvent.TUNNEL_URL_READY, url)
+    
+    def _on_tunnel_error(self, error_message: str):
+        """Callback for tunnel errors"""
+        with self._lock:
+            self._tunnel_active = False
+            self._tunnel_url = None
+        
+        # Display tunnel error in console
+        self.show_message(f"[color:red]Tunnel Error: {error_message}")
+        self._notify_observers(StateEvent.TUNNEL_ERROR, error_message)
+    
+    def start_tunnel(self, port: int = None) -> bool:
+        """Start tunnel for the specified port"""
+        if port is None:
+            port = self.get_config_value('api.port', 5000)
+        
+        self.initialize_tunnel_manager()
+        
+        with self._lock:
+            if self._tunnel_active:
+                return False  # Already active
+            
+            if self._tunnel_manager:
+                success = self._tunnel_manager.start_tunnel(port)
+                if success:
+                    self._notify_observers(StateEvent.TUNNEL_STARTED, port)
+                return success
+        return False
+    
+    def stop_tunnel(self) -> bool:
+        """Stop the active tunnel"""
+        with self._lock:
+            if self._tunnel_manager and self._tunnel_active:
+                success = self._tunnel_manager.stop_tunnel()
+                if success:
+                    self._tunnel_active = False
+                    self._tunnel_url = None
+                    self._notify_observers(StateEvent.TUNNEL_STOPPED, None)
+                return success
+        return True
+    
+    def get_tunnel_url(self) -> Optional[str]:
+        """Get the current tunnel URL"""
+        with self._lock:
+            return self._tunnel_url if self._tunnel_active else None
+    
+    def is_tunnel_active(self) -> bool:
+        """Check if tunnel is active"""
+        with self._lock:
+            return self._tunnel_active
+    
+    def get_tunnel_status(self) -> Dict[str, Any]:
+        """Get tunnel status information"""
+        with self._lock:
+            if self._tunnel_manager:
+                status = self._tunnel_manager.get_tunnel_status()
+                # Add state manager's view of tunnel status
+                status['state_manager_active'] = self._tunnel_active
+                status['state_manager_url'] = self._tunnel_url
+                return status
+            else:
+                return {
+                    'active': False,
+                    'url': None,
+                    'port': None,
+                    'error': None,
+                    'state_manager_active': self._tunnel_active,
+                    'state_manager_url': self._tunnel_url
+                }
+    
     # Application lifecycle
     @property
     def is_running(self) -> bool:
@@ -272,6 +383,15 @@ class StateManager:
             
             self._driver = None
             self._last_response = 0
+            
+            # Also stop tunnel if active
+            if self._tunnel_active and self._tunnel_manager:
+                try:
+                    self._tunnel_manager.stop_tunnel()
+                    self._tunnel_active = False
+                    self._tunnel_url = None
+                except Exception:
+                    pass
     
     def get_state_summary(self) -> Dict[str, Any]:
         """Get a summary of current state for debugging"""
@@ -283,6 +403,8 @@ class StateManager:
                 except Exception:
                     config_summary = {"error": "Failed to get config summary"}
             
+            tunnel_status = self.get_tunnel_status() if self._tunnel_manager else {'active': False}
+            
             return {
                 'has_driver': self._driver is not None,
                 'driver_id': self._last_driver,
@@ -290,6 +412,8 @@ class StateManager:
                 'has_textbox': self._textbox is not None,
                 'has_console_manager': self._console_manager is not None,
                 'has_config_manager': self._config_manager is not None,
+                'has_tunnel_manager': self._tunnel_manager is not None,
+                'tunnel_status': tunnel_status,
                 'config_summary': config_summary,
                 'is_running': self._is_running,
                 'observer_count': len(self._observers)

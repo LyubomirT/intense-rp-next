@@ -86,6 +86,11 @@ class ConfigValidator:
             
             return True
         
+        # Tunnel fields should only be validated if tunnel is enabled
+        if field.key and field.key.startswith("tunnel.") and field.key != "tunnel.enabled":
+            tunnel_enabled = config_data.get("tunnel", {}).get("enabled", False)
+            return tunnel_enabled
+        
         # By default, validate the field
         return True
     

@@ -305,6 +305,21 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Enable network access and display local IP address. When disabled, API is only accessible from localhost (127.0.0.1)"
                 ),
                 ConfigField(
+                    key="tunnel.enabled",
+                    label="Enable TryCloudflare Tunnel:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Automatically create a public tunnel URL using TryCloudflare for external access"
+                ),
+                ConfigField(
+                    key="tunnel.auto_start",
+                    label="Auto-start Tunnel:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=True,
+                    depends_on="tunnel.enabled",
+                    help_text="Automatically start tunnel when API server starts"
+                ),
+                ConfigField(
                     key=None,
                     label="Browser Configuration",
                     field_type=ConfigFieldType.DIVIDER,
