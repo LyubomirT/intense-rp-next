@@ -4,15 +4,16 @@ Handles loading, saving, validation, and access to configuration
 """
 
 from typing import Dict, Any, List, Optional, Tuple
-from config.config_schema import get_config_schema, get_default_config, find_field_by_key
-from config.config_validators import ConfigValidator
+from .config_schema import get_config_schema, get_default_config, find_field_by_key, ValidationError
+from .config_validators import ConfigValidator
 
 
 class ConfigValidationError(Exception):
     """Raised when configuration validation fails"""
-    def __init__(self, errors: List[str]):
+    def __init__(self, errors: List[ValidationError]):
         self.errors = errors
-        super().__init__(f"Configuration validation failed: {'; '.join(errors)}")
+        error_messages = [error.message for error in errors]
+        super().__init__(f"Configuration validation failed: {'; '.join(error_messages)}")
 
 
 class ConfigManager:
@@ -127,7 +128,7 @@ class ConfigManager:
         import copy
         return copy.deepcopy(self._config)
     
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> Tuple[bool, List[ValidationError]]:
         """Validate entire configuration against schema"""
         errors = []
         
@@ -140,7 +141,7 @@ class ConfigManager:
         
         return len(errors) == 0, errors
     
-    def validate_field(self, key: str, value: Any) -> List[str]:
+    def validate_field(self, key: str, value: Any) -> List[ValidationError]:
         """Validate a single field"""
         field = find_field_by_key(key)
         if field and field.validation:

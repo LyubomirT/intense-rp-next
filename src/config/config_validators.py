@@ -5,7 +5,7 @@ Handles all validation logic for configuration fields
 
 import re
 from typing import List, Any
-from config.config_schema import ConfigField
+from .config_schema import ConfigField, ValidationError
 
 
 class ConfigValidator:
@@ -26,8 +26,8 @@ class ConfigValidator:
             'refresh_grace_period': self._validate_refresh_grace_period,
         }
     
-    def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[str]:
-        """Validate a single field and return list of error messages"""
+    def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[ValidationError]:
+        """Validate a single field and return list of ValidationError objects"""
         if not field.validation:
             return []
         
@@ -37,12 +37,14 @@ class ConfigValidator:
         
         validator_func = self.validators.get(field.validation)
         if not validator_func:
-            return [f"Unknown validator: {field.validation}"]
+            return [ValidationError(field.key or "unknown", f"Unknown validator: {field.validation}", field)]
         
         try:
-            return validator_func(field, value)
+            error_messages = validator_func(field, value)
+            # Convert string error messages to ValidationError objects
+            return [ValidationError(field.key or "unknown", msg, field) for msg in error_messages]
         except Exception as e:
-            return [f"Validation error for {field.label}: {e}"]
+            return [ValidationError(field.key or "unknown", f"Validation error for {field.label}: {e}", field)]
     
     def _should_validate_field(self, field: ConfigField, config_data: dict) -> bool:
         """Check if field should be validated based on conditional logic"""

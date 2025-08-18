@@ -20,6 +20,14 @@ class ConfigFieldType(Enum):
 
 
 @dataclass
+class ValidationError:
+    """Structured validation error with field information"""
+    field_key: str                     # Field key that failed validation
+    message: str                       # Error message
+    field: Optional['ConfigField'] = None   # Reference to the field (optional)
+
+
+@dataclass
 class ConfigField:
     """Represents a single configuration field"""
     key: str                           # Dot notation key (e.g., "models.deepseek.email")
@@ -31,6 +39,7 @@ class ConfigField:
     help_text: Optional[str] = None         # Tooltip/help text
     command: Optional[Callable] = None      # For buttons/switches with callbacks
     depends_on: Optional[str] = None        # Conditional field (key that must be True)
+    highlight_errors: bool = True           # Whether to show visual error highlighting for this field
 
 
 @dataclass
@@ -173,7 +182,8 @@ def get_config_schema() -> List[ConfigSection]:
                     field_type=ConfigFieldType.TEXT,
                     default="",
                     validation="dump_directory",
-                    help_text="Directory to save console dumps (leave empty to use 'condumps/' in project root)"
+                    help_text="Directory to save console dumps (leave empty to use 'condumps/' in project root)",
+                    highlight_errors=False  # Optional field - don't highlight errors as aggressively
                 ),
             ]
         ),

@@ -6,9 +6,9 @@ Generates UI from configuration schema
 from typing import Dict, Any, Optional, Callable
 import utils.gui_builder as gui_builder
 from utils.font_loader import get_font_tuple
-from config.config_schema import get_config_schema, ConfigFieldType, ConfigField
-from config.config_manager import ConfigManager, ConfigValidationError
-from config.config_validators import ConditionalValidator
+from .config_schema import get_config_schema, ConfigFieldType, ConfigField, ValidationError
+from .config_manager import ConfigManager, ConfigValidationError
+from .config_validators import ConditionalValidator
 
 
 class ConfigUIGenerator:
@@ -608,9 +608,14 @@ class ConfigUIGenerator:
         # Reset all field colors first
         self._reset_field_colors()
         
-        # Mark fields mentioned in errors
+        # Mark fields with errors using field keys directly
         for error in errors:
-            self._mark_field_error_by_message(error)
+            if isinstance(error, ValidationError):
+                if error.field and error.field.highlight_errors:
+                    self._mark_field_error(error.field_key)
+            else:
+                # Fallback for legacy string errors (should not happen with new system)
+                self._mark_field_error_by_message(error)
         
         # Show error messages to user
         self._show_validation_errors(errors)
@@ -629,25 +634,36 @@ class ConfigUIGenerator:
                         widget.configure(border_color="gray")
     
     def _mark_field_error_by_message(self, error_message: str) -> None:
-        """Mark a field as having an error based on error message"""
-        # Map error messages to field keys
-        error_mapping = {
-            "models.deepseek.email": ["email", "Email"],
-            "models.deepseek.password": ["password", "Password"],
-            "logging.max_file_size": ["Max file size", "file size", "File size"],
-            "logging.max_files": ["Max files", "max files", "Files"],
-            "console.dump_directory": ["Dump Directory", "dump directory", "Directory"],
-            "api.port": ["Network Port", "Port", "port"],
-            "security.api_keys": ["API Keys:", "API Keys", "API key"],  # Added colon variant
-            "browser_path": ["Browser Path", "browser path", "Browser executable", "browser executable"],
-            "refresh_timer.idle_timeout": ["Idle Timeout", "idle timeout", "Idle timeout"],
-            "refresh_timer.grace_period": ["Grace Period", "grace period", "Grace period"],
-        }
+        """Legacy fallback method for marking field errors by message (deprecated)"""
+        # This method is kept for backward compatibility but should not be used
+        # with the new ValidationError system. New code should use field keys directly.
+        # 
+        # If this method is called, it means there's still some old-style validation
+        # that returns string errors instead of ValidationError objects.
+        print(f"[color:yellow]Warning: Using deprecated error message matching for: {error_message}")
         
-        for field_key, keywords in error_mapping.items():
-            if any(keyword in error_message for keyword in keywords):
-                self._mark_field_error(field_key)
-                return
+        # Basic fallback - try to extract field information from error message
+        # This is much simpler than the old keyword mapping but less reliable
+        if "email" in error_message.lower():
+            self._mark_field_error("models.deepseek.email")
+        elif "password" in error_message.lower():
+            self._mark_field_error("models.deepseek.password")
+        elif "file size" in error_message.lower():
+            self._mark_field_error("logging.max_file_size")
+        elif "max files" in error_message.lower():
+            self._mark_field_error("logging.max_files")
+        elif "directory" in error_message.lower():
+            self._mark_field_error("console.dump_directory")
+        elif "port" in error_message.lower():
+            self._mark_field_error("api.port")
+        elif "api key" in error_message.lower():
+            self._mark_field_error("security.api_keys")
+        elif "browser" in error_message.lower():
+            self._mark_field_error("browser_path")
+        elif "idle timeout" in error_message.lower():
+            self._mark_field_error("refresh_timer.idle_timeout")
+        elif "grace period" in error_message.lower():
+            self._mark_field_error("refresh_timer.grace_period")
     
     def _mark_field_error(self, field_key: str) -> None:
         """Mark a specific field as having an error"""
@@ -677,12 +693,20 @@ class ConfigUIGenerator:
         try:
             import tkinter.messagebox as messagebox
             
-            if len(errors) == 1:
+            # Extract error messages from ValidationError objects
+            error_messages = []
+            for error in errors:
+                if isinstance(error, ValidationError):
+                    error_messages.append(error.message)
+                else:
+                    error_messages.append(str(error))
+            
+            if len(error_messages) == 1:
                 title = "Configuration Error"
-                message = f"Please fix the following issue:\n\n{errors[0]}"
+                message = f"Please fix the following issue:\n\n{error_messages[0]}"
             else:
                 title = "Configuration Errors"
-                message = f"Please fix the following issues:\n\n" + "\n".join(f"• {error}" for error in errors)
+                message = f"Please fix the following issues:\n\n" + "\n".join(f"• {error}" for error in error_messages)
             
             # ConfigWindow inherits from CTkToplevel, so use self.window directly as parent
             parent_window = self.window if self.window else None
@@ -694,4 +718,7 @@ class ConfigUIGenerator:
             # Fallback: print to console
             print("[color:yellow]Settings validation errors:")
             for error in errors:
-                print(f"  - {error}")
+                if isinstance(error, ValidationError):
+                    print(f"  - {error.message}")
+                else:
+                    print(f"  - {error}")
