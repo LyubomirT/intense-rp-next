@@ -182,6 +182,7 @@ nav:
           - "Custom Templates": features/formatting-templates/custom-templates.md
       - "The Console": features/console.md
       - "Auto Refresh": features/auto-refresh.md
+      - "TryCloudflare Tunnel": features/trycloudflare-tunnel.md
       - "IntenseRP Updater": features/updater.md
       - "Advanced Configuration": features/advanced-configuration.md
   - Security:
