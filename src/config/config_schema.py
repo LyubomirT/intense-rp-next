@@ -16,6 +16,7 @@ class ConfigFieldType(Enum):
     DROPDOWN = "dropdown"
     BUTTON = "button"
     TEXTAREA = "textarea"
+    DIVIDER = "divider"
 
 
 @dataclass
@@ -273,12 +274,31 @@ def get_config_schema() -> List[ConfigSection]:
             title="Advanced Settings", 
             fields=[
                 ConfigField(
+                    key=None,
+                    label="Network Settings",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
+                ),
+                ConfigField(
                     key="api.port",
                     label="Network Port:",
                     field_type=ConfigFieldType.TEXT,
                     default=5000,
                     validation="port",
                     help_text="Port number for the API server (1024-65535)"
+                ),
+                ConfigField(
+                    key="show_ip",
+                    label="Show IP:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Enable network access and display local IP address. When disabled, API is only accessible from localhost (127.0.0.1)"
+                ),
+                ConfigField(
+                    key=None,
+                    label="Browser Configuration",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
                 ),
                 ConfigField(
                     key="browser",
@@ -320,6 +340,12 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Clear stored cookies and browser data (useful for debugging or starting fresh)"
                 ),
                 ConfigField(
+                    key=None,
+                    label="Application Behavior",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
+                ),
+                ConfigField(
                     key="check_version",
                     label="Check version at startup:",
                     field_type=ConfigFieldType.SWITCH,
@@ -335,11 +361,10 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Show console window on startup"
                 ),
                 ConfigField(
-                    key="show_ip",
-                    label="Show IP:",
-                    field_type=ConfigFieldType.SWITCH,
-                    default=False,
-                    help_text="Enable network access and display local IP address. When disabled, API is only accessible from localhost (127.0.0.1)"
+                    key=None,
+                    label="Auto Refresh Settings",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
                 ),
                 ConfigField(
                     key="refresh_timer.enabled",

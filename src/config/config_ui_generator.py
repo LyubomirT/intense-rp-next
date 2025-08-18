@@ -80,6 +80,8 @@ class ConfigUIGenerator:
                 self._create_button_field(frame, field, row)
             elif field.field_type == ConfigFieldType.TEXTAREA:
                 self._create_textarea_field(frame, field, row)
+            elif field.field_type == ConfigFieldType.DIVIDER:
+                self._create_divider_field(frame, field, row)
             
             row += 1
     
@@ -252,6 +254,41 @@ class ConfigUIGenerator:
                 custom_content = self.config_manager.get_hidden_var(hidden_key, "{name}: {content}")
                 textbox.delete("0.0", "end")
                 textbox.insert("0.0", custom_content)
+    
+    def _create_divider_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
+        """Create a divider field for visual separation"""
+        import customtkinter as ctk
+        
+        # Create a container frame for the divider
+        divider_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        divider_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 10), padx=15)
+        divider_frame.grid_columnconfigure(0, weight=1)
+        
+        if field.label and field.label.strip():
+            # Divider with text
+            divider_frame.grid_columnconfigure(1, weight=0)
+            divider_frame.grid_columnconfigure(2, weight=1)
+            
+            # Left line
+            left_line = ctk.CTkFrame(divider_frame, height=1, fg_color=("gray70", "gray30"))
+            left_line.grid(row=0, column=0, sticky="ew", pady=10)
+            
+            # Text label
+            divider_label = ctk.CTkLabel(
+                divider_frame, 
+                text=field.label,
+                font=get_font_tuple("Blinker", 12),
+                text_color=("gray60", "gray40")
+            )
+            divider_label.grid(row=0, column=1, padx=10)
+            
+            # Right line
+            right_line = ctk.CTkFrame(divider_frame, height=1, fg_color=("gray70", "gray30"))
+            right_line.grid(row=0, column=2, sticky="ew", pady=10)
+        else:
+            # Plain divider line
+            divider_line = ctk.CTkFrame(divider_frame, height=1, fg_color=("gray70", "gray30"))
+            divider_line.grid(row=0, column=0, sticky="ew", pady=10)
     
     def _update_textarea_state(self, preset_value: str) -> None:
         """Update textarea state based on preset selection"""
