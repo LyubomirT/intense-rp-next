@@ -1131,7 +1131,10 @@ def run_services() -> None:
                 print(f"Warning: Could not start refresh timer: {e}")
 
             state.is_running = True
-            serve(app, host="0.0.0.0", port=api_port, channel_request_lookahead=1)
+            
+            # Bind to network interface only if show_ip is enabled, otherwise localhost only
+            host = "0.0.0.0" if state.get_config_value("show_ip", False) else "127.0.0.1"
+            serve(app, host=host, port=api_port, channel_request_lookahead=1)
         else:
             state.show_message("[color:red]Selenium failed to start.")
     except Exception as e:

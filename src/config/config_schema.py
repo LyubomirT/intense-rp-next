@@ -339,7 +339,7 @@ def get_config_schema() -> List[ConfigSection]:
                     label="Show IP:",
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
-                    help_text="Display local IP address in startup message"
+                    help_text="Enable network access and display local IP address. When disabled, API is only accessible from localhost (127.0.0.1)"
                 ),
                 ConfigField(
                     key="refresh_timer.enabled",
