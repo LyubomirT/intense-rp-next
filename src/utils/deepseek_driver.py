@@ -100,8 +100,8 @@ def configure_chat(driver: Driver, deepthink: bool, search: bool) -> None:
     _close_sidebar(driver)
     new_chat(driver)
     _check_and_reload_page(driver)
-    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and contains(., 'R1')]", deepthink)
-    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and not(contains(., 'R1'))]", search)
+    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and (contains(., 'DeepThink') or contains(., '深度思考'))]", deepthink)
+    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and (contains(., 'Search') or contains(., '联网搜索'))]", search)
 
 # =============================================================================================================================
 # Send message or upload file to chat
