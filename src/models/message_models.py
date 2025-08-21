@@ -58,6 +58,16 @@ class Message:
     def has_user_name(self) -> bool:
         """Check if this message has a user name"""
         return self.name is not None and self.name.strip() != ""
+    
+    def get_character_name(self) -> Optional[str]:
+        """Get the character name from the message if available (for assistant messages)"""
+        if self.role == MessageRole.ASSISTANT:
+            return self.name
+        return None
+    
+    def has_character_name(self) -> bool:
+        """Check if this message has a character name (for assistant messages)"""
+        return self.role == MessageRole.ASSISTANT and self.name is not None and self.name.strip() != ""
 
 
 @dataclass

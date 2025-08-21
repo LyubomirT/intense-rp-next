@@ -355,6 +355,9 @@ class MessageFormatter:
                 return message.get_user_name()
             return character_info.user_name or 'User'
         elif message.role == MessageRole.ASSISTANT:
+            # Use message character name if available, otherwise fallback to character_info
+            if message.has_character_name():
+                return message.get_character_name()
             return character_info.character_name or 'Assistant'
         elif message.role == MessageRole.SYSTEM:
             return 'System'
