@@ -85,7 +85,7 @@ But DOM scraping has to extract the LaTeX from the HTML, which, with how dynamic
 
 ### Special Features
 
-Network interception also captures content that never makes it to the visible page. For example, when using DeepThink (R1 mode) with the "Send Thoughts" option enabled, the AI's reasoning process is wrapped in `<think>` tags. These tags are part of the network stream but get hidden by the browser's rendering. Network interception captures them perfectly, while DOM scraping can't see them at all.
+Network interception also captures content that never makes it to the visible page. For example, when using DeepThink with the "Send Thoughts" option enabled, the AI's reasoning process is wrapped in `<think>` tags. These tags are part of the network stream but get hidden by the browser's rendering. Network interception captures them perfectly, while DOM scraping can't see them at all.
 
 ### Performance
 
@@ -166,7 +166,7 @@ The captured data looks something like this:
 
 Where `"p"` indicates the type of content, and `"v"` contains the actual text.
 
-For thinking content in R1 mode:
+For thinking content in DeepThink mode:
 
 ```json
 {

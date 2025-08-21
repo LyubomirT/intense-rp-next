@@ -56,8 +56,8 @@ Interestingly enough, the chat interface lets you choose the exact same models a
 
 Specifically:
 
-- The V3-0324 model for standard responses
-- The R1-0528 reasoning model when you enable DeepThink
+- The V3.1 (NoThink) model for standard responses
+- The V3.1 (Think) reasoning model when you enable DeepThink
 
 On the API, identical models are used, labeled as `deepseek-chat` and `deepseek-reasoner` respectively. Though other providers likely offer other DeepSeek models like the original R1, or variants like R1-0528 Qwen distills or Chimera merges.
 

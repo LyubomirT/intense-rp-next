@@ -26,7 +26,7 @@ For even more control, try the **Custom** preset which lets you define your own 
 
 DeepSeek has some unique capabilities that you can access through IntenseRP Next:
 
-- **DeepThink (R1 Mode)** - Add `{{r1}}` or `[r1]` anywhere in your message to enable DeepSeek's reasoning mode, which makes responses more thoughtful and carefully considered
+- **DeepThink (V3.1 Reasoner Mode)** - Add `{{r1}}` or `[r1]` anywhere in your message to enable DeepSeek's reasoning mode, which makes responses more thoughtful and carefully considered
 - **Web Search** - Include `{{search}}` or `[search]` to let DeepSeek search the web to enhance its response with current information
 
 You can also enable these globally in Settings so you don't need to add the tags manually.

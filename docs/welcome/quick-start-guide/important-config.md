@@ -50,7 +50,7 @@ You'll notice the difference most with streaming responses, complex structures, 
 
 ### :material-palette:{ .subjective } Deepthink and Search
 
-These options control DeepSeek's special features. **Deepthink** enables the R1 reasoning model globally, even when you don't use triggers like `{{r1}}` in your messages. **Search** allows DeepSeek to search the web, also globally.
+These options control DeepSeek's special features. **Deepthink** enables the V3.1 (Think) reasoning model globally, even when you don't use triggers like `{{r1}}` in your messages. **Search** allows DeepSeek to search the web, also globally.
 
 Some users love these features, others find them unnecessary. They're off by default, so enable them based on your preferences and use cases.
 

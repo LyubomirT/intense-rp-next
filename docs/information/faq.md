@@ -64,8 +64,12 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
 
 ## Features & Settings
 
-??? question "What's the difference between the R1 and V3 models?"
-    V3-0324 is DeepSeek's standard chat model - fast and efficient for general conversations. R1-0528 is their reasoning model that thinks through problems step-by-step. R1 (DeepThink mode) produces more thoughtful responses but takes longer. Use V3 for casual chat and R1 for complex questions or when you want to see the AI's reasoning process.
+??? question "What's the difference between the Think / No Think modes?"
+
+    !!! tip "Hybrid Model"
+        As of recently, the R1 and V3 functionality has been merged into V3.1, meaning that only V3.1's Think and No Think modes are available.
+
+    V3.1 (No Think) is DeepSeek's standard chat model - fast and efficient for general conversations. DeepThink is their reasoning implementation that thinks through problems step-by-step. DeepThink mode produces more thoughtful responses but takes longer. Use `chat` for casual chat and DeepThink for complex questions or when you want to see the AI's reasoning process.
 
 ??? question "Should I use network interception?"
     If you're using Chrome or Edge, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a browser that doesn't support it (Firefox, Safari).

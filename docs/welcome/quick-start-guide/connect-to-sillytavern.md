@@ -138,7 +138,7 @@ By default, IntenseRP Next is only accessible from the same device (via `127.0.0
 
 IntenseRP Next supports special directives in your messages:
 
-- Add `{{r1}}` or `[r1]` anywhere in your message to enable DeepSeek's R1 reasoning mode (deepthink)
+- Add `{{r1}}` or `[r1]` anywhere in your message to enable DeepSeek's V3.1 Think reasoning mode (deepthink)
 - Add `{{search}}` or `[search]` to enable web search for that message
 
 Example:

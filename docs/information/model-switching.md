@@ -6,7 +6,7 @@ icon: material/swap-horizontal
 
 Many users have very different workflows, and with how quirky IntenseRP Next can be, it's (sort of) best to support more of them. Hence why there are four ways of controlling reasoning.
 
-DeepSeek itself currently only hosts two models, **DeepSeek V3-0324** (`chat`) and **DeepSeek R1-0528** (`reasoner`). V3 is always used by default in their chat interface, unless you specifically toggle on `DeepThink` in their UI (which is what IntenseRP Next uses for reasoning).
+DeepSeek itself currently only hosts two models, **DeepSeek V3.1 (NoThink)** (`chat`) and **DeepSeek V3.1 (Think)** (`reasoner`). NoThink is always used by default in their chat interface, unless you specifically toggle on `DeepThink` in their UI (which is what IntenseRP Next uses for reasoning).
 
 ## The Four Ways to Control Reasoning
 
@@ -56,9 +56,9 @@ Hey, you. You're finally awake. How many fingers do you see? {{r1}}
     You can place reasoning tags anywhere in your message. They'll be stripped out before the message reaches DeepSeek, so they won't clutter your actual conversation.
 
 ### 4. Global Configuration (Lowest Priority)
-The **Deepthink** toggle in DeepSeek Settings acts as your fallback default (though it's also the most obvious setting, I won't lie). When no higher-priority option specifies otherwise, this setting determines whether reasoning mode is used.
+The **DeepThink** toggle in DeepSeek Settings acts as your fallback default (though it's also the most obvious setting, I won't lie). When no higher-priority option specifies otherwise, this setting determines whether reasoning mode is used.
 
-This is great for setting your general preference - if you like the R1 model's writing style, enable it here and it'll be your default unless you specifically override it.
+This is great for setting your general preference - if you like the DeepThink model's writing style, enable it here and it'll be your default unless you specifically override it.
 
 ## Still Sending Thoughts
 

@@ -52,20 +52,20 @@ Most users should leave this disabled, as it can actually cause issues with some
 
 ## AI Features
 
-### Deepthink (R1 Mode)
+### Deepthink (V3.1 Think)
 
-Deepthink activates DeepSeek's R1 reasoning mode, which makes the AI think more carefully before responding. When enabled, DeepSeek will use a more deliberate reasoning process that often results in more thoughtful, nuanced responses.
+Deepthink activates DeepSeek's V3.1 Think reasoning mode, which makes the AI think more carefully before responding. When enabled, DeepSeek will use a more deliberate reasoning process that often results in more thoughtful, nuanced responses.
 
 You can enable this globally with this toggle, or use it selectively by adding `{{r1}}` or `[r1]` to individual messages.
 
 ??? example "DeepThink In A Nutshell"
     **With Deepthink disabled,**
-    DeepSeek will use the V3-0324 model to generate a response directly based on the input without additional reasoning.
+    DeepSeek will use the V3.1 (without thinking) model to generate a response directly based on the input without additional reasoning.
 
     ![DeepThink Disabled Example](../images/no-think-example.png)
 
     **With Deepthink enabled,**
-    DeepSeek will use the R1-0528 model to generate a response that includes a reasoning process before arriving at the final answer.
+    DeepSeek will use the V3.1 Think model to generate a response that includes a reasoning process before arriving at the final answer.
     The reasoning process is wrapped in `<think>` tags, but at the moment can only be captured with Network Interception enabled.
 
     ![DeepThink Enabled Example](../images/think-example.png)
@@ -106,7 +106,7 @@ For most users, we recommend the following DeepSeek settings configuration:
 
 - :fontawesome-solid-key: **Enter your email and password** and enable :material-auto-fix: **Auto Login** for convenience
 - Leave :material-file: **Text File** disabled unless you have specific formatting issues
-- Enable :material-thought-bubble: **Deepthink** if you prefer the writing style of the R1 model
+- Enable :material-thought-bubble: **Deepthink** if you prefer the writing style of the V3.1 Think model
 - Enable :material-send: **Send Thoughts** so that you can stop the model if it goes astray
 - Enable :fontawesome-solid-magnifying-glass: **Search** selectively if you frequently ask about current events or factual information
 - Enable :material-network: **Network Interception** if you're using Chrome/Edge (highly recommended)
