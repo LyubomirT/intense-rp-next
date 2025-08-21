@@ -630,8 +630,18 @@ class IntenseRPUpdater:
             return
         
         # Get executable path
-        exe_path_str = UIWidgets.prompt_input(f"Enter path to {EXECUTABLE_NAME}")
+        exe_path_str = UIWidgets.prompt_input(f"Enter path to {EXECUTABLE_NAME} (or directory containing it)")
         exe_path = Path(exe_path_str).resolve()
+        
+        # Check if it's a directory and try to find the executable
+        if exe_path.exists() and exe_path.is_dir():
+            potential_exe = exe_path / EXECUTABLE_NAME
+            if potential_exe.exists():
+                exe_path = potential_exe
+                UIWidgets.print_success(f"Found {EXECUTABLE_NAME} in directory: {exe_path}")
+            else:
+                UIWidgets.print_error(f"{EXECUTABLE_NAME} not found in directory '{exe_path}'")
+                return
         
         # Validate executable
         if not exe_path.exists() or exe_path.name != EXECUTABLE_NAME:
