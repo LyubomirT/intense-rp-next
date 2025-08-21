@@ -19,10 +19,22 @@
       "github_url": "https://github.com/Deaquay"
     },
     {
+      "name": "Targren",
+      "status": "Feedback, Bug Reports, Proposals, Code",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11566412?s=500&v=4",
+      "github_url": "https://github.com/Targren"
+    },
+    {
       "name": "fushigipururin",
-      "status": "Contributor",
+      "status": "Code and Concept Contributor",
       "avatar_url": "https://avatars.githubusercontent.com/u/96440827?s=500&v=4",
       "github_url": "https://github.com/fushigipururin"
+    },
+    {
+      "name": "Vova12344weq",
+      "status": "Early Testing, Bug Reports, Suggestions",
+      "avatar_url": "https://avatars.githubusercontent.com/u/131772052?s=500&v=4",
+      "github_url": "https://github.com/Vova12344weq"
     }
   ]
 }
