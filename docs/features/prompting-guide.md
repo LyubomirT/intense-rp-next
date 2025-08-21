@@ -30,6 +30,15 @@ These lines act like name tags at a party. DATA1 tells DeepSeek which character 
 !!! info "Why These Specific Markers?"
     IntenseRP Next looks for these DATA markers to extract character names from your prompts. They're processed and removed before sending to DeepSeek, but the character information is preserved and used to format the conversation properly. Without them, the formatting system doesn't know how to label messages correctly.
 
+### Alternative Markers
+
+If you prefer, you can enable Completion Object under `Response Configuration` (the :material-tune: icon) and `Character Names Behavior` to put names under the `name` parameter in the message object.
+
+!!! warning "Potential Issues"
+    Be aware that there are restrictions, the name must only contain Latin alphanumerics and underscores.
+
+![Character Messages Behavior](./images/charmesb.png)
+
 ### The Main Prompt
 
 !!! warning "Imported From The Original"
