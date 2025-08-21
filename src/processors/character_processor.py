@@ -196,7 +196,12 @@ class MessageFormatter:
         
         for message in request.messages:
             if message.content.strip():  # Only include non-empty messages
-                formatted_messages.append(f"{message.get_display_role()}: {message.content}")
+                # Use user name if available (STMP-style), otherwise fall back to display role
+                if message.role == MessageRole.USER and message.has_user_name():
+                    role_display = message.get_user_name()
+                else:
+                    role_display = message.get_display_role()
+                formatted_messages.append(f"{role_display}: {message.content}")
         
         content = "\n\n".join(formatted_messages)
         return f"[Important Information]\n{content.strip()}"
