@@ -399,9 +399,37 @@ class IntenseRPUpdater:
             except:
                 pass  # Best effort cleanup
     
+    def _find_updater_conflict_root(self, install_dir: Path) -> Optional[Path]:
+        """Find the top-level directory/file that contains the updater, if any"""
+        
+        # Get current updater path (handle PyInstaller)
+        if getattr(sys, 'frozen', False):
+            # Running as compiled exe
+            updater_path = Path(sys.executable).resolve()
+        else:
+            # Running as script  
+            updater_path = Path(__file__).resolve()
+        
+        install_dir = install_dir.resolve()
+        
+        # Check if updater is within the installation directory tree
+        try:
+            if not str(updater_path).startswith(str(install_dir)):
+                return None  # Updater is outside installation dir
+        except:
+            return None
+        
+        # Find the top-level item in install_dir that contains the updater
+        try:
+            updater_relative = updater_path.relative_to(install_dir)
+            root_item = install_dir / updater_relative.parts[0]
+            return root_item
+        except:
+            return None
+    
     def show_welcome(self) -> int:
         """Display welcome screen and get user choice"""
-        UIWidgets.print_header("IntenseRP Next Updater v1.0", 70)
+        UIWidgets.print_header("IntenseRP Next Updater v1.1", 70)
         
         UIWidgets.print_colored("Welcome to the IntenseRP Next Updater!", Colors.BRIGHT_WHITE)
         UIWidgets.print_colored("This tool helps you install and update IntenseRP Next easily.", Colors.WHITE)
@@ -647,6 +675,30 @@ class IntenseRPUpdater:
             UIWidgets.print_warning("Update cancelled")
             return
         
+        # Check for updater conflict
+        conflict_root = self._find_updater_conflict_root(install_dir)
+        skip_updater_root = None
+        
+        if conflict_root:
+            UIWidgets.print_warning("Updater detected in installation directory!")
+            UIWidgets.print_info(f"Updater location: {conflict_root}")
+            UIWidgets.print_info("Deleting this would terminate the update process.")
+            
+            choice = UIWidgets.prompt_choice(
+                "How would you like to proceed?", 
+                [
+                    "Update anyway (preserve updater)",
+                    "Cancel update"
+                ],
+                default=1
+            )
+            
+            if choice == 2:
+                UIWidgets.print_warning("Update cancelled")
+                return
+            
+            skip_updater_root = conflict_root.name
+        
         # Check if application is running
         UIWidgets.print_step(1, "Checking if IntenseRP Next is running...")
         
@@ -714,6 +766,11 @@ class IntenseRPUpdater:
             for item in install_dir.iterdir():
                 if item.name == SAVE_DIR_NAME:
                     continue  # Skip save directory
+                    
+                # Skip updater root if detected
+                if skip_updater_root and item.name == skip_updater_root:
+                    UIWidgets.print_info(f"Preserving updater path: {item.name}")
+                    continue
                 
                 if item.is_dir():
                     shutil.rmtree(item)
