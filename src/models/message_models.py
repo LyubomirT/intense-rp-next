@@ -22,7 +22,7 @@ class Message:
         role_str = data.get('role', 'user').lower()
         original_role = data.get('role', 'user')  # Store original case-preserved role
         role = MessageRole(role_str) if role_str in [r.value for r in MessageRole] else MessageRole.USER
-        name = data.get('name')  # Extract optional name field
+        name = data.get('name') or data.get('irp-next')  # Extract optional name field (supports both 'name' and 'irp-next')
         
         # Handle both string and multimodal content formats
         content = data.get('content', '')
