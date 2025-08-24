@@ -164,7 +164,7 @@ Remember, no tunnel = no external access = better security!
 ---
 
 !!! question "Need Help?"
-    If you're having trouble with tunnels, check our [Troubleshooting Guide](../advanced/troubleshooting-guide.md) or ask in the [GitHub Discussions](https://github.com/LyubomirT/intense-rp-next/discussions). Remember to never share your actual tunnel URLs when asking for help!
+    If you're having trouble with tunnels, check our [Troubleshooting Guide](../welcome/quick-start-guide/if-it-didnt/troubleshooting.md) or ask in the [GitHub Discussions](https://github.com/LyubomirT/intense-rp-next/discussions). Remember to never share your actual tunnel URLs when asking for help!
 
 ---
 

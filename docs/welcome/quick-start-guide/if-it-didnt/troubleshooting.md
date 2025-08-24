@@ -78,7 +78,7 @@ The logs contain valuable information about what IntenseRP Next was doing when t
 
 If you've tried these steps and still have issues:
 
-1. **Check the Full Troubleshooting Guide** - For more detailed solutions, see the [Comprehensive Troubleshooting Guide](../../advanced/troubleshooting-guide.md)
+1. **Ask for Help** - Reach out to the community for assistance. You can ask in the [GitHub Discussions](https://github.com/LyubomirT/intense-rp-next/discussions) or the developer on Discord (`@lyubomirt`).
 
 2. **Open a GitHub Issue** - Report your problem on our [GitHub Issues page](https://github.com/LyubomirT/intense-rp-next/issues)
 

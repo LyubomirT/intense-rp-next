@@ -114,7 +114,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     The classic "turn it off and on again" often works. Restart IntenseRP Next, make sure DeepSeek's website is accessible, and check that your browser is up to date. If problems persist, enable "Show Console" in Advanced Settings to see detailed logs of what's happening. Most issues have clear error messages that point to the solution.
 
 ??? question "Where can I get help if I'm stuck?"
-    Start with the [Troubleshooting](../quick-start-guide/if-it-didnt/troubleshooting.md) guide for common issues. If that doesn't help, check existing [GitHub issues](https://github.com/LyubomirT/intense-rp-next/issues) to see if others have encountered the same problem. For new issues, open a GitHub issue with your logs and system details. The community is friendly and responsive.
+    Start with the [Troubleshooting](../welcome/quick-start-guide/if-it-didnt/troubleshooting.md) guide for common issues. If that doesn't help, check existing [GitHub issues](https://github.com/LyubomirT/intense-rp-next/issues) to see if others have encountered the same problem. For new issues, open a GitHub issue with your logs and system details. The community is friendly and responsive.
 
 ??? question "How do I report a bug effectively?"
     Enable logging in Settings, reproduce the issue, then include the relevant log excerpts in your bug report. Mention your OS, browser, and IntenseRP Next version. Describe what you expected to happen versus what actually happened. If possible, provide steps to reproduce the issue. The more details you provide, the faster bugs get fixed.

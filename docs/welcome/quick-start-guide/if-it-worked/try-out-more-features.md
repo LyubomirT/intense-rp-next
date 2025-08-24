@@ -68,8 +68,8 @@ This will:
 
 Ready to learn more about IntenseRP Next's capabilities? Check out these sections:
 
-- [Advanced Configuration](../../features/advanced-configuration.md) for power-user settings
-- [Formatting Templates](../../features/formatting-templates/pre-defined-templates.md) to customize how messages look
+- [Advanced Configuration](../../../features/advanced-configuration.md) for power-user settings
+- [Formatting Templates](../../../features/formatting-templates/pre-defined-templates.md) to customize how messages look
 - [Troubleshooting](../if-it-didnt/troubleshooting.md) if you encounter any issues
 
 Happy chatting with your AI characters!
