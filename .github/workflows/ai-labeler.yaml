@@ -28,7 +28,7 @@ jobs:
         id: ai_analysis
         uses: actions/ai-inference@v1
         with:
-          model: openai/gpt-4.1
+          model: openai/gpt-4o
           prompt: |
             You are an expert project manager analyzing GitHub issues to assign appropriate labels.
             
