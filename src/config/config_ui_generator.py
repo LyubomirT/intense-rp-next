@@ -51,6 +51,9 @@ class ConfigUIGenerator:
         first_section = get_config_schema()[0]
         self.window.set_active_section(first_section.id)
         
+        # Set up search callback
+        self.window.set_search_callback(self._search_settings)
+        
         return self.window
     
     def _create_section_widgets(self, frame: gui_builder.ConfigFrame, section) -> None:
@@ -402,6 +405,85 @@ class ConfigUIGenerator:
                 'user': '{role}: {content}',
                 'char': '{role}: {content}'
             }
+    
+    def _search_settings(self, search_term: str) -> None:
+        """Search for settings and teleport to the matching category"""
+        if not search_term:
+            return
+        
+        search_term_lower = search_term.lower()
+        matches = []
+        
+        # Search through all sections and fields
+        for section in get_config_schema():
+            section_matches = []
+            
+            for field in section.fields:
+                # Skip dividers and buttons without keys
+                if not field.key or field.field_type in [ConfigFieldType.DIVIDER, ConfigFieldType.BUTTON]:
+                    continue
+                
+                # Search in field label
+                if search_term_lower in field.label.lower():
+                    section_matches.append({
+                        'field': field,
+                        'match_type': 'label',
+                        'match_text': field.label
+                    })
+                
+                # Search in field key (dot notation)
+                elif search_term_lower in field.key.lower():
+                    section_matches.append({
+                        'field': field,
+                        'match_type': 'key',
+                        'match_text': field.key
+                    })
+                
+                # Search in help text if available
+                elif field.help_text and search_term_lower in field.help_text.lower():
+                    section_matches.append({
+                        'field': field,
+                        'match_type': 'help',
+                        'match_text': field.help_text
+                    })
+            
+            if section_matches:
+                matches.append({
+                    'section': section,
+                    'field_matches': section_matches
+                })
+        
+        if matches:
+            # Teleport to the first matching field
+            first_match = matches[0]
+            section_id = first_match['section'].id
+            first_field_match = first_match['field_matches'][0]
+            field_key = first_field_match['field'].key
+            
+            # Update sidebar and scroll to specific field
+            self.window.set_active_section(section_id)
+            self.window.scroll_to_field(section_id, field_key)
+            
+            # Show search result feedback
+            field_count = len(first_match['field_matches'])
+            if len(matches) == 1 and field_count == 1:
+                match_info = first_field_match
+                field_label = match_info['field'].label
+                print(f"[color:green]Found '{field_label}' setting in {first_match['section'].title}")
+            elif len(matches) == 1:
+                field_label = first_field_match['field'].label
+                print(f"[color:green]Found {field_count} matches in {first_match['section'].title}")
+                print(f"[color:yellow]Highlighting first match: '{field_label}'")
+            else:
+                total_fields = sum(len(m['field_matches']) for m in matches)
+                section_names = [m['section'].title for m in matches]
+                field_label = first_field_match['field'].label
+                print(f"[color:green]Found {total_fields} matches across {len(matches)} sections")
+                print(f"[color:yellow]Highlighting first match: '{field_label}' in {first_match['section'].title}")
+                if len(section_names) > 1:
+                    print(f"[color:cyan]Other sections with matches: {', '.join(section_names[1:])}")
+        else:
+            print(f"[color:yellow]No settings found matching '{search_term}'")
     
     def _create_button_section(self) -> None:
         """Create the save/cancel button section"""

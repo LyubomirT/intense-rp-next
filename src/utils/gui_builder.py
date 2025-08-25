@@ -731,7 +731,11 @@ class ConfigWindow(ctk.CTkToplevel):
                                padx=(UIConstants.PADDING_SMALL, UIConstants.PADDING_MEDIUM), 
                                pady=UIConstants.PADDING_MEDIUM)
         self.content_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
-        self.content_frame.grid_rowconfigure(0, weight=UIConstants.WEIGHT_FULL)
+        self.content_frame.grid_rowconfigure(0, weight=UIConstants.WEIGHT_NONE)  # Search bar row
+        self.content_frame.grid_rowconfigure(1, weight=UIConstants.WEIGHT_FULL)  # Content row
+        
+        # Create search bar
+        self._create_search_bar()
         
         # Create scrollable frame for content
         self.scrollable_frame = ctk.CTkScrollableFrame(
@@ -740,10 +744,68 @@ class ConfigWindow(ctk.CTkToplevel):
             scrollbar_button_color=("gray70", "gray30"),
             scrollbar_button_hover_color=("gray60", "gray40")
         )
-        self.scrollable_frame.grid(row=0, column=0, sticky="nsew", 
+        self.scrollable_frame.grid(row=1, column=0, sticky="nsew", 
                                   padx=UIConstants.PADDING_MEDIUM, 
-                                  pady=UIConstants.PADDING_MEDIUM)
+                                  pady=(0, UIConstants.PADDING_MEDIUM))
         self.scrollable_frame.grid_columnconfigure(0, weight=UIConstants.WEIGHT_FULL)
+    
+    def _create_search_bar(self):
+        """Create the search bar at the top of the content area"""
+        search_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        search_frame.grid(row=0, column=0, sticky="ew", padx=UIConstants.PADDING_MEDIUM, pady=(UIConstants.PADDING_MEDIUM, UIConstants.PADDING_SMALL))
+        search_frame.grid_columnconfigure(1, weight=UIConstants.WEIGHT_FULL)
+        
+        # Search icon/label
+        search_label = ctk.CTkLabel(
+            search_frame, 
+            text="🔍", 
+            font=get_font_tuple("Blinker", 16),
+            text_color=("gray60", "gray40")
+        )
+        search_label.grid(row=0, column=0, padx=(0, UIConstants.PADDING_SMALL))
+        
+        # Search entry
+        self.search_entry = ctk.CTkEntry(
+            search_frame,
+            placeholder_text="Search settings... (Press Enter to search)",
+            font=get_font_tuple("Blinker", 14),
+            border_color=("gray70", "gray30"),
+            fg_color=("white", "gray20")
+        )
+        self.search_entry.grid(row=0, column=1, sticky="ew", padx=(0, UIConstants.PADDING_SMALL))
+        
+        # Bind Enter key to search
+        self.search_entry.bind("<Return>", self._on_search)
+        
+        # Clear search button
+        clear_button = ctk.CTkButton(
+            search_frame,
+            text="×",
+            width=30,
+            height=30,
+            font=get_font_tuple("Blinker", 16, "bold"),
+            command=self._clear_search,
+            fg_color=("gray80", "gray25"),
+            hover_color=("gray70", "gray35"),
+            text_color=("gray40", "gray60")
+        )
+        clear_button.grid(row=0, column=2)
+    
+    def _on_search(self, event=None):
+        """Handle search when Enter is pressed"""
+        search_term = self.search_entry.get().strip()
+        if search_term:
+            # Delegate search logic to the UI generator
+            if hasattr(self, 'search_callback') and self.search_callback:
+                self.search_callback(search_term)
+    
+    def _clear_search(self):
+        """Clear the search entry"""
+        self.search_entry.delete(0, "end")
+    
+    def set_search_callback(self, callback):
+        """Set the search callback function"""
+        self.search_callback = callback
     
     def _create_button_area(self):
         """Create the bottom button area"""
@@ -866,6 +928,96 @@ class ConfigWindow(ctk.CTkToplevel):
                         
             except Exception as e:
                 print(f"Error scrolling to section: {e}")
+    
+    def scroll_to_field(self, section_id: str, field_key: str):
+        """Scroll content to show specific field and highlight it"""
+        if section_id in self._content_frames:
+            frame = self._content_frames[section_id]
+            field_widget = frame.get_widget(field_key)
+            
+            if field_widget:
+                try:
+                    self.update_idletasks()
+                    frame.update_idletasks()
+                    field_widget.update_idletasks()
+                    self.scrollable_frame.update_idletasks()
+                    
+                    # Get field position relative to scrollable frame
+                    frame_y = frame.winfo_y()
+                    field_y = field_widget.winfo_y()
+                    total_field_y = frame_y + field_y
+                    
+                    # Add some padding above the field for better visibility
+                    padding = 20
+                    target_y = max(0, total_field_y - padding)
+                    
+                    if hasattr(self.scrollable_frame, '_parent_canvas'):
+                        canvas = self.scrollable_frame._parent_canvas
+                        canvas.update_idletasks()
+                        canvas.configure(scrollregion=canvas.bbox("all"))
+                        
+                        scroll_region = canvas.cget("scrollregion").split()
+                        if len(scroll_region) >= 4:
+                            total_height = float(scroll_region[3])
+                            if total_height > 0:
+                                target_pos = max(0.0, min(1.0, target_y / total_height))
+                                canvas.yview_moveto(target_pos)
+                    
+                    # Highlight the field temporarily
+                    self._highlight_field(field_widget)
+                        
+                except Exception as e:
+                    print(f"Error scrolling to field: {e}")
+            else:
+                # Fallback to section scrolling
+                self.scroll_to_section(section_id)
+    
+    def _highlight_field(self, widget):
+        """Temporarily highlight a field with visual feedback"""
+        try:
+            # Store original colors
+            original_border_color = None
+            original_border_width = None
+            
+            # Get current colors
+            if hasattr(widget, 'cget'):
+                try:
+                    original_border_color = widget.cget('border_color')
+                except:
+                    pass
+                try:
+                    original_border_width = widget.cget('border_width')
+                except:
+                    pass
+            
+            # Apply highlight
+            highlight_color = "#4A90E2"  # Blue highlight
+            try:
+                widget.configure(border_color=highlight_color)
+                if hasattr(widget, 'configure') and 'border_width' in str(widget.configure()):
+                    widget.configure(border_width=3)
+            except:
+                pass
+            
+            # Schedule removal of highlight after 2 seconds
+            def remove_highlight():
+                try:
+                    if original_border_color is not None:
+                        widget.configure(border_color=original_border_color)
+                    else:
+                        widget.configure(border_color="gray")
+                    
+                    if original_border_width is not None:
+                        widget.configure(border_width=original_border_width)
+                    else:
+                        widget.configure(border_width=1)
+                except:
+                    pass
+            
+            self.after(2000, remove_highlight)  # Remove highlight after 2 seconds
+            
+        except Exception as e:
+            print(f"Error highlighting field: {e}")
     
     def center(self, root: ctk.CTk) -> None:
         return _center_parent_window(self, root, self._last_width, self._last_height)
