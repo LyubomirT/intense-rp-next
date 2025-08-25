@@ -991,7 +991,7 @@ class ConfigWindow(ctk.CTkToplevel):
                     pass
             
             # Apply highlight
-            highlight_color = "#4A90E2"  # Blue highlight
+            highlight_color = "#4a9ee8"  # Blue highlight
             try:
                 widget.configure(border_color=highlight_color)
                 if hasattr(widget, 'configure') and 'border_width' in str(widget.configure()):
