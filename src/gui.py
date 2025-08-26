@@ -3,7 +3,8 @@ import utils.response_utils as response_utils
 import utils.deepseek_driver as deepseek
 import utils.process_manager as process
 import utils.gui_builder as gui_builder
-from utils.gui_builder import ContributorWindow
+from utils.gui_builder import ContributorWindow, WelcomeWindow
+from utils.welcome_utils import WelcomeManager
 import utils.console_manager as console_manager
 import utils.webdriver_utils as selenium
 import utils.api_key_generator as api_key_gen
@@ -533,6 +534,29 @@ def create_gui() -> None:
         # Show console if configured to do so
         if config_manager.get("show_console", False) and hasattr(state, 'console_manager') and state.console_manager:
             root.after(100, lambda: state.console_manager.show(True, root, center=True))
+        
+        # Check for first start and show welcome screen if needed
+        def show_welcome_if_first_start():
+            try:
+                welcome_manager = WelcomeManager(storage_manager)
+                if welcome_manager.is_first_start():
+                    # Create and show welcome window
+                    welcome_window = WelcomeWindow(root, __version__, icon_path)
+                    make_window_modal(welcome_window, root)
+                    welcome_window.center()
+                    welcome_window.lift()
+                    welcome_window.focus()
+                    
+                    # Mark as returning user
+                    welcome_manager.mark_as_returning()
+                    print("Welcome screen shown for first-time user")
+                else:
+                    print("Returning user detected - welcome screen skipped")
+            except Exception as e:
+                print(f"Error handling welcome screen: {e}")
+        
+        # Show welcome screen after a short delay to ensure main window is ready
+        root.after(300, show_welcome_if_first_start)
         
         print("Main window created with new modular config system.")
         print(f"Executable path: {storage_manager.get_executable_path()}")

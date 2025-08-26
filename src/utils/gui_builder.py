@@ -2299,3 +2299,205 @@ class DownloadProgressWindow(ctk.CTkToplevel):
             x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
             y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
             self.geometry(f"+{x}+{y}")
+
+
+# =============================================================================================================================
+# Welcome Window
+# =============================================================================================================================
+
+class WelcomeWindow(ctk.CTkToplevel):
+    """Welcome screen window that appears on first startup"""
+    
+    def __init__(self, parent, version: str, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.version = version
+        self.icon_path = icon_path
+        self._create_window()
+        self._create_widgets()
+        
+        # Set icon after a short delay to ensure window is ready
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("Welcome to IntenseRP Next!")
+        self.geometry("500x450")
+        self.resizable(False, False)
+        
+        # Configure grid weights
+        self.grid_columnconfigure(0, weight=1)
+        for i in range(8):  # Adjust based on number of rows
+            self.grid_rowconfigure(i, weight=0)
+        self.grid_rowconfigure(7, weight=1)  # Button area can expand
+    
+    def _create_widgets(self):
+        """Create all widgets for the welcome screen"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self, 
+            text=f"🎉 Welcome to IntenseRP Next v{self.version}! 🎉",
+            font=get_font_tuple("Blinker", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # Welcome message
+        welcome_text = (
+            "Thanks for choosing IntenseRP Next!\n\n"
+            "A fresh, community-driven revival of the IntenseRP API that makes it easy to integrate "
+            "DeepSeek AI with SillyTavern for entirely free, outside the official API.\n\n"
+            "Ready to begin? Use the steps below to get set up in minutes."
+        )
+        welcome_label = ctk.CTkLabel(
+            self,
+            text=welcome_text,
+            font=get_font_tuple("Blinker", 12),
+            wraplength=460,
+            justify="left"
+        )
+        welcome_label.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        
+        # Getting started section
+        getting_started_label = ctk.CTkLabel(
+            self,
+            text="Where to start?",
+            font=get_font_tuple("Blinker", 14, "bold"),
+            anchor="w"
+        )
+        getting_started_label.grid(row=2, column=0, padx=20, pady=(5, 5), sticky="ew")
+        
+        # Step 1
+        step1_frame = ctk.CTkFrame(self, fg_color="transparent")
+        step1_frame.grid(row=3, column=0, padx=30, pady=2, sticky="ew")
+        step1_frame.grid_columnconfigure(1, weight=1)
+        
+        step1_bullet = ctk.CTkLabel(step1_frame, text="1.", font=get_font_tuple("Blinker", 12, "bold"), width=20)
+        step1_bullet.grid(row=0, column=0, sticky="w")
+        step1_text = ctk.CTkLabel(
+            step1_frame, 
+            text="Open Settings and configure the app to your liking",
+            font=get_font_tuple("Blinker", 12),
+            anchor="w"
+        )
+        step1_text.grid(row=0, column=1, sticky="w", padx=(5, 0))
+        
+        # Step 2
+        step2_frame = ctk.CTkFrame(self, fg_color="transparent")
+        step2_frame.grid(row=4, column=0, padx=30, pady=2, sticky="ew")
+        step2_frame.grid_columnconfigure(1, weight=1)
+        
+        step2_bullet = ctk.CTkLabel(step2_frame, text="2.", font=get_font_tuple("Blinker", 12, "bold"), width=20)
+        step2_bullet.grid(row=0, column=0, sticky="w")
+        step2_text = ctk.CTkLabel(
+            step2_frame, 
+            text="Visit our documentation website to learn more and get help faster",
+            font=get_font_tuple("Blinker", 12),
+            anchor="w"
+        )
+        step2_text.grid(row=0, column=1, sticky="w", padx=(5, 0))
+        
+        # Step 3
+        step3_frame = ctk.CTkFrame(self, fg_color="transparent")
+        step3_frame.grid(row=5, column=0, padx=30, pady=2, sticky="ew")
+        step3_frame.grid_columnconfigure(1, weight=1)
+        
+        step3_bullet = ctk.CTkLabel(step3_frame, text="3.", font=get_font_tuple("Blinker", 12, "bold"), width=20)
+        step3_bullet.grid(row=0, column=0, sticky="w")
+        step3_text = ctk.CTkLabel(
+            step3_frame, 
+            text="Need help? Contact the developer or report issues/start discussions",
+            font=get_font_tuple("Blinker", 12),
+            anchor="w"
+        )
+        step3_text.grid(row=0, column=1, sticky="w", padx=(5, 0))
+        
+        # Step 4
+        step4_frame = ctk.CTkFrame(self, fg_color="transparent")
+        step4_frame.grid(row=6, column=0, padx=30, pady=2, sticky="ew")
+        step4_frame.grid_columnconfigure(1, weight=1)
+        
+        step4_bullet = ctk.CTkLabel(step4_frame, text="4.", font=get_font_tuple("Blinker", 12, "bold"), width=20)
+        step4_bullet.grid(row=0, column=0, sticky="w")
+        step4_text = ctk.CTkLabel(
+            step4_frame, 
+            text="⭐ Star the repository if you like the project!",
+            font=get_font_tuple("Blinker", 12),
+            anchor="w"
+        )
+        step4_text.grid(row=0, column=1, sticky="w", padx=(5, 0))
+        
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(self, fg_color="transparent")
+        buttons_frame.grid(row=7, column=0, padx=20, pady=20, sticky="ew")
+        buttons_frame.grid_columnconfigure(0, weight=1)
+        buttons_frame.grid_columnconfigure(1, weight=1)
+        buttons_frame.grid_columnconfigure(2, weight=1)
+        
+        # Open Documentation button
+        docs_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Documentation",
+            font=get_font_tuple("Blinker", 12),
+            command=self._open_documentation,
+            height=35
+        )
+        docs_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        
+        # GitHub button
+        github_btn = ctk.CTkButton(
+            buttons_frame,
+            text="GitHub",
+            font=get_font_tuple("Blinker", 12),
+            command=self._open_github,
+            height=35
+        )
+        github_btn.grid(row=0, column=1, padx=5, sticky="ew")
+        
+        # Continue button
+        continue_btn = ctk.CTkButton(
+            buttons_frame,
+            text="✨ Continue",
+            font=get_font_tuple("Blinker", 12, "bold"),
+            command=self._continue_to_app,
+            height=35
+        )
+        continue_btn.grid(row=0, column=2, padx=(5, 0), sticky="ew")
+        
+        # Note at bottom
+        note_label = ctk.CTkLabel(
+            self,
+            text="💡 You can show this welcome screen again by deleting the 'returning' file in the save folder.",
+            font=get_font_tuple("Blinker", 10),
+            text_color=("gray50", "gray50"),
+            wraplength=450
+        )
+        note_label.grid(row=8, column=0, padx=20, pady=(0, 10), sticky="ew")
+    
+    def _open_documentation(self):
+        """Open the documentation website"""
+        try:
+            webbrowser.open("https://intense-rp-next.readthedocs.io/en/latest/")
+            print("Documentation opened in browser")
+        except Exception as e:
+            print(f"Error opening documentation: {e}")
+    
+    def _open_github(self):
+        """Open the GitHub repository"""
+        try:
+            webbrowser.open("https://github.com/LyubomirT/intense-rp-next")
+            print("GitHub repository opened in browser")
+        except Exception as e:
+            print(f"Error opening GitHub: {e}")
+    
+    def _continue_to_app(self):
+        """Continue to the main application"""
+        self.destroy()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
