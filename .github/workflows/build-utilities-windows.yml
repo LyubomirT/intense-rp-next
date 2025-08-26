@@ -1,0 +1,141 @@
+name: Build IntenseRP Next Utilities (Windows)
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Triggers on all release events
+
+jobs:
+  build-utilities-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+      
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+      
+    - name: Verify required files
+      run: |
+        # Check that the patcher file exists
+        if (!(Test-Path "external\stmp-patcher\stmp_patcher.py")) { throw "Missing stmp_patcher.py" }
+        if (!(Test-Path "src\newlogo.ico")) { throw "Missing newlogo.ico" }
+        if (!(Test-Path "build_assets\utilities")) { throw "Missing utilities build assets" }
+        Write-Host "[OK] STMP Patcher file and build assets found"
+      shell: powershell
+      
+    - name: Clean previous builds
+      run: |
+        if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+        if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+        if (Test-Path "stmp_patcher.spec") { Remove-Item -Force "stmp_patcher.spec" }
+        Write-Host "[OK] Build directories cleaned"
+      shell: powershell
+      
+    - name: Build STMP Patcher with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onefile --console `
+          --name "STMP-Patcher" `
+          --icon "src\newlogo.ico" `
+          "external\stmp-patcher\stmp_patcher.py"
+        Write-Host "[OK] STMP Patcher build completed"
+      shell: powershell
+      
+    - name: Verify build output
+      run: |
+        if (!(Test-Path "dist\STMP-Patcher.exe")) { 
+          throw "Build failed - STMP Patcher executable not found" 
+        }
+        Write-Host "[OK] STMP Patcher executable created successfully"
+        
+        # Get file size for info
+        $size = (Get-Item "dist\STMP-Patcher.exe").Length
+        $sizeMB = [math]::Round($size / 1MB, 2)
+        Write-Host "[INFO] STMP Patcher size: $sizeMB MB"
+      shell: powershell
+      
+    - name: Create utilities package
+      run: |
+        # Create a directory for the utilities package
+        $packageDir = "dist\intenserp-next-utilities-win32-amd64"
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+        
+        # Copy the STMP Patcher executable
+        Copy-Item -Path "dist\STMP-Patcher.exe" -Destination $packageDir -Force
+        
+        # Copy the README files from build assets
+        Copy-Item -Path "build_assets\utilities\README.txt" -Destination $packageDir -Force
+        Copy-Item -Path "build_assets\utilities\STMP-PATCHER-README.txt" -Destination $packageDir -Force
+        
+        Write-Host "[OK] Utilities package created"
+      shell: powershell
+      
+    - name: Get version info for package
+      id: version
+      run: |
+        # Get current date for build info
+        $buildDate = Get-Date -Format "yyyy-MM-dd"
+        
+        # Try to get version from version.txt if it exists
+        $version = "1.0"
+        if (Test-Path "version.txt") {
+          $version = (Get-Content "version.txt" -Raw).Trim()
+        }
+        
+        # Update README files with version info
+        $readmePath = "dist\intenserp-next-utilities-win32-amd64\README.txt"
+        $content = Get-Content $readmePath -Raw
+        $content = $content.Replace("{BUILD_DATE}", $buildDate)
+        $content = $content.Replace("{PACKAGE_VERSION}", $version)
+        Set-Content -Path $readmePath -Value $content
+        
+        $patcherReadmePath = "dist\intenserp-next-utilities-win32-amd64\STMP-PATCHER-README.txt"
+        $patcherContent = Get-Content $patcherReadmePath -Raw
+        $patcherContent = $patcherContent.Replace("{BUILD_DATE}", $buildDate)
+        $patcherContent = $patcherContent.Replace("{PATCHER_VERSION}", $version)
+        Set-Content -Path $patcherReadmePath -Value $patcherContent
+        
+        # Output for GitHub
+        echo "BUILD_DATE=$buildDate" >> $env:GITHUB_OUTPUT
+        echo "PACKAGE_VERSION=$version" >> $env:GITHUB_OUTPUT
+        
+        Write-Host "[OK] Version info updated in README files"
+      shell: powershell
+      
+    - name: Create zip archive
+      run: |
+        $zipPath = "dist\intenserp-next-utilities-win32-amd64.zip"
+        Compress-Archive -Path "dist\intenserp-next-utilities-win32-amd64" -DestinationPath $zipPath -CompressionLevel Optimal
+        
+        # Get file size for info
+        $zipSize = (Get-Item $zipPath).Length
+        $zipSizeMB = [math]::Round($zipSize / 1MB, 2)
+        Write-Host "[OK] Utilities zip archive created ($zipSizeMB MB)"
+      shell: powershell
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-next-utilities-windows
+        path: dist/intenserp-next-utilities-win32-amd64.zip
+        retention-days: 30
+        
+    - name: Upload release asset (if release)
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/intenserp-next-utilities-win32-amd64.zip
