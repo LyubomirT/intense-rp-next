@@ -12,7 +12,7 @@ import platform
 import tempfile
 import zipfile
 import subprocess
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from pathlib import Path
 
 
@@ -36,8 +36,9 @@ class UpdaterManager:
             if not os.path.exists(download_path):
                 return False, f"Download file not found: {download_path}"
             
-            # Get the base directory where we should extract
-            base_path = storage_manager.get_base_path()
+            # Get the executable directory where we should extract (NOT _internal)
+            # This ensures updater is extracted to the same directory as the main executable
+            base_path = storage_manager.get_executable_path()
             
             # Extract the updater
             with zipfile.ZipFile(download_path, 'r') as zip_ref:
@@ -61,8 +62,15 @@ class UpdaterManager:
             if platform.system() != "Windows":
                 os.chmod(updater_path, 0o755)
             
-            # Run the updater
-            success, message = UpdaterManager._run_updater(updater_path)
+            # Get current executable path to pass to updater
+            current_exe_path = storage_manager.get_executable_path()
+            if platform.system() == "Windows":
+                current_exe_path = os.path.join(current_exe_path, "IntenseRP Next.exe")
+            else:
+                current_exe_path = os.path.join(current_exe_path, "intenserp-next")
+            
+            # Run the updater with automatic update parameters
+            success, message = UpdaterManager._run_updater(updater_path, current_exe_path, True)
             
             return success, message
             
@@ -97,12 +105,14 @@ class UpdaterManager:
         return None
     
     @staticmethod
-    def _run_updater(updater_path: str) -> Tuple[bool, str]:
+    def _run_updater(updater_path: str, exe_path: Optional[str] = None, auto_update: bool = False) -> Tuple[bool, str]:
         """
-        Run the updater executable
+        Run the updater executable with optional command-line arguments
         
         Args:
             updater_path: Path to the updater executable
+            exe_path: Path to the current executable (for automatic update)
+            auto_update: Whether to enable auto-update mode
             
         Returns:
             Tuple of (success: bool, message: str)
@@ -117,11 +127,16 @@ class UpdaterManager:
                 if not os.access(updater_path, os.X_OK):
                     return False, f"Updater is not executable: {updater_path}"
             
+            # Build command with arguments
+            command = [updater_path]
+            if exe_path and auto_update:
+                command.extend(["--exe-path", exe_path, "--au"])
+            
             # Start the updater in a visible console window for user interaction
             try:
                 if platform.system() == "Windows":
                     # On Windows, create a new console window
-                    subprocess.Popen([updater_path], 
+                    subprocess.Popen(command, 
                                    cwd=os.path.dirname(updater_path),
                                    creationflags=subprocess.CREATE_NEW_CONSOLE)
                 else:
@@ -130,18 +145,24 @@ class UpdaterManager:
                         # Try common terminal emulators
                         for terminal in ["gnome-terminal", "xterm", "konsole", "x-terminal-emulator"]:
                             try:
-                                subprocess.Popen([terminal, "-e", updater_path], 
-                                               cwd=os.path.dirname(updater_path))
+                                if len(command) > 1:
+                                    # With arguments, need to quote the command
+                                    command_str = " ".join(f'"{arg}"' if " " in arg else arg for arg in command)
+                                    subprocess.Popen([terminal, "-e", "bash", "-c", command_str], 
+                                                   cwd=os.path.dirname(updater_path))
+                                else:
+                                    subprocess.Popen([terminal, "-e", updater_path], 
+                                                   cwd=os.path.dirname(updater_path))
                                 break
                             except FileNotFoundError:
                                 continue
                         else:
                             # Fallback: run in background
-                            subprocess.Popen([updater_path], 
+                            subprocess.Popen(command, 
                                            cwd=os.path.dirname(updater_path))
                     except Exception:
                         # Final fallback
-                        subprocess.Popen([updater_path], 
+                        subprocess.Popen(command, 
                                        cwd=os.path.dirname(updater_path))
                 
                 return True, "Updater launched in new console window"
@@ -195,8 +216,8 @@ class UpdaterManager:
             Path to download directory
         """
         try:
-            # Create a downloads folder in the base directory
-            base_path = storage_manager.get_base_path()
+            # Create a downloads folder in the executable directory (NOT _internal)
+            base_path = storage_manager.get_executable_path()
             download_dir = os.path.join(base_path, "downloads")
             
             # Create directory if it doesn't exist
@@ -239,9 +260,10 @@ class UpdaterManager:
             Tuple of (has_permissions: bool, message: str)
         """
         try:
-            base_path = storage_manager.get_base_path()
+            # Use executable path instead of base path to avoid _internal issues
+            base_path = storage_manager.get_executable_path()
             
-            # Check write permissions to base directory
+            # Check write permissions to executable directory
             if not os.access(base_path, os.W_OK):
                 return False, f"No write permission to application directory: {base_path}"
             

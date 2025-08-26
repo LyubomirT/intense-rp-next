@@ -20,6 +20,7 @@ import tempfile
 import platform
 import subprocess
 import requests
+import argparse
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 import time
@@ -28,6 +29,7 @@ import time
 # Constants and Configuration
 # ============================================================================
 
+VERSION = "v1.3"
 REPO_OWNER = "LyubomirT"
 REPO_NAME = "intense-rp-next"
 GITHUB_API_BASE = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
@@ -489,8 +491,7 @@ class IntenseRPUpdater:
     
     def show_welcome(self) -> int:
         """Display welcome screen and get user choice"""
-        UIWidgets.print_header("IntenseRP Next Updater v1.2", 70)
-        
+        UIWidgets.print_header(f"IntenseRP Next Updater {VERSION}", 70)
         UIWidgets.print_colored("Welcome to the IntenseRP Next Updater!", Colors.BRIGHT_WHITE)
         UIWidgets.print_colored("This tool helps you install and update IntenseRP Next easily.", Colors.WHITE)
         
@@ -804,6 +805,98 @@ class IntenseRPUpdater:
         else:
             UIWidgets.print_success("IntenseRP Next is not running")
         
+        # Use shared update process method with manual mode enabled
+        self._perform_update_process(install_dir, skip_updater_root, manual_mode=True)
+    
+    def auto_update_intenserp(self, exe_path_str: str) -> None:
+        """Automatic update mode - no user prompts, uses provided exe path"""
+        UIWidgets.print_section("Automatic Update Mode")
+        
+        if not self.check_system_compatibility():
+            return
+        
+        # Validate and resolve executable path
+        exe_path = Path(exe_path_str).resolve()
+        
+        # Check if it's a directory and try to find the executable
+        if exe_path.exists() and exe_path.is_dir():
+            potential_exe = exe_path / EXECUTABLE_NAME
+            if potential_exe.exists():
+                exe_path = potential_exe
+                UIWidgets.print_success(f"Found {EXECUTABLE_NAME} in directory: {exe_path}")
+            else:
+                UIWidgets.print_error(f"{EXECUTABLE_NAME} not found in directory '{exe_path}'")
+                return
+        
+        # Validate executable
+        if not exe_path.exists() or exe_path.name != EXECUTABLE_NAME:
+            UIWidgets.print_error(f"File not found or not named '{EXECUTABLE_NAME}': {exe_path}")
+            return
+        
+        install_dir = exe_path.parent
+        UIWidgets.print_success(f"Found installation: {install_dir}")
+        
+        # Check current version (if version.txt exists)
+        current_version_file = install_dir / "version.txt"
+        current_version = "unknown"
+        if current_version_file.exists():
+            try:
+                current_version = current_version_file.read_text().strip()
+            except:
+                pass
+        
+        UIWidgets.print_info(f"Current version: {current_version}")
+        
+        # Get latest version
+        UIWidgets.print_info("Checking for updates...")
+        latest_version = GitHubAPI.get_latest_version()
+        if not latest_version:
+            UIWidgets.print_error("Unable to check for updates")
+            return
+        
+        UIWidgets.print_info(f"Latest version: {latest_version}")
+        
+        # Check if update is needed
+        if current_version == latest_version:
+            UIWidgets.print_warning("You already have the latest version installed")
+            UIWidgets.print_info("Update cancelled - no update needed")
+            return
+        
+        # Auto-confirm update in automatic mode
+        UIWidgets.print_info(f"Auto-updating from v{current_version} to v{latest_version}...")
+        
+        # Check for updater conflict (but proceed anyway in auto mode)
+        conflict_root = self._find_updater_conflict_root(install_dir)
+        skip_updater_root = None
+        
+        if conflict_root:
+            UIWidgets.print_warning("Updater detected in installation directory!")
+            UIWidgets.print_info(f"Updater location: {conflict_root}")
+            UIWidgets.print_info("Preserving updater during update...")
+            skip_updater_root = conflict_root.name
+        
+        # Check if application is running
+        UIWidgets.print_step(1, "Checking if IntenseRP Next is running...")
+        
+        if SystemUtils.is_process_running(EXECUTABLE_NAME):
+            UIWidgets.print_warning("IntenseRP Next is currently running")
+            UIWidgets.print_info("Attempting to close it automatically...")
+            if SystemUtils.kill_process(EXECUTABLE_NAME):
+                UIWidgets.print_success("Application closed successfully")
+                time.sleep(2)  # Wait for process to fully terminate
+            else:
+                UIWidgets.print_error("Failed to close application automatically")
+                UIWidgets.print_error("Please close IntenseRP Next manually and try the update again")
+                return
+        else:
+            UIWidgets.print_success("IntenseRP Next is not running")
+        
+        # Continue with the same update logic as the manual mode
+        # (rest of the update process is the same)
+        self._perform_update_process(install_dir, skip_updater_root)
+    
+    def _perform_update_process(self, install_dir: Path, skip_updater_root: Optional[str] = None, manual_mode: bool = False) -> None:
+        """Perform the actual update process (shared between manual and auto modes)"""
         # Backup save directory
         save_dir = install_dir / SAVE_DIR_NAME
         backup_save_dir = None
@@ -816,8 +909,9 @@ class IntenseRPUpdater:
                 UIWidgets.print_success("Save directory backed up")
             except Exception as e:
                 UIWidgets.print_error(f"Failed to backup save directory: {e}")
-                if not UIWidgets.prompt_confirm("Continue without backup?", default=False):
+                if manual_mode and not UIWidgets.prompt_confirm("Continue without backup?", default=False):
                     return
+                UIWidgets.print_warning("Continuing without backup...")
                 backup_save_dir = None
         else:
             UIWidgets.print_info("No save directory found (this is normal for new installations)")
@@ -835,6 +929,7 @@ class IntenseRPUpdater:
             UIWidgets.print_info(f"Looking for asset: {ASSET_NAME}")
             return
         
+        latest_version = GitHubAPI.get_latest_version() or "unknown"
         download_url = platform_asset['browser_download_url']
         zip_path = Path(self.temp_dir) / ASSET_NAME
         
@@ -941,12 +1036,51 @@ class IntenseRPUpdater:
         UIWidgets.print_info("You can now run the updated application")
 
 # ============================================================================
+# Command-Line Argument Parsing
+# ============================================================================
+
+def parse_arguments():
+    """Parse command-line arguments for automatic mode"""
+    parser = argparse.ArgumentParser(
+        description="IntenseRP Next Updater - Install and update IntenseRP Next",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                                    # Interactive mode
+  %(prog)s --exe-path "C:\\IntenseRP Next.exe" --au    # Automatic update mode
+        """.strip()
+    )
+    
+    parser.add_argument(
+        "--exe-path", 
+        metavar="PATH",
+        help="Path to the current IntenseRP Next executable (for automatic updates)"
+    )
+    
+    parser.add_argument(
+        "--au", 
+        action="store_true",
+        help="Enable automatic update mode (requires --exe-path)"
+    )
+    
+    parser.add_argument(
+        "--version", 
+        action="version", 
+        version=f"IntenseRP Next Updater {VERSION}"
+    )
+    
+    return parser.parse_args()
+
+# ============================================================================
 # Main Application Entry Point
 # ============================================================================
 
 def main():
     """Main application entry point"""
     try:
+        # Parse command-line arguments
+        args = parse_arguments()
+        
         # Enable terminal color support (cross-platform)
         if platform.system() == "Windows":
             # Enable Windows terminal color support
@@ -957,6 +1091,26 @@ def main():
         # Unix-like systems (Linux, macOS) handle ANSI colors natively
         
         with IntenseRPUpdater() as updater:
+            # Check if running in automatic update mode
+            if args.au and args.exe_path:
+                UIWidgets.print_info("Running in automatic update mode...")
+                updater.auto_update_intenserp(args.exe_path)
+                
+                # In auto mode, pause briefly so user can see the result
+                print()
+                UIWidgets.print_info("Update process completed. Window will close in 5 seconds...")
+                time.sleep(5)
+                return
+            elif args.au and not args.exe_path:
+                UIWidgets.print_error("--au flag requires --exe-path to be specified")
+                UIWidgets.print_info("Use --help for usage information")
+                return
+            elif args.exe_path and not args.au:
+                UIWidgets.print_warning("--exe-path specified without --au flag")
+                UIWidgets.print_info("Switching to interactive mode...")
+                print()
+            
+            # Interactive mode (original functionality)
             while True:
                 choice = updater.show_welcome()
                 
