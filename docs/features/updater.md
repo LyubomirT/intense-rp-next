@@ -9,24 +9,27 @@ As of version 1.2.0, IntenseRP Next distributions will now also bundle a small u
 It's a simple CLI tool that helps you install and update IntenseRP Next faster, without having to go to the Releases page on GitHub every single time you want to check for updates or download the latest version.
 
 !!! warning
-    Right now, the updater only supports Windows (10+) systems. Linux support is being actively worked on.
+    Right now, the updater only supports Windows (10+) systems, as well as most modern Linux distributions. However, macOS support is not yet implemented.
 
 ## Download It
 
 To download the updater, simply head over to the [Releases page](https://github.com/IntenseRP/IntenseRP-Next/releases) on GitHub and grab the latest version for your system.
 
-Usually it's a simple zip of an executable alongside a small README.txt file.
+Usually it's a simple zip or tar.gz archive of an executable alongside a small README.txt file.
 
 !!! note
     Some browsers may block the download of the updater executable, so be sure to check your browser's download settings if you encounter any issues. Personally, I ran into this issue with Chrome, but switching to Firefox resolved it immediately (speaks volumes about accuracy).
 
 ## Installation
 
-No install needed! It's a portable, one-file executable that you can run from anywhere you wish. However, it's NOT recommended to put it in the same place as your IntenseRP installation, because it's highly likely that it will try to delete itself during updates.
+No install needed! It's a portable, one-file executable that you can run from anywhere you wish. However, it's NOT recommended to put it in the same place as your IntenseRP installation, purely for safety reasons.
+
+!!! info
+    It will still work if you do place it there, but only after version v1.1 of the updater. Version v1.0 will attempt to delete the entire directory, including itself.
 
 ## Usage
 
-The updater is a command line tool. You can either run it from PowerShell or double-click the file. A console window will open up either way.
+The updater is a command line tool. You can either run it from your terminal or double-click the file. A console window will open up either way.
 
 ![Updater UI](./images/updater_ui.png)
 
@@ -44,7 +47,7 @@ You will be greeted with the updater's user interface, which has four options yo
 - Select the `IntenseRP Next.exe` file
 - Confirm the update
 - Check if the app is currently running
-- Check for existing saved data
+- Check for existing saved data and executable
 - Backup the existing saved data
 - Download the latest version
 - Delete the old files
@@ -73,4 +76,4 @@ The updater is designed to streamline the installation and update process for In
 
 It's not unexpected for this kind of software to be flagged by SmartScreen, antivirus programs, or browsers. It even makes sense in a way. It looks for a file, then deletes a directory, downloads more files, and modifies the existing installation. Viruses often do similar things, so these security measures are in place to protect users.
 
-But in this case, the tool is fully open-source and safe. You can examine the code [here](https://github.com/IntenseRP/IntenseRP-Next) or even build it yourself if you don't trust it.
+But in this case, the tool is fully open-source and safe. You can examine the code [here](https://github.com/LyubomirT/intense-rp-next) or even build it yourself if you don't trust it.

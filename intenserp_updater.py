@@ -489,7 +489,7 @@ class IntenseRPUpdater:
     
     def show_welcome(self) -> int:
         """Display welcome screen and get user choice"""
-        UIWidgets.print_header("IntenseRP Next Updater v1.1", 70)
+        UIWidgets.print_header("IntenseRP Next Updater v1.2", 70)
         
         UIWidgets.print_colored("Welcome to the IntenseRP Next Updater!", Colors.BRIGHT_WHITE)
         UIWidgets.print_colored("This tool helps you install and update IntenseRP Next easily.", Colors.WHITE)
