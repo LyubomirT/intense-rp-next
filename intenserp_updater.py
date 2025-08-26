@@ -34,9 +34,29 @@ GITHUB_API_BASE = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 GITHUB_RAW_BASE = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/main"
 VERSION_URL = f"{GITHUB_RAW_BASE}/version.txt"
 RELEASES_URL = f"{GITHUB_API_BASE}/releases/latest"
-WIN_ZIP_NAME = "intenserp-next-win32-amd64.zip"
-EXECUTABLE_NAME = "IntenseRP Next.exe"
 SAVE_DIR_NAME = "save"
+
+# Platform-specific configuration
+CURRENT_PLATFORM = platform.system().lower()
+
+if CURRENT_PLATFORM == "windows":
+    ASSET_NAME = "intenserp-next-win32-amd64.zip"
+    EXECUTABLE_NAME = "IntenseRP Next.exe"
+    ARCHIVE_FORMAT = "zip"
+elif CURRENT_PLATFORM == "linux":
+    ASSET_NAME = "intenserp-next-linux-amd64.zip"  # Use zip for consistency
+    EXECUTABLE_NAME = "intenserp-next"
+    ARCHIVE_FORMAT = "zip"
+elif CURRENT_PLATFORM == "darwin":  # macOS
+    # Future macOS support
+    ASSET_NAME = "intenserp-next-macos-amd64.zip"
+    EXECUTABLE_NAME = "intenserp-next"
+    ARCHIVE_FORMAT = "zip"
+else:
+    # Fallback for unknown platforms
+    ASSET_NAME = None
+    EXECUTABLE_NAME = "intenserp-next"
+    ARCHIVE_FORMAT = "zip"
 
 # ============================================================================
 # Color and Styling System
@@ -263,47 +283,84 @@ class SystemUtils:
     """System-related utility functions"""
     
     @staticmethod
-    def check_windows_version() -> bool:
-        """Check if running on Windows 10 or 11"""
-        if platform.system() != "Windows":
-            return False
+    def check_system_compatibility() -> bool:
+        """Check if running on a supported operating system"""
+        system = platform.system().lower()
         
-        try:
-            # Get Windows version
-            version = platform.version()
-            # Windows 10 is version 10.0.x, Windows 11 is version 10.0.x with build >= 22000
-            major, minor, build = map(int, version.split('.'))
-            
-            # Windows 10/11 have major version 10
-            return major >= 10
-        except:
-            return False
+        if system == "windows":
+            try:
+                # Get Windows version - Windows 10/11 have major version 10
+                version = platform.version()
+                major = int(version.split('.')[0])
+                return major >= 10
+            except:
+                return False
+        elif system == "linux":
+            # Most modern Linux distributions should work
+            return True
+        elif system == "darwin":
+            # macOS support (future)
+            try:
+                # macOS 10.15+ should work
+                version = platform.mac_ver()[0]
+                if version:
+                    major, minor = map(int, version.split('.')[:2])
+                    return major >= 10 and (major > 10 or minor >= 15)
+            except:
+                pass
+            return True  # Assume compatibility for now
+        else:
+            return False  # Unsupported platform
     
     @staticmethod
     def is_process_running(exe_name: str) -> bool:
-        """Check if a process is running by executable name"""
+        """Check if a process is running by executable name (cross-platform)"""
         try:
-            # Use tasklist to check for running processes
-            result = subprocess.run(
-                ['tasklist', '/FI', f'IMAGENAME eq {exe_name}'],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return exe_name.lower() in result.stdout.lower()
+            system = platform.system().lower()
+            
+            if system == "windows":
+                # Use tasklist to check for running processes
+                result = subprocess.run(
+                    ['tasklist', '/FI', f'IMAGENAME eq {exe_name}'],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                return exe_name.lower() in result.stdout.lower()
+            else:
+                # Use ps for Unix-like systems (Linux, macOS)
+                result = subprocess.run(
+                    ['ps', 'aux'],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                # Check for process name in the output
+                return exe_name in result.stdout
         except:
             return False
     
     @staticmethod
     def kill_process(exe_name: str) -> bool:
-        """Attempt to kill a process by executable name"""
+        """Attempt to kill a process by executable name (cross-platform)"""
         try:
-            subprocess.run(
-                ['taskkill', '/F', '/IM', exe_name],
-                capture_output=True,
-                check=True
-            )
-            return True
+            system = platform.system().lower()
+            
+            if system == "windows":
+                subprocess.run(
+                    ['taskkill', '/F', '/IM', exe_name],
+                    capture_output=True,
+                    check=True
+                )
+                return True
+            else:
+                # Use pkill for Unix-like systems (Linux, macOS)
+                subprocess.run(
+                    ['pkill', '-f', exe_name],
+                    capture_output=True,
+                    check=True
+                )
+                return True
         except:
             return False
     
@@ -346,11 +403,14 @@ class GitHubAPI:
             return None
     
     @staticmethod
-    def find_windows_asset(release_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Find the Windows ZIP asset in release data"""
+    def find_platform_asset(release_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Find the appropriate asset for the current platform in release data"""
+        if ASSET_NAME is None:
+            return None
+            
         assets = release_data.get('assets', [])
         for asset in assets:
-            if asset['name'] == WIN_ZIP_NAME:
+            if asset['name'] == ASSET_NAME:
                 return asset
         return None
     
@@ -447,12 +507,26 @@ class IntenseRPUpdater:
         """Check if the system is compatible"""
         UIWidgets.print_section("System Compatibility Check")
         
-        if not SystemUtils.check_windows_version():
-            UIWidgets.print_error("This updater requires Windows 10 or Windows 11")
-            UIWidgets.print_info("Other operating systems are not supported for automatic updates")
+        if not SystemUtils.check_system_compatibility():
+            system_name = platform.system()
+            if system_name == "Windows":
+                UIWidgets.print_error("This updater requires Windows 10 or Windows 11")
+            elif system_name == "Linux":
+                UIWidgets.print_error("Linux compatibility check failed")
+            elif system_name == "Darwin":
+                UIWidgets.print_error("This updater requires macOS 10.15 or newer")
+            else:
+                UIWidgets.print_error(f"Platform '{system_name}' is not supported")
+                UIWidgets.print_info("Supported platforms: Windows 10/11, Linux, macOS 10.15+")
             return False
         
-        UIWidgets.print_success("Windows 10/11 detected - system compatible")
+        if ASSET_NAME is None:
+            UIWidgets.print_error(f"No release assets available for platform '{platform.system()}'")
+            UIWidgets.print_info("This platform may not have pre-built releases available")
+            return False
+        
+        system_name = platform.system()
+        UIWidgets.print_success(f"{system_name} detected - system compatible")
         return True
     
     def show_latest_release_info(self) -> None:
@@ -473,8 +547,8 @@ class IntenseRPUpdater:
             UIWidgets.print_error("Unable to fetch release information")
             return
         
-        # Find Windows asset
-        windows_asset = GitHubAPI.find_windows_asset(release_data)
+        # Find platform asset
+        platform_asset = GitHubAPI.find_platform_asset(release_data)
         
         print()
         UIWidgets.print_colored(f"Latest Version: ", Colors.BRIGHT_WHITE, end="")
@@ -486,12 +560,13 @@ class IntenseRPUpdater:
         UIWidgets.print_colored(f"Published: ", Colors.BRIGHT_WHITE, end="")
         UIWidgets.print_colored(release_data.get('published_at', 'N/A')[:10], Colors.YELLOW)
         
-        if windows_asset:
-            UIWidgets.print_colored(f"Windows Package: ", Colors.BRIGHT_WHITE, end="")
-            UIWidgets.print_colored(f"{windows_asset['name']} ({SystemUtils.format_size(windows_asset['size'])})", Colors.CYAN)
+        if platform_asset:
+            platform_name = platform.system()
+            UIWidgets.print_colored(f"{platform_name} Package: ", Colors.BRIGHT_WHITE, end="")
+            UIWidgets.print_colored(f"{platform_asset['name']} ({SystemUtils.format_size(platform_asset['size'])})", Colors.CYAN)
             
             UIWidgets.print_colored(f"Downloads: ", Colors.BRIGHT_WHITE, end="")
-            UIWidgets.print_colored(str(windows_asset['download_count']), Colors.BRIGHT_MAGENTA)
+            UIWidgets.print_colored(str(platform_asset['download_count']), Colors.BRIGHT_MAGENTA)
         
         print()
         UIWidgets.print_colored("Release Notes:", Colors.BRIGHT_WHITE)
@@ -537,19 +612,20 @@ class IntenseRPUpdater:
         if not release_data:
             return
         
-        # Find Windows asset
-        windows_asset = GitHubAPI.find_windows_asset(release_data)
-        if not windows_asset:
-            UIWidgets.print_error("Windows package not found in latest release")
+        # Find platform asset
+        platform_asset = GitHubAPI.find_platform_asset(release_data)
+        if not platform_asset:
+            UIWidgets.print_error(f"{platform.system()} package not found in latest release")
+            UIWidgets.print_info(f"Looking for asset: {ASSET_NAME}")
             return
         
         version = GitHubAPI.get_latest_version() or "unknown"
         UIWidgets.print_info(f"Installing IntenseRP Next v{version}")
-        UIWidgets.print_info(f"Package size: {SystemUtils.format_size(windows_asset['size'])}")
+        UIWidgets.print_info(f"Package size: {SystemUtils.format_size(platform_asset['size'])}")
         
         # Download
-        download_url = windows_asset['browser_download_url']
-        zip_path = Path(self.temp_dir) / WIN_ZIP_NAME
+        download_url = platform_asset['browser_download_url']
+        zip_path = Path(self.temp_dir) / ASSET_NAME
         
         UIWidgets.print_step(1, "Downloading package...")
         
@@ -753,13 +829,14 @@ class IntenseRPUpdater:
         if not release_data:
             return
         
-        windows_asset = GitHubAPI.find_windows_asset(release_data)
-        if not windows_asset:
-            UIWidgets.print_error("Windows package not found in latest release")
+        platform_asset = GitHubAPI.find_platform_asset(release_data)
+        if not platform_asset:
+            UIWidgets.print_error(f"{platform.system()} package not found in latest release")
+            UIWidgets.print_info(f"Looking for asset: {ASSET_NAME}")
             return
         
-        download_url = windows_asset['browser_download_url']
-        zip_path = Path(self.temp_dir) / WIN_ZIP_NAME
+        download_url = platform_asset['browser_download_url']
+        zip_path = Path(self.temp_dir) / ASSET_NAME
         
         def download_progress(current, total):
             UIWidgets.print_progress_bar(current, total, prefix="  Download: ")
@@ -870,9 +947,14 @@ class IntenseRPUpdater:
 def main():
     """Main application entry point"""
     try:
-        # Enable Windows terminal color support
+        # Enable terminal color support (cross-platform)
         if platform.system() == "Windows":
-            os.system("color")
+            # Enable Windows terminal color support
+            try:
+                os.system("color")
+            except:
+                pass  # Ignore if it fails
+        # Unix-like systems (Linux, macOS) handle ANSI colors natively
         
         with IntenseRPUpdater() as updater:
             while True:
@@ -892,10 +974,13 @@ def main():
                 UIWidgets.prompt_input("Press Enter to continue", required=False)
                 
                 # Clear screen for next iteration
-                if platform.system() == "Windows":
-                    os.system("cls")
-                else:
-                    os.system("clear")
+                try:
+                    if platform.system() == "Windows":
+                        os.system("cls")
+                    else:
+                        os.system("clear")
+                except:
+                    pass  # Ignore if screen clearing fails
     
     except KeyboardInterrupt:
         print()

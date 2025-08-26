@@ -1,0 +1,199 @@
+name: Build IntenseRP Updater (Linux)
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Triggers on all release events
+
+jobs:
+  build-updater-linux:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-dev \
+          build-essential \
+          libffi-dev \
+          libssl-dev
+        echo "[OK] System dependencies installed"
+      
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+      
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests pyinstaller
+        echo "[OK] Python dependencies installed"
+      
+    - name: Verify required files
+      run: |
+        # Check that the updater file exists
+        if [ ! -f "intenserp_updater.py" ]; then echo "[ERROR] Missing intenserp_updater.py"; exit 1; fi
+        if [ ! -f "src/newlogo.png" ]; then echo "[ERROR] Missing newlogo.png"; exit 1; fi
+        echo "[OK] IntenseRP Updater file and icon found"
+      
+    - name: Clean previous builds
+      run: |
+        rm -rf dist build intenserp_updater.spec
+        echo "[OK] Build directories cleaned"
+      
+    - name: Build IntenseRP Updater with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onefile --console \
+          --name "intenserp-updater" \
+          --add-data "src/newlogo.png:." \
+          "intenserp_updater.py"
+        echo "[OK] Updater build completed"
+      
+    - name: Verify build output
+      run: |
+        if [ ! -f "dist/intenserp-updater" ]; then
+          echo "[ERROR] Build failed - updater executable not found"
+          exit 1
+        fi
+        echo "[OK] Updater executable created successfully"
+        
+        # Get file size for info
+        size=$(du -h "dist/intenserp-updater" | cut -f1)
+        echo "[INFO] Updater size: $size"
+        
+        # Make executable
+        chmod +x "dist/intenserp-updater"
+      
+    - name: Create installation script
+      run: |
+        cat > "dist/install-updater.sh" << 'EOF'
+        #!/bin/bash
+        # IntenseRP Updater Linux Installation Script
+        
+        echo "IntenseRP Updater Linux Setup"
+        echo "============================="
+        
+        # Make executable if not already
+        chmod +x ./intenserp-updater
+        
+        # Check for required system packages
+        echo "Checking system dependencies..."
+        
+        if ! command -v python3 &> /dev/null; then
+            echo "⚠️  Python 3 is required but not installed"
+            echo "Please install Python 3.8+ from your package manager"
+            exit 1
+        fi
+        
+        echo "[OK] All dependencies satisfied"
+        echo ""
+        echo "To run IntenseRP Updater:"
+        echo "  ./intenserp-updater"
+        echo ""
+        echo "The updater will help you install and update IntenseRP Next."
+        EOF
+        
+        chmod +x "dist/install-updater.sh"
+        echo "[OK] Installation script created"
+      
+    - name: Create README
+      run: |
+        cat > "dist/README.txt" << 'EOF'
+        IntenseRP Updater - Linux Distribution
+        =====================================
+        
+        QUICK START:
+        1. Run ./install-updater.sh to check dependencies
+        2. Run ./intenserp-updater to start the updater
+        
+        SYSTEM REQUIREMENTS:
+        - Python 3.8 or newer
+        - Modern Linux distribution (Ubuntu 20.04+, CentOS 8+, etc.)
+        
+        INSTALLATION:
+        The updater is self-contained but requires system Python.
+        
+        On Ubuntu/Debian:
+          sudo apt install python3
+        
+        On CentOS/RHEL:
+          sudo yum install python3
+        
+        On Arch Linux:
+          sudo pacman -S python
+        
+        RUNNING:
+        Execute: ./intenserp-updater
+        
+        The updater provides a CLI interface to:
+        - Install IntenseRP Next on your system
+        - Update existing IntenseRP Next installations  
+        - View release information
+        
+        SUPPORT:
+        For issues, visit: https://github.com/LyubomirT/intense-rp-next/issues
+        
+        LICENSE:
+        This software is distributed under the MIT License.
+        See LICENSE file for details.
+        EOF
+        echo "[OK] README created"
+      
+    - name: Create release package
+      run: |
+        # Create a directory for the release package
+        mkdir -p "intenserp-updater-linux-amd64"
+        
+        # Copy the executable
+        cp "dist/intenserp-updater" "intenserp-updater-linux-amd64/"
+        
+        # Copy additional files
+        cp "dist/install-updater.sh" "intenserp-updater-linux-amd64/"
+        cp "dist/README.txt" "intenserp-updater-linux-amd64/"
+        
+        echo "[OK] Release package created"
+      
+    - name: Create tar.gz archive
+      run: |
+        tar -czf "intenserp-updater-linux-amd64.tar.gz" "intenserp-updater-linux-amd64"
+        
+        # Get file size for info
+        size=$(du -h "intenserp-updater-linux-amd64.tar.gz" | cut -f1)
+        echo "[OK] Updater tar.gz archive created ($size)"
+        
+        # Also create a zip for consistency
+        zip -r "intenserp-updater-linux-amd64.zip" "intenserp-updater-linux-amd64"
+        zip_size=$(du -h "intenserp-updater-linux-amd64.zip" | cut -f1)
+        echo "[OK] Updater zip archive created ($zip_size)"
+      
+    - name: Upload tar.gz artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-updater-linux-targz
+        path: intenserp-updater-linux-amd64.tar.gz
+        retention-days: 30
+        
+    - name: Upload zip artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-updater-linux-zip
+        path: intenserp-updater-linux-amd64.zip
+        retention-days: 30
+        
+    - name: Upload release assets (if release)
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          intenserp-updater-linux-amd64.tar.gz
+          intenserp-updater-linux-amd64.zip
