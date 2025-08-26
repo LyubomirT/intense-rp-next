@@ -380,35 +380,23 @@ def open_credits() -> None:
 def create_update_window(last_version: str) -> None:
     global root, icon_path
     try:
-        update_window = gui_builder.UpdateWindow()
-        update_window.create(
-            visible=True,
-            title=f"New version available",
-            width=250,
-            height=110,
-            icon=icon_path
-        )
-        update_window.resizable(False, False)
-        # Use cross-platform modal approach that preserves Mica on Windows
+        # Create new update window instead of basic one
+        update_window = gui_builder.BetterUpdateWindow(root, last_version, icon_path)
         make_window_modal(update_window, root)
-        update_window.center(root)
-        update_window.grid_columnconfigure(0, weight=1)
+        update_window.center()
 
-        update_window.create_title(id="title", text=f"VERSION {last_version} AVAILABLE", row=0, row_grid=True)
-        update_window.create_button(id="download", text="Download", command=lambda: open_github(update_window), row=1, row_grid=True)
-        update_window.create_button(id="close", text="Close", command=update_window.destroy, row=2, row_grid=True)
-
-        print("Update window created.")
+        print(f"Better update window created for version {last_version}.")
     except Exception as e:
         print(f"Error opening update window: {e}")
 
-def open_github(update_window: gui_builder.UpdateWindow) -> None:
-    try:
-        webbrowser.open("https://github.com/LyubomirT/intense-rp-next")
-        update_window.destroy()
-        print("Github link opened.")
-    except Exception as e:
-        print(f"Error opening github: {e}")
+# Legacy function - replaced by the newer update system
+# def open_github(update_window: gui_builder.UpdateWindow) -> None:
+#     try:
+#         webbrowser.open("https://github.com/LyubomirT/intense-rp-next")
+#         update_window.destroy()
+#         print("Github link opened.")
+#     except Exception as e:
+#         print(f"Error opening github: {e}")
 
 # =============================================================================================================================
 # Root Window
@@ -538,6 +526,8 @@ def create_gui() -> None:
             current_version = version.parse(__version__)
             last_version = storage_manager.get_latest_version()
             if last_version and version.parse(last_version) > current_version:
+            # Just for debugging, I occasionally switch between these
+            # if last_version == "1.3.2":
                 root.after(200, lambda: create_update_window(last_version))
         
         # Show console if configured to do so

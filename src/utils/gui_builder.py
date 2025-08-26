@@ -5,6 +5,7 @@ import json
 import webbrowser
 import os
 import sys
+import platform
 from utils.font_loader import get_font_tuple
 from utils import storage_manager
 from PIL import Image, ImageDraw
@@ -1426,3 +1427,875 @@ class ContributorWindow(ctk.CTkToplevel):
         x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
         y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
         self.geometry(f"+{x}+{y}")
+
+
+# =============================================================================================================================
+# Better Update System Windows
+# =============================================================================================================================
+
+class BetterUpdateWindow(ctk.CTkToplevel):
+    """Better update notification window with improved styling"""
+    
+    def __init__(self, parent, version: str, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.version = version
+        self.icon_path = icon_path
+        self._create_window()
+        self._create_widgets()
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("New Version Available")
+        self.geometry("400x200")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+    
+    def _create_widgets(self):
+        """Create and layout all widgets"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self,
+            text=f"VERSION {self.version} AVAILABLE",
+            font=get_font_tuple("Blinker", 16, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # Description
+        desc_label = ctk.CTkLabel(
+            self,
+            text="A new version of IntenseRP Next is ready to download.\nWould you like to update now?",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("gray50", "gray70")
+        )
+        desc_label.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Download button
+        download_btn = ctk.CTkButton(
+            button_frame,
+            text="Download",
+            command=self._on_download_click,
+            font=get_font_tuple("Blinker", 14, "bold"),
+            height=35
+        )
+        download_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Later",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 14),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=35
+        )
+        close_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
+    
+    def _on_download_click(self):
+        """Handle download button click"""
+        self.destroy()
+        # Create and show download options window
+        download_options_window = DownloadOptionsWindow(self.parent, self.version, self.icon_path)
+        download_options_window.center()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
+
+
+class DownloadOptionsWindow(ctk.CTkToplevel):
+    """Window for choosing download method"""
+    
+    def __init__(self, parent, version: str, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.version = version
+        self.icon_path = icon_path
+        self._create_window()
+        self._create_widgets()
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("Choose Download Method")
+        self.geometry("360x260")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+    
+    def _create_widgets(self):
+        """Create and layout all widgets"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self,
+            text="Choose Download Method",
+            font=get_font_tuple("Blinker", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # Description
+        desc_label = ctk.CTkLabel(
+            self,
+            text="How would you like to download the new version?",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("gray50", "gray70")
+        )
+        desc_label.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+        
+        # GitHub button
+        github_btn = ctk.CTkButton(
+            self,
+            text="🌐  Visit GitHub (Traditional)",
+            command=self._open_github,
+            font=get_font_tuple("Blinker", 14),
+            height=40,
+            corner_radius=8
+        )
+        github_btn.grid(row=2, column=0, padx=20, pady=(0, 10), sticky="ew")
+        
+        # Integrated download button
+        integrated_btn = ctk.CTkButton(
+            self,
+            text="⭳  Integrated Download (Beta)",
+            command=self._open_integrated_download,
+            font=get_font_tuple("Blinker", 14, "bold"),
+            height=40,
+            corner_radius=8
+        )
+        integrated_btn.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
+        
+        # Button frame for back/close
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Back button
+        back_btn = ctk.CTkButton(
+            button_frame,
+            text="Back",
+            command=self._go_back,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=30
+        )
+        back_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=30
+        )
+        close_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
+    
+    def _open_github(self):
+        """Open GitHub releases page"""
+        try:
+            webbrowser.open("https://github.com/LyubomirT/intense-rp-next/releases/latest")
+            self.destroy()
+            print("GitHub releases page opened.")
+        except Exception as e:
+            print(f"Error opening GitHub: {e}")
+    
+    def _open_integrated_download(self):
+        """Open integrated download window"""
+        self.destroy()
+        asset_selection_window = AssetSelectionWindow(self.parent, self.version, self.icon_path)
+        asset_selection_window.center()
+    
+    def _go_back(self):
+        """Go back to better update window"""
+        self.destroy()
+        better_update_window = BetterUpdateWindow(self.parent, self.version, self.icon_path)
+        better_update_window.center()
+
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
+
+
+class AssetSelectionWindow(ctk.CTkToplevel):
+    """Window for selecting which asset to download"""
+    
+    def __init__(self, parent, version: str, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.version = version
+        self.icon_path = icon_path
+        self.selected_asset = None
+        self.assets = []
+        self.asset_vars = {}
+        self._create_window()
+        self._load_assets()
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("Select Download")
+        self.geometry("500x400")
+        self.resizable(True, True)
+        self.minsize(450, 350)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)  # Make scrollable frame expandable
+    
+    def _load_assets(self):
+        """Load assets from GitHub API and create UI"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self,
+            text="Select Download Package",
+            font=get_font_tuple("Blinker", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # Loading label
+        loading_label = ctk.CTkLabel(
+            self,
+            text="Loading available downloads...",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("gray50", "gray70")
+        )
+        loading_label.grid(row=1, column=0, padx=20, pady=20, sticky="ew")
+        
+        # Load assets in background thread
+        threading.Thread(target=self._fetch_assets, args=(loading_label,), daemon=True).start()
+    
+    def _fetch_assets(self, loading_label):
+        """Fetch assets from GitHub API"""
+        try:
+            from .github_api import GitHubAPI
+            
+            # Get release data
+            release_data = GitHubAPI.get_latest_release()
+            if not release_data:
+                self.after(0, lambda: self._show_error("Failed to fetch release information."))
+                return
+            
+            # Get and categorize assets
+            assets = GitHubAPI.get_release_assets(release_data)
+            if not assets:
+                self.after(0, lambda: self._show_error("No downloadable assets found."))
+                return
+            
+            self.assets = assets
+            categorized_assets = GitHubAPI.categorize_assets(assets)
+            
+            # Update UI on main thread
+            self.after(0, lambda: self._create_asset_ui(loading_label, categorized_assets))
+            
+        except Exception as e:
+            self.after(0, lambda: self._show_error(f"Error loading assets: {e}"))
+    
+    def _show_error(self, error_message: str):
+        """Show error message"""
+        # Clear existing widgets except title
+        for widget in self.winfo_children():
+            if isinstance(widget, ctk.CTkLabel) and "Select Download Package" not in widget.cget("text"):
+                widget.destroy()
+        
+        error_label = ctk.CTkLabel(
+            self,
+            text=error_message,
+            font=get_font_tuple("Blinker", 12),
+            text_color=("red", "red")
+        )
+        error_label.grid(row=1, column=0, padx=20, pady=20, sticky="ew")
+        
+        # Add close button
+        close_btn = ctk.CTkButton(
+            self,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 14),
+            height=35
+        )
+        close_btn.grid(row=2, column=0, padx=20, pady=20, sticky="ew")
+    
+    def _create_asset_ui(self, loading_label, categorized_assets):
+        """Create the asset selection UI"""
+        # Remove loading label
+        loading_label.destroy()
+        
+        # Create scrollable frame for assets
+        scrollable_frame = ctk.CTkScrollableFrame(
+            self,
+            fg_color="transparent",
+            scrollbar_button_color=("gray70", "gray30"),
+            scrollbar_button_hover_color=("gray60", "gray40")
+        )
+        scrollable_frame.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="nsew")
+        scrollable_frame.grid_columnconfigure(0, weight=1)
+        
+        # Create radio button variable
+        self.selected_var = ctk.StringVar()
+        
+        row = 0
+        for platform, assets in categorized_assets.items():
+            # Platform header
+            platform_label = ctk.CTkLabel(
+                scrollable_frame,
+                text=f"{platform} ({len(assets)} packages)",
+                font=get_font_tuple("Blinker", 16, "bold"),
+                anchor="w"
+            )
+            platform_label.grid(row=row, column=0, padx=10, pady=(10, 5), sticky="ew")
+            row += 1
+            
+            # Assets for this platform
+            for asset in assets:
+                self._create_asset_item(scrollable_frame, asset, row)
+                row += 1
+            
+            # Add spacing between platforms
+            spacing_frame = ctk.CTkFrame(scrollable_frame, height=1, fg_color="transparent")
+            spacing_frame.grid(row=row, column=0, pady=5)
+            row += 1
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Back button
+        back_btn = ctk.CTkButton(
+            button_frame,
+            text="Back",
+            command=self._go_back,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=35,
+            width=80
+        )
+        back_btn.grid(row=0, column=0, padx=(0, 10), sticky="w")
+        
+        # Download button
+        download_btn = ctk.CTkButton(
+            button_frame,
+            text="Download Selected",
+            command=self._start_download,
+            font=get_font_tuple("Blinker", 14, "bold"),
+            height=35
+        )
+        download_btn.grid(row=0, column=1, sticky="ew")
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=35,
+            width=80
+        )
+        close_btn.grid(row=0, column=2, padx=(10, 0), sticky="e")
+    
+    def _create_asset_item(self, parent, asset, row):
+        """Create a single asset selection item"""
+        from .github_api import GitHubAPI
+        
+        # Container frame
+        item_frame = ctk.CTkFrame(
+            parent, 
+            height=80, 
+            fg_color=("gray94", "gray16") if not asset.is_current_platform else ("#3d8bc7", "#2a3b4a")
+        )
+        item_frame.grid(row=row, column=0, padx=10, pady=2, sticky="ew")
+        item_frame.grid_columnconfigure(1, weight=1)
+        item_frame.grid_propagate(False)
+        
+        # Radio button
+        radio = ctk.CTkRadioButton(
+            item_frame,
+            text="",
+            variable=self.selected_var,
+            value=asset.name,
+            font=get_font_tuple("Blinker", 12)
+        )
+        radio.grid(row=0, column=0, padx=15, pady=10, rowspan=2)
+        
+        # Asset name and info frame
+        info_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
+        info_frame.grid(row=0, column=1, padx=(10, 15), pady=8, sticky="ew", rowspan=2)
+        info_frame.grid_columnconfigure(0, weight=1)
+        
+        # Friendly name with recommendation badge
+        name_text = asset.friendly_name
+        if asset.is_updater:
+            name_text += " (Recommended)"
+        if asset.is_current_platform:
+            name_text += " - Your Platform"
+        
+        name_label = ctk.CTkLabel(
+            info_frame,
+            text=name_text,
+            font=get_font_tuple("Blinker", 14, "bold" if asset.is_updater or asset.is_current_platform else "normal"),
+            anchor="w",
+            text_color=("green", "lightgreen") if asset.is_updater else ("gray10", "gray90")
+        )
+        name_label.grid(row=0, column=0, sticky="ew")
+        
+        # Description and size
+        size_text = GitHubAPI.format_file_size(asset.size)
+        desc_text = f"{asset.description} • {size_text}"
+        
+        desc_label = ctk.CTkLabel(
+            info_frame,
+            text=desc_text,
+            font=get_font_tuple("Blinker", 11),
+            anchor="w",
+            text_color=("gray50", "gray70")
+        )
+        desc_label.grid(row=1, column=0, sticky="ew")
+        
+        # Pre-select current platform updater if available
+        if asset.is_current_platform and asset.is_updater and not self.selected_var.get():
+            self.selected_var.set(asset.name)
+    
+    def _start_download(self):
+        """Start downloading the selected asset"""
+        selected_name = self.selected_var.get()
+        if not selected_name:
+            print("No asset selected")
+            return
+        
+        # Find the selected asset
+        selected_asset = None
+        for asset in self.assets:
+            if asset.name == selected_name:
+                selected_asset = asset
+                break
+        
+        if not selected_asset:
+            print("Selected asset not found")
+            return
+        
+        # Close this window and start download
+        self.destroy()
+        download_window = DownloadProgressWindow(self.parent, selected_asset, self.icon_path)
+        download_window.center()
+    
+    def _go_back(self):
+        """Go back to download options window"""
+        self.destroy()
+        download_options_window = DownloadOptionsWindow(self.parent, self.version, self.icon_path)
+        download_options_window.center()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
+
+
+class DownloadProgressWindow(ctk.CTkToplevel):
+    """Window showing download progress with speed and percentage"""
+    
+    def __init__(self, parent, asset, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.asset = asset
+        self.icon_path = icon_path
+        self.download_cancelled = False
+        self._create_window()
+        self._create_widgets()
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+        
+        # Start download in background thread
+        threading.Thread(target=self._start_download, daemon=True).start()
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("Downloading...")
+        self.geometry("450x200")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        
+        # Prevent window from being closed during download
+        self.protocol("WM_DELETE_WINDOW", self._on_close_attempt)
+    
+    def _create_widgets(self):
+        """Create and layout all widgets"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self,
+            text="Downloading Update",
+            font=get_font_tuple("Blinker", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # File name
+        self.filename_label = ctk.CTkLabel(
+            self,
+            text=f"File: {self.asset.friendly_name}",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("gray50", "gray70")
+        )
+        self.filename_label.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
+        
+        # Progress bar
+        self.progress_bar = ctk.CTkProgressBar(
+            self,
+            height=20,
+            corner_radius=10
+        )
+        self.progress_bar.grid(row=2, column=0, padx=20, pady=(0, 10), sticky="ew")
+        self.progress_bar.set(0)
+        
+        # Status frame
+        status_frame = ctk.CTkFrame(self, fg_color="transparent")
+        status_frame.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
+        status_frame.grid_columnconfigure(0, weight=1)
+        status_frame.grid_columnconfigure(1, weight=1)
+        
+        # Progress percentage
+        self.percentage_label = ctk.CTkLabel(
+            status_frame,
+            text="0%",
+            font=get_font_tuple("Blinker", 12, "bold"),
+            anchor="w"
+        )
+        self.percentage_label.grid(row=0, column=0, sticky="w")
+        
+        # Download speed
+        self.speed_label = ctk.CTkLabel(
+            status_frame,
+            text="0 KB/s",
+            font=get_font_tuple("Blinker", 12),
+            anchor="e"
+        )
+        self.speed_label.grid(row=0, column=1, sticky="e")
+        
+        # Cancel button (initially hidden)
+        self.cancel_btn = ctk.CTkButton(
+            self,
+            text="Cancel",
+            command=self._cancel_download,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("red", "darkred"),
+            hover_color=("darkred", "red"),
+            height=30,
+            width=100
+        )
+        # Don't grid initially - will be shown after a delay
+    
+    def _start_download(self):
+        """Start the download process"""
+        import tempfile
+        import time
+        
+        try:
+            # Create persistent download location in user's Downloads folder
+            import os
+            from pathlib import Path
+            
+            # Try to get user's Downloads folder, fallback to current directory
+            try:
+                downloads_dir = Path.home() / "Downloads" / "IntenseRP"
+                downloads_dir.mkdir(parents=True, exist_ok=True)
+            except:
+                # Fallback to current directory if Downloads folder not accessible
+                downloads_dir = Path.cwd() / "Downloads"
+                downloads_dir.mkdir(exist_ok=True)
+            
+            download_path = downloads_dir / self.asset.name
+            self.final_download_path = str(download_path)  # Store for "Open Folder" button
+            
+            # Speed tracking variables
+            start_time = time.time()
+            last_update_time = start_time
+            last_downloaded = 0
+            
+            # Import requests for download
+            import requests
+            
+            # Download with progress tracking (simplified like intenserp_updater)
+            response = requests.get(self.asset.download_url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+            
+            with open(str(download_path), 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if self.download_cancelled:
+                        break
+                    
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        # Update progress (like intenserp_updater - simple approach)
+                        if total_size > 0:
+                            current_time = time.time()
+                            
+                            # Only update UI every 0.5 seconds to avoid flooding
+                            if current_time - last_update_time >= 0.5:
+                                # Calculate progress
+                                progress = downloaded_size / total_size
+                                percentage = int(progress * 100)
+                                
+                                # Calculate speed
+                                time_diff = current_time - last_update_time
+                                bytes_diff = downloaded_size - last_downloaded
+                                speed_bps = bytes_diff / time_diff if time_diff > 0 else 0
+                                speed_text = self._format_speed(speed_bps)
+                                
+                                # Update UI on main thread (simpler lambda)
+                                def update_ui(p=progress, pct=percentage, spd=speed_text):
+                                    if not self.download_cancelled:
+                                        self._update_progress(p, pct, spd)
+                                
+                                self.after(0, update_ui)
+                                
+                                # Update tracking variables
+                                last_update_time = current_time
+                                last_downloaded = downloaded_size
+            
+            if not self.download_cancelled:
+                # Download completed successfully
+                self.after(0, lambda: self._download_completed(str(download_path)))
+            
+        except Exception as e:
+            if not self.download_cancelled:
+                self.after(0, lambda: self._download_error(str(e)))
+    
+    def _update_progress(self, progress: float, percentage: int, speed: str):
+        """Update progress UI elements"""
+        self.progress_bar.set(progress)
+        self.percentage_label.configure(text=f"{percentage}%")
+        self.speed_label.configure(text=speed)
+        
+        # Show cancel button after 3 seconds
+        if percentage > 5:
+            self.cancel_btn.grid(row=4, column=0, pady=(0, 20))
+    
+    def _format_speed(self, bytes_per_second: float) -> str:
+        """Format download speed in human-readable format"""
+        if bytes_per_second < 1024:
+            return f"{bytes_per_second:.0f} B/s"
+        elif bytes_per_second < 1024 * 1024:
+            return f"{bytes_per_second / 1024:.1f} KB/s"
+        else:
+            return f"{bytes_per_second / (1024 * 1024):.1f} MB/s"
+    
+    def _download_completed(self, download_path: str):
+        """Handle successful download completion"""
+        self.progress_bar.set(1.0)
+        self.percentage_label.configure(text="100%")
+        self.speed_label.configure(text="Complete!")
+        
+        # Update title
+        self.title("Download Complete")
+        title_label = self.winfo_children()[0]
+        title_label.configure(text="Download Complete!")
+        
+        # Hide cancel button
+        self.cancel_btn.grid_remove()
+        
+        # Show completion message
+        completion_label = ctk.CTkLabel(
+            self,
+            text="Download completed successfully!",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("green", "lightgreen")
+        )
+        completion_label.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+        
+        # Handle updater extraction if applicable
+        if self.asset.is_updater and self.asset.is_current_platform:
+            self._handle_updater_extraction(download_path)
+        else:
+            self._show_completion_buttons()
+    
+    def _download_error(self, error_message: str):
+        """Handle download error"""
+        # Update UI to show error
+        self.title("Download Failed")
+        title_label = self.winfo_children()[0]
+        title_label.configure(text="Download Failed")
+        
+        error_label = ctk.CTkLabel(
+            self,
+            text=f"Error: {error_message}",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("red", "red")
+        )
+        error_label.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+        
+        # Show close button
+        close_btn = ctk.CTkButton(
+            self,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 14),
+            height=35
+        )
+        close_btn.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="ew")
+    
+    def _handle_updater_extraction(self, download_path: str):
+        """Extract and run updater for current platform"""
+        # Show extraction status
+        extract_label = ctk.CTkLabel(
+            self,
+            text="Extracting updater...",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("blue", "lightblue")
+        )
+        extract_label.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+        
+        try:
+            from .storage_manager import StorageManager
+            from .updater_manager import UpdaterManager
+            
+            storage_manager = StorageManager()
+            
+            # Verify permissions first
+            has_permissions, perm_message = UpdaterManager.verify_updater_permissions(storage_manager)
+            if not has_permissions:
+                extract_label.configure(text=f"Permission error: {perm_message}", text_color=("red", "red"))
+                self._show_completion_buttons()
+                return
+            
+            # Extract and run the updater
+            success, message = UpdaterManager.extract_and_run_updater(download_path, storage_manager)
+            
+            if success:
+                # Update status to show success
+                extract_label.configure(text="Starting updater...", text_color=("green", "lightgreen"))
+                
+                # Add informational message
+                info_label = ctk.CTkLabel(
+                    self,
+                    text="The updater will handle the rest of the installation.\nThis application will now close.",
+                    font=get_font_tuple("Blinker", 11),
+                    text_color=("gray50", "gray70")
+                )
+                info_label.grid(row=5, column=0, padx=20, pady=(5, 10), sticky="ew")
+                
+                # Close this window and the main application after a short delay
+                self.after(2000, self._close_application)
+            else:
+                # Show error message
+                extract_label.configure(text=f"Error: {message}", text_color=("red", "red"))
+                self._show_completion_buttons()
+        
+        except Exception as e:
+            extract_label.configure(text=f"Unexpected error: {str(e)}", text_color=("red", "red"))
+            self._show_completion_buttons()
+    
+    def _show_completion_buttons(self):
+        """Show completion buttons"""
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.grid(row=5, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Open folder button
+        open_btn = ctk.CTkButton(
+            button_frame,
+            text="Open Folder",
+            command=self._open_download_folder,
+            font=get_font_tuple("Blinker", 12),
+            height=35
+        )
+        open_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 12),
+            height=35
+        )
+        close_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
+    
+    def _open_download_folder(self):
+        """Open the downloads folder"""
+        try:
+            if hasattr(self, 'final_download_path') and self.final_download_path:
+                import subprocess
+                import platform
+                
+                # Get the folder containing the downloaded file
+                folder_path = os.path.dirname(self.final_download_path)
+                
+                # Open folder in OS file manager
+                system = platform.system()
+                if system == "Windows":
+                    os.startfile(folder_path)
+                elif system == "Darwin":  # macOS
+                    subprocess.run(["open", folder_path])
+                elif system == "Linux":
+                    subprocess.run(["xdg-open", folder_path])
+                    
+                print(f"Opened download folder: {folder_path}")
+            else:
+                print("Download path not available")
+        except Exception as e:
+            print(f"Error opening download folder: {e}")
+    
+    def _close_application(self):
+        """Close the entire application"""
+        if self.parent:
+            self.parent.quit()
+    
+    def _cancel_download(self):
+        """Cancel the ongoing download"""
+        self.download_cancelled = True
+        self.destroy()
+    
+    def _on_close_attempt(self):
+        """Handle window close attempt during download"""
+        # Ask user if they want to cancel
+        self._cancel_download()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
