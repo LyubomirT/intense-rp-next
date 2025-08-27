@@ -1,0 +1,182 @@
+name: Build IntenseRP Next Utilities (Linux)
+
+on:
+  workflow_dispatch:  # Manual trigger for safe debugging
+    inputs:
+      debug:
+        description: 'Enable debug output'
+        default: false
+        type: boolean
+  release:
+    types: [published]  # Triggers on all release events
+
+jobs:
+  build-utilities-linux:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-dev \
+          build-essential \
+          libffi-dev \
+          libssl-dev
+        echo "[OK] System dependencies installed"
+      
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+      
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        echo "[OK] Python dependencies installed"
+      
+    - name: Verify required files
+      run: |
+        # Check that the patcher file exists
+        if [ ! -f "external/stmp-patcher/stmp_patcher.py" ]; then echo "[ERROR] Missing stmp_patcher.py"; exit 1; fi
+        if [ ! -f "src/newlogo.png" ]; then echo "[ERROR] Missing newlogo.png"; exit 1; fi
+        if [ ! -d "build_assets/utilities" ]; then echo "[ERROR] Missing utilities build assets"; exit 1; fi
+        echo "[OK] STMP Patcher file and build assets found"
+      
+    - name: Clean previous builds
+      run: |
+        rm -rf dist build stmp_patcher.spec
+        echo "[OK] Build directories cleaned"
+      
+    - name: Build STMP Patcher with PyInstaller
+      run: |
+        pyinstaller --noconfirm --onefile --console \
+          --name "stmp-patcher" \
+          --add-data "src/newlogo.png:." \
+          "external/stmp-patcher/stmp_patcher.py"
+        echo "[OK] STMP Patcher build completed"
+      
+    - name: Verify build output
+      run: |
+        if [ ! -f "dist/stmp-patcher" ]; then
+          echo "[ERROR] Build failed - STMP Patcher executable not found"
+          exit 1
+        fi
+        echo "[OK] STMP Patcher executable created successfully"
+        
+        # Get file size for info
+        size=$(du -h "dist/stmp-patcher" | cut -f1)
+        echo "[INFO] STMP Patcher size: $size"
+        
+        # Make executable
+        chmod +x "dist/stmp-patcher"
+      
+    - name: Create installation script
+      run: |
+        cat > "dist/install-utilities.sh" << 'EOF'
+        #!/bin/bash
+        # IntenseRP Next Utilities Linux Installation Script
+        
+        echo "IntenseRP Next Utilities Linux Setup"
+        echo "====================================="
+        
+        # Make executable if not already
+        chmod +x ./stmp-patcher
+        
+        # Check for required system packages
+        echo "Checking system dependencies..."
+        
+        if ! command -v python3 &> /dev/null; then
+            echo "⚠️  Python 3 is required but not installed"
+            echo "Please install Python 3.8+ from your package manager"
+            exit 1
+        fi
+        
+        echo "[OK] All dependencies satisfied"
+        echo ""
+        echo "Available utilities:"
+        echo "  ./stmp-patcher    - Patch STMP installations for IntenseRP Next"
+        echo ""
+        echo "See README.txt for detailed usage instructions."
+        EOF
+        
+        chmod +x "dist/install-utilities.sh"
+        echo "[OK] Installation script created"
+      
+    - name: Get version info for package
+      id: version
+      run: |
+        # Get current date for build info
+        build_date=$(date +%Y-%m-%d)
+        
+        # Try to get version from version.txt if it exists
+        version="1.0"
+        if [ -f "version.txt" ]; then
+          version=$(cat version.txt | tr -d '\n\r')
+        fi
+        
+        # Output for GitHub
+        echo "BUILD_DATE=$build_date" >> $GITHUB_OUTPUT
+        echo "PACKAGE_VERSION=$version" >> $GITHUB_OUTPUT
+        
+        echo "[OK] Version info prepared: $version ($build_date)"
+      
+    - name: Create utilities package
+      run: |
+        # Create a directory for the utilities package
+        mkdir -p "intenserp-next-utilities-linux-amd64"
+        
+        # Copy the STMP Patcher executable
+        cp "dist/stmp-patcher" "intenserp-next-utilities-linux-amd64/"
+        
+        # Copy additional files
+        cp "dist/install-utilities.sh" "intenserp-next-utilities-linux-amd64/"
+        cp "build_assets/utilities/README.txt" "intenserp-next-utilities-linux-amd64/"
+        cp "build_assets/utilities/STMP-PATCHER-README.txt" "intenserp-next-utilities-linux-amd64/"
+        
+        # Update README files with version info
+        sed -i "s/{BUILD_DATE}/${{ steps.version.outputs.BUILD_DATE }}/g" "intenserp-next-utilities-linux-amd64/README.txt"
+        sed -i "s/{PACKAGE_VERSION}/${{ steps.version.outputs.PACKAGE_VERSION }}/g" "intenserp-next-utilities-linux-amd64/README.txt"
+        sed -i "s/{BUILD_DATE}/${{ steps.version.outputs.BUILD_DATE }}/g" "intenserp-next-utilities-linux-amd64/STMP-PATCHER-README.txt"
+        sed -i "s/{PATCHER_VERSION}/${{ steps.version.outputs.PACKAGE_VERSION }}/g" "intenserp-next-utilities-linux-amd64/STMP-PATCHER-README.txt"
+        
+        echo "[OK] Utilities package created"
+      
+    - name: Create tar.gz archive
+      run: |
+        tar -czf "intenserp-next-utilities-linux-amd64.tar.gz" "intenserp-next-utilities-linux-amd64"
+        
+        # Get file size for info
+        size=$(du -h "intenserp-next-utilities-linux-amd64.tar.gz" | cut -f1)
+        echo "[OK] Utilities tar.gz archive created ($size)"
+        
+        # Also create a zip for consistency
+        zip -r "intenserp-next-utilities-linux-amd64.zip" "intenserp-next-utilities-linux-amd64"
+        zip_size=$(du -h "intenserp-next-utilities-linux-amd64.zip" | cut -f1)
+        echo "[OK] Utilities zip archive created ($zip_size)"
+      
+    - name: Upload tar.gz artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-next-utilities-linux-targz
+        path: intenserp-next-utilities-linux-amd64.tar.gz
+        retention-days: 30
+        
+    - name: Upload zip artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: intenserp-next-utilities-linux-zip
+        path: intenserp-next-utilities-linux-amd64.zip
+        retention-days: 30
+        
+    - name: Upload release assets (if release)
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          intenserp-next-utilities-linux-amd64.tar.gz
+          intenserp-next-utilities-linux-amd64.zip
