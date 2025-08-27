@@ -526,9 +526,9 @@ def create_gui() -> None:
         if config_manager.get("check_version", True):
             current_version = version.parse(__version__)
             last_version = storage_manager.get_latest_version()
-            if last_version and version.parse(last_version) > current_version:
+            #if last_version and version.parse(last_version) > current_version:
             # Just for debugging, I occasionally switch between these
-            # if last_version == "1.3.2":
+            if last_version == "1.3.2":
                 root.after(200, lambda: create_update_window(last_version))
         
         # Show console if configured to do so

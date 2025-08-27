@@ -1614,9 +1614,7 @@ class DownloadOptionsWindow(ctk.CTkToplevel):
                 command=self._open_git_update,
                 font=get_font_tuple("Blinker", 14, "bold"),
                 height=40,
-                corner_radius=8,
-                fg_color=("orange", "darkorange"),
-                hover_color=("darkorange", "orange")
+                corner_radius=8
             )
             git_btn.grid(row=5, column=0, padx=20, pady=(0, 10), sticky="ew")
             
@@ -2686,9 +2684,7 @@ class GitUpdateDialog(ctk.CTkToplevel):
                 text="Run Command",
                 command=self._run_git_pull,
                 font=get_font_tuple("Blinker", 12, "bold"),
-                height=35,
-                fg_color=("green", "darkgreen"),
-                hover_color=("darkgreen", "green")
+                height=35
             )
             run_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
         except ImportError:
