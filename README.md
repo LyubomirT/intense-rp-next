@@ -11,13 +11,13 @@
 ![License](https://img.shields.io/github/license/LyubomirT/intense-rp-next?style=flat-square)
 ![GitHub stars](https://img.shields.io/github/stars/LyubomirT/intense-rp-next?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/LyubomirT/intense-rp-next?style=flat-square)
-![Beta](https://img.shields.io/badge/status-beta-orange?style=flat-square)
+![Stable](https://img.shields.io/badge/status-stable-blue?style=flat-square)
 
 </div>
 
 ## 🔥 What's New in IntenseRP Next
 
-I've completely reimagined the original project with a focus on **reliability**, **user experience**, and **modern architecture**. As of now, the project is in **beta** but already stable enough for daily use. Here are the main things that have changed:
+I've completely reimagined the original project with a focus on **reliability**, **user experience**, and **modern architecture**. As of recently, the project is finally **stable** enough for daily use. Here are the main things that have changed:
 
 ### 🌟 Key Improvements
 
@@ -28,13 +28,8 @@ I've completely reimagined the original project with a focus on **reliability**,
 - **⚙️ Schema-Driven Config**: Auto-generating configuration UI to make it easier for us developers to add new features
 - **💾 Persistent Sessions**: Keep your login sessions across app restarts (Chrome/Edge only)
 
-### 🎯 Recent Additions
-
-- **Custom Chromium Browser**: Now you can use a custom Chromium browser for better compatibility and performance by selecting the binary path in the settings and picking `Custom Chromium` as your browser.
-- **API Keys**: You can now secure the API with API keys so that no shady requests can be made without authentication.
-
 > [!NOTE]
-> The project is in a "stable beta" state, meaning it's ready for daily use but may still have some rough edges. If you run into any issues, please report them on GitHub!
+> The project is in a "stable" state, meaning it's ready for daily use but may still have some rough edges. If you run into any issues, please report them on GitHub!
 
 
 ## 🚀 Quick Start
@@ -111,7 +106,7 @@ Likely caused by Cloudflare's challenges. Most of the times this happens when yo
 
 ### Network Interception Broken Or Unstable
 
-Please note that the feature is still in beta and might not work perfectly in all cases. Network interception is now supported for both Chrome and Edge. IntenseRP Next falls back to the old HTML to Markdown conversion if network interception fails, so you can still use it, but with less reliability.
+Please note that the feature is not one-size-fits-all and might not work perfectly in all cases. Network interception is now supported for both Chrome and Edge. IntenseRP Next falls back to the old HTML to Markdown conversion if network interception fails, so you can still use it, but with less reliability.
 
 ### Code Blocks Temporarily Pausing Streaming
 
