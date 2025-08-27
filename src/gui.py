@@ -15,7 +15,7 @@ from core import get_state_manager, StateEvent
 from config.config_manager import ConfigManager
 from config.config_ui_generator import ConfigUIGenerator
 
-__version__ = "1.3.2" 
+__version__ = "1.4.0" 
 
 # Local GUI state (not shared across modules)
 root = None
@@ -528,7 +528,7 @@ def create_gui() -> None:
             last_version = storage_manager.get_latest_version()
             if last_version and version.parse(last_version) > current_version:
             # Just for debugging, I occasionally switch between these
-            # if last_version == "1.3.2":
+            # if last_version == "1.4.0":
                 root.after(200, lambda: create_update_window(last_version))
         
         # Show console if configured to do so
