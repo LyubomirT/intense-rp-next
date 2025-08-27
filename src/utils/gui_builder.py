@@ -2437,10 +2437,7 @@ class WelcomeWindow(ctk.CTkToplevel):
         
         # Welcome message
         welcome_text = (
-            "Thanks for choosing IntenseRP Next!\n\n"
-            "A fresh, community-driven revival of the IntenseRP API that makes it easy to integrate "
-            "DeepSeek AI with SillyTavern for entirely free, outside the official API.\n\n"
-            "Ready to begin? Use the steps below to get set up in minutes."
+            "Hope you enjoy using it!\n\n"
         )
         welcome_label = ctk.CTkLabel(
             self,
