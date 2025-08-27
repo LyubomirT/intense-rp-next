@@ -32,6 +32,14 @@ class StorageManager:
     def get_base_path(self) -> str:
         return self._paths["base"]
     
+    def is_frozen(self) -> bool:
+        """Check if the application is running as a compiled binary"""
+        return getattr(sys, 'frozen', False)
+    
+    def is_running_from_source(self) -> bool:
+        """Check if the application is running from source code (not compiled)"""
+        return not self.is_frozen()
+    
     def _verify_and_merge_config(self, original: Optional[Dict], new_data: Optional[Dict]) -> Dict:
         original = original if isinstance(original, dict) else {}
         new_data = new_data if isinstance(new_data, dict) else {}

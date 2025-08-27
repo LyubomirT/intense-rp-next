@@ -1534,8 +1534,17 @@ class DownloadOptionsWindow(ctk.CTkToplevel):
     
     def _create_window(self):
         """Set up the window properties"""
+        # Check if running from source to adjust window size
+        try:
+            storage_mgr = storage_manager.StorageManager()
+            is_source_build = storage_mgr.is_running_from_source()
+        except:
+            is_source_build = False
+            
         self.title("Choose Download Method")
-        self.geometry("360x260")
+        # Make window taller for source builds to accommodate extra widgets
+        height = "400" if is_source_build else "260"
+        self.geometry(f"360x{height}")
         self.resizable(False, False)
         self.attributes("-topmost", True)
         
@@ -1544,6 +1553,13 @@ class DownloadOptionsWindow(ctk.CTkToplevel):
     
     def _create_widgets(self):
         """Create and layout all widgets"""
+        # Check if running from source
+        try:
+            storage_mgr = storage_manager.StorageManager()
+            is_source_build = storage_mgr.is_running_from_source()
+        except:
+            is_source_build = False  # Fallback to assuming binary build
+            
         # Title
         title_label = ctk.CTkLabel(
             self,
@@ -1572,20 +1588,68 @@ class DownloadOptionsWindow(ctk.CTkToplevel):
         )
         github_btn.grid(row=2, column=0, padx=20, pady=(0, 10), sticky="ew")
         
-        # Integrated download button
-        integrated_btn = ctk.CTkButton(
-            self,
-            text="⭳  Integrated Download (Beta)",
-            command=self._open_integrated_download,
-            font=get_font_tuple("Blinker", 14, "bold"),
-            height=40,
-            corner_radius=8
-        )
-        integrated_btn.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
+        # Source build warning and git update option
+        if is_source_build:
+            # Warning message
+            warning_label = ctk.CTkLabel(
+                self,
+                text="⚠ Source Build Detected",
+                font=get_font_tuple("Blinker", 12, "bold"),
+                text_color=("red", "red")
+            )
+            warning_label.grid(row=3, column=0, padx=20, pady=(0, 5), sticky="ew")
+            
+            warning_desc = ctk.CTkLabel(
+                self,
+                text="Binary updater is not compatible with source builds.\nUse git to update instead.",
+                font=get_font_tuple("Blinker", 10),
+                text_color=("gray50", "gray70")
+            )
+            warning_desc.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+            
+            # Git update button
+            git_btn = ctk.CTkButton(
+                self,
+                text="🔄  Update via Git",
+                command=self._open_git_update,
+                font=get_font_tuple("Blinker", 14, "bold"),
+                height=40,
+                corner_radius=8,
+                fg_color=("orange", "darkorange"),
+                hover_color=("darkorange", "orange")
+            )
+            git_btn.grid(row=5, column=0, padx=20, pady=(0, 10), sticky="ew")
+            
+            # Disabled integrated download button
+            integrated_btn = ctk.CTkButton(
+                self,
+                text="⭳  Integrated Download (Not Available)",
+                command=None,
+                font=get_font_tuple("Blinker", 14),
+                height=40,
+                corner_radius=8,
+                state="disabled",
+                fg_color=("red", "darkred"),
+                text_color=("gray", "gray")
+            )
+            integrated_btn.grid(row=6, column=0, padx=20, pady=(0, 15), sticky="ew")
+            
+        else:
+            # Regular integrated download button for binary builds
+            integrated_btn = ctk.CTkButton(
+                self,
+                text="⭳  Integrated Download (Beta)",
+                command=self._open_integrated_download,
+                font=get_font_tuple("Blinker", 14, "bold"),
+                height=40,
+                corner_radius=8
+            )
+            integrated_btn.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
         
-        # Button frame for back/close
+        # Button frame for back/close (adjust row based on source build)
+        button_frame_row = 7 if is_source_build else 4
         button_frame = ctk.CTkFrame(self, fg_color="transparent")
-        button_frame.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid(row=button_frame_row, column=0, padx=20, pady=(0, 20), sticky="ew")
         button_frame.grid_columnconfigure(0, weight=1)
         button_frame.grid_columnconfigure(1, weight=1)
         
@@ -1633,6 +1697,37 @@ class DownloadOptionsWindow(ctk.CTkToplevel):
         self.destroy()
         better_update_window = BetterUpdateWindow(self.parent, self.version, self.icon_path)
         better_update_window.center()
+    
+    def _open_git_update(self):
+        """Open git update instructions dialog"""
+        try:
+            import subprocess
+            import platform
+            
+            # Check if git is available
+            try:
+                subprocess.run(["git", "--version"], capture_output=True, check=True)
+                git_available = True
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                git_available = False
+            
+            if git_available:
+                # Show git update command dialog
+                dialog = GitUpdateDialog(self, self.icon_path)
+                dialog.center()
+            else:
+                # Show git not found dialog
+                from tkinter import messagebox
+                messagebox.showwarning(
+                    "Git Not Found",
+                    "Git is not installed or not available in PATH.\n\n"
+                    "Please install Git and try again, or update manually:\n"
+                    "1. Navigate to your source directory\n"
+                    "2. Run: git pull origin main\n"
+                    "3. Restart the application"
+                )
+        except Exception as e:
+            print(f"Error checking git availability: {e}")
 
     def center(self):
         """Center the window relative to parent"""
@@ -2493,6 +2588,167 @@ class WelcomeWindow(ctk.CTkToplevel):
     def _continue_to_app(self):
         """Continue to the main application"""
         self.destroy()
+    
+    def center(self):
+        """Center the window relative to parent"""
+        self.update_idletasks()
+        if self.parent:
+            x = self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.winfo_width() // 2)
+            y = self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.winfo_height() // 2)
+            self.geometry(f"+{x}+{y}")
+
+
+class GitUpdateDialog(ctk.CTkToplevel):
+    """Dialog for git update instructions when running from source"""
+    
+    def __init__(self, parent, icon_path: Optional[str] = None):
+        super().__init__(parent)
+        self.parent = parent
+        self.icon_path = icon_path
+        self._create_window()
+        self._create_widgets()
+        if self.icon_path:
+            self.after(300, lambda: set_window_icon(self, self.icon_path))
+    
+    def _create_window(self):
+        """Set up the window properties"""
+        self.title("Update via Git")
+        self.geometry("450x300")
+        self.resizable(False, False)
+        self.attributes("-topmost", True)
+        
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+    
+    def _create_widgets(self):
+        """Create and layout all widgets"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self,
+            text="Update via Git",
+            font=get_font_tuple("Blinker", 18, "bold")
+        )
+        title_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        # Instructions
+        instructions = ctk.CTkLabel(
+            self,
+            text="To update your source build of IntenseRP Next:",
+            font=get_font_tuple("Blinker", 12),
+            text_color=("gray50", "gray70")
+        )
+        instructions.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="ew")
+        
+        # Command frame
+        cmd_frame = ctk.CTkFrame(self)
+        cmd_frame.grid(row=2, column=0, padx=20, pady=(0, 15), sticky="ew")
+        cmd_frame.grid_columnconfigure(0, weight=1)
+        
+        # Command label
+        cmd_label = ctk.CTkLabel(
+            cmd_frame,
+            text="Run this command in your project directory:",
+            font=get_font_tuple("Blinker", 11),
+            anchor="w"
+        )
+        cmd_label.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
+        
+        # Command text (selectable)
+        cmd_text = ctk.CTkEntry(
+            cmd_frame,
+            font=get_font_tuple("Consolas", 11),
+            justify="center"
+        )
+        cmd_text.insert(0, "git pull origin main")
+        cmd_text.configure(state="readonly")
+        cmd_text.grid(row=1, column=0, padx=15, pady=(0, 15), sticky="ew")
+        
+        # Warning
+        warning_label = ctk.CTkLabel(
+            self,
+            text="⚠ Make sure to restart the application after updating!",
+            font=get_font_tuple("Blinker", 11, "bold"),
+            text_color=("orange", "orange")
+        )
+        warning_label.grid(row=3, column=0, padx=20, pady=(0, 15), sticky="ew")
+        
+        # Buttons
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Run command button (if possible)
+        try:
+            import subprocess
+            run_btn = ctk.CTkButton(
+                button_frame,
+                text="Run Command",
+                command=self._run_git_pull,
+                font=get_font_tuple("Blinker", 12, "bold"),
+                height=35,
+                fg_color=("green", "darkgreen"),
+                hover_color=("darkgreen", "green")
+            )
+            run_btn.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+        except ImportError:
+            pass
+        
+        # Close button
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Close",
+            command=self.destroy,
+            font=get_font_tuple("Blinker", 12),
+            fg_color=("gray70", "gray30"),
+            hover_color=("gray60", "gray40"),
+            height=35
+        )
+        close_btn.grid(row=0, column=1, padx=(5, 0), sticky="ew")
+    
+    def _run_git_pull(self):
+        """Run git pull command"""
+        try:
+            import subprocess
+            import os
+            
+            # Get current working directory (should be the project root)
+            project_dir = os.getcwd()
+            
+            # Run git pull
+            result = subprocess.run(
+                ["git", "pull", "origin", "main"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                # Success
+                from tkinter import messagebox
+                messagebox.showinfo(
+                    "Update Successful",
+                    "Git update completed successfully!\n\n"
+                    "Please restart the application to use the updated version."
+                )
+                self.destroy()
+                # Close the parent download options window too
+                if self.parent:
+                    self.parent.destroy()
+            else:
+                # Error
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "Update Failed",
+                    f"Git update failed:\n\n{result.stderr}"
+                )
+        except subprocess.TimeoutExpired:
+            from tkinter import messagebox
+            messagebox.showerror("Update Failed", "Git command timed out.")
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Update Failed", f"Error running git command: {e}")
     
     def center(self):
         """Center the window relative to parent"""
