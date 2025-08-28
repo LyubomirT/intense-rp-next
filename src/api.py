@@ -1122,7 +1122,7 @@ def run_services() -> None:
                 print(f"[color:red]Error during login check: {e}")
                 # Continue anyway
 
-            state.clear_messages()
+            state.clear_main_screen()
             state.show_message("[color:red]API IS NOW ACTIVE!")
             state.show_message("[color:cyan]WELCOME TO INTENSE RP API")
             

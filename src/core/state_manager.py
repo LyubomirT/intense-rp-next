@@ -372,6 +372,16 @@ class StateManager:
         except Exception as e:
             print(f"Error clearing messages: {e}")
     
+    def clear_main_screen(self) -> None:
+        """Clear only the main message screen (textbox), preserve console/logs"""
+        textbox = self.textbox
+        
+        try:
+            if textbox:
+                textbox.clear()
+        except Exception as e:
+            print(f"Error clearing main screen: {e}")
+    
     def reset_browser_state(self) -> None:
         """Reset browser-related state"""
         with self._lock:
