@@ -23,6 +23,7 @@ class GitHubAsset:
     created_at: str
     download_count: int
     is_updater: bool = False
+    is_utilities: bool = False
     is_current_platform: bool = False
     friendly_name: str = ""
     description: str = ""
@@ -100,8 +101,9 @@ class GitHubAPI:
         """
         name_lower = asset.name.lower()
         
-        # Detect if this is an updater
+        # Detect asset type
         asset.is_updater = 'updater' in name_lower
+        asset.is_utilities = 'utilities' in name_lower
         
         # Detect platform and architecture
         platform_info = cls._extract_platform_info(asset.name)
@@ -109,7 +111,7 @@ class GitHubAPI:
         
         # Generate friendly name and description
         asset.friendly_name, asset.description = cls._generate_friendly_name(
-            asset.name, platform_info, asset.is_updater
+            asset.name, platform_info, asset.is_updater, asset.is_utilities
         )
     
     @classmethod
@@ -162,7 +164,7 @@ class GitHubAPI:
         }
     
     @classmethod
-    def _generate_friendly_name(cls, filename: str, platform_info: Dict[str, str], is_updater: bool) -> Tuple[str, str]:
+    def _generate_friendly_name(cls, filename: str, platform_info: Dict[str, str], is_updater: bool, is_utilities: bool) -> Tuple[str, str]:
         """
         Generate user-friendly name and description for asset
         
@@ -170,6 +172,7 @@ class GitHubAPI:
             filename: Original filename
             platform_info: Platform information dict
             is_updater: Whether this is an updater asset
+            is_utilities: Whether this is a utilities package
             
         Returns:
             Tuple of (friendly_name, description)
@@ -181,6 +184,9 @@ class GitHubAPI:
         if is_updater:
             friendly_name = f"Updater Utility ({platform}, {arch})"
             description = f"Automatic updater for IntenseRP Next - {format_type} archive"
+        elif is_utilities:
+            friendly_name = f"IntenseRP Next Utilities ({platform}, {arch})"
+            description = f"Additional utilities and tools for IntenseRP Next - {format_type} archive"
         else:
             friendly_name = f"IntenseRP Next Application ({platform}, {arch})"
             description = f"Complete IntenseRP Next installation - {format_type} archive"
@@ -210,9 +216,13 @@ class GitHubAPI:
                 categories[platform_name] = []
             categories[platform_name].append(asset)
         
-        # Sort each category (updaters first, then by name)
+        # Sort each category (main application first, then updater, then utilities, then by name)
         for platform_name in categories:
-            categories[platform_name].sort(key=lambda a: (not a.is_updater, a.name))
+            categories[platform_name].sort(key=lambda a: (
+                a.is_utilities,  # Utilities last
+                a.is_updater,    # Updater in middle
+                a.name           # Then alphabetically
+            ))
         
         # Reorder categories to put current platform first
         current_platform_title = current_platform.title()
