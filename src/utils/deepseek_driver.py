@@ -52,15 +52,21 @@ def _close_sidebar(driver: Driver) -> None:
     try:
         sidebar = driver.find_element("class name", "dc04ec1d")
         
+        """
         if "a02af2e6" not in sidebar.get_attribute("class"):
             driver.click(".ds-icon-button")
             time.sleep(1)
+        """
+
+        # Find and click the button that has _17e543b in the class list
+        button = sidebar.find_element("class name", "_17e543b")
+        driver.execute_script("arguments[0].click();", button)
     except Exception:
         pass
 
 def new_chat(driver: Driver) -> None:
     try:
-        boton = driver.find_element("xpath", "//div[contains(@class, '_217e214')]")
+        boton = driver.find_element("xpath", "//div[contains(@class, 'a084f19e')]")
         driver.execute_script("arguments[0].click();", boton)
         # Clear content cache when starting new chat
         _clear_content_cache()
@@ -100,8 +106,8 @@ def configure_chat(driver: Driver, deepthink: bool, search: bool) -> None:
     _close_sidebar(driver)
     new_chat(driver)
     _check_and_reload_page(driver)
-    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and (contains(., 'DeepThink') or contains(., '深度思考'))]", deepthink)
-    _set_button_state(driver, "//div[@role='button' and contains(@class, '_3172d9f') and (contains(., 'Search') or contains(., '联网搜索'))]", search)
+    _set_button_state(driver, "//button[@role='button' and contains(@class, 'feec6a7a') and (contains(., 'DeepThink') or contains(., '深度思考'))]", deepthink)
+    _set_button_state(driver, "//button[@role='button' and contains(@class, '_70150b8') and (contains(., 'Search') or contains(., '联网搜索'))]", search)
 
 # =============================================================================================================================
 # Send message or upload file to chat
