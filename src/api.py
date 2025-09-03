@@ -598,8 +598,50 @@ def parse_network_stream_data_for_streaming(data: str, send_thoughts: bool = Tru
                 path = json_data.get('p')
                 content_value = json_data['v']
                 
-                # Handle thinking content start
-                if path == 'response/thinking_content':
+                # NEW FORMAT: Handle fragment creation/updates
+                if path == 'response/fragments' and json_data.get('o') == 'APPEND':
+                    # New fragment being created
+                    if isinstance(content_value, list):
+                        for fragment in content_value:
+                            if isinstance(fragment, dict) and 'type' in fragment:
+                                fragment_type = fragment['type']
+                                fragment_content = fragment.get('content', '')
+                                
+                                if fragment_type == 'THINK':
+                                    # Starting thinking fragment
+                                    if send_thoughts:
+                                        if not network_data['thinking_active']:
+                                            chunks.append("<think>\n")
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
+                                        chunks.append(fragment_content)
+                                    else:
+                                        # Track thinking state but don't send content
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
+                                
+                                elif fragment_type == 'RESPONSE':
+                                    # Starting response fragment - end thinking mode first
+                                    if network_data['thinking_active']:
+                                        if send_thoughts:
+                                            chunks.append("\n</think>\n\n")
+                                        network_data['thinking_active'] = False
+                                        network_data['thinking_started'] = False
+                                    chunks.append(fragment_content)
+                
+                elif path and path.startswith('response/fragments/') and path.endswith('/content'):
+                    # Content update for existing fragment (NEW FORMAT)
+                    if isinstance(content_value, str):
+                        # Determine if this is thinking or response content by current mode
+                        if network_data['thinking_active'] and send_thoughts:
+                            chunks.append(content_value)
+                        elif not network_data['thinking_active']:
+                            chunks.append(content_value)
+                        # If thinking_active but send_thoughts is False, ignore content
+                
+                # LEGACY FORMAT: Handle thinking content start
+                elif path == 'response/thinking_content':
                     if send_thoughts:
                         if not network_data['thinking_active']:
                             # Starting thinking mode - send opening <think> tag
@@ -620,7 +662,7 @@ def parse_network_stream_data_for_streaming(data: str, send_thoughts: bool = Tru
                             network_data['thinking_active'] = True
                             network_data['thinking_started'] = True
                 
-                # Handle regular content start - this ends thinking mode
+                # LEGACY FORMAT: Handle regular content start - this ends thinking mode
                 elif path == 'response/content':
                     # If we were in thinking mode, close it first (only if send_thoughts is enabled)
                     if network_data['thinking_active']:
@@ -638,7 +680,7 @@ def parse_network_stream_data_for_streaming(data: str, send_thoughts: bool = Tru
                             if isinstance(item, dict) and 'v' in item and item.get('p') == 'response/content':
                                 chunks.append(str(item['v']))
                 
-                # Handle continuation chunks (no path specified)
+                # LEGACY FORMAT: Handle continuation chunks (no path specified)
                 elif path is None:
                     # If we're in thinking mode and send_thoughts is enabled, send thinking content
                     if network_data['thinking_active'] and send_thoughts:
@@ -658,7 +700,7 @@ def parse_network_stream_data_for_streaming(data: str, send_thoughts: bool = Tru
                                     chunks.append(str(item['v']))
                     # If thinking mode is active but send_thoughts is disabled, ignore content completely
                 
-                # Handle batch operations
+                # LEGACY FORMAT: Handle batch operations
                 elif path == 'response' and json_data.get('o') == 'BATCH':
                     if isinstance(content_value, list):
                         for item in content_value:
@@ -721,8 +763,61 @@ def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
                 path = json_data.get('p')
                 content_value = json_data['v']
                 
-                # Handle thinking content start
-                if path == 'response/thinking_content':
+                # NEW FORMAT: Handle fragment creation/updates
+                if path == 'response/fragments' and json_data.get('o') == 'APPEND':
+                    # New fragment being created
+                    if isinstance(content_value, list):
+                        result = ""
+                        for fragment in content_value:
+                            if isinstance(fragment, dict) and 'type' in fragment:
+                                fragment_type = fragment['type']
+                                fragment_content = fragment.get('content', '')
+                                
+                                if fragment_type == 'THINK':
+                                    # Starting thinking fragment
+                                    if send_thoughts:
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_buffer'] = ""
+                                            network_data['thinking_started'] = True
+                                        network_data['thinking_buffer'] += fragment_content
+                                    else:
+                                        # Track thinking state but don't accumulate content
+                                        if not network_data['thinking_active']:
+                                            network_data['thinking_active'] = True
+                                            network_data['thinking_started'] = True
+                                    # Return empty while accumulating thinking content
+                                
+                                elif fragment_type == 'RESPONSE':
+                                    # Starting response fragment - end thinking mode first
+                                    if network_data['thinking_active']:
+                                        if send_thoughts:
+                                            thinking_content = network_data['thinking_buffer'].strip()
+                                            if thinking_content:
+                                                result += f"<think>\n{thinking_content}\n</think>\n\n"
+                                        # Reset thinking state
+                                        network_data['thinking_active'] = False
+                                        network_data['thinking_buffer'] = ""
+                                        network_data['thinking_started'] = False
+                                    result += fragment_content
+                        
+                        return result
+                
+                elif path and path.startswith('response/fragments/') and path.endswith('/content'):
+                    # Content update for existing fragment (NEW FORMAT)
+                    if isinstance(content_value, str):
+                        # Determine if this is thinking or response content by current mode
+                        if network_data['thinking_active']:
+                            if send_thoughts:
+                                network_data['thinking_buffer'] += content_value
+                            # Return empty while accumulating/ignoring thinking content
+                            return ""
+                        else:
+                            # Regular content
+                            return content_value
+                
+                # LEGACY FORMAT: Handle thinking content start
+                elif path == 'response/thinking_content':
                     if send_thoughts:
                         if not network_data['thinking_active']:
                             # Starting thinking mode
@@ -746,7 +841,7 @@ def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
                     # Return empty string while accumulating/ignoring thinking content
                     return ""
                 
-                # Handle regular content start - this ends thinking mode
+                # LEGACY FORMAT: Handle regular content start - this ends thinking mode
                 elif path == 'response/content':
                     result = ""
                     
@@ -772,7 +867,7 @@ def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
                     
                     return result
                 
-                # Handle continuation chunks (no path specified)
+                # LEGACY FORMAT: Handle continuation chunks (no path specified)
                 elif path is None:
                     # If we're in thinking mode, accumulate this content as thinking (only if send_thoughts is enabled)
                     if network_data['thinking_active']:
@@ -796,7 +891,7 @@ def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
                                     result += str(item['v'])
                             return result
                 
-                # Handle batch operations
+                # LEGACY FORMAT: Handle batch operations
                 elif path == 'response' and json_data.get('o') == 'BATCH':
                     if isinstance(content_value, list):
                         result = ""

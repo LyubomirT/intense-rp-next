@@ -86,8 +86,16 @@ def _check_and_reload_page(driver: Driver) -> None:
 def _set_button_state(driver: Driver, xpath: str, activate: bool) -> None:
     try:
         button = driver.find_element("xpath", xpath)
-        style = button.get_attribute("style")
-        is_active = "rgba(77, 107, 254, 0.40)" in style
+        
+        # Check computed background-color style (includes CSS classes)
+        computed_bg = driver.execute_script("""
+            return window.getComputedStyle(arguments[0]).backgroundColor;
+        """, button)
+        
+        # Check if background matches the active state color
+        # DeepSeek uses #283142 which converts to rgb(40, 49, 66)
+        is_active = (computed_bg == "rgb(40, 49, 66)" or 
+                    computed_bg == "rgba(40, 49, 66, 1)")
         
         if is_active != activate:
             driver.execute_script("arguments[0].click();", button)
