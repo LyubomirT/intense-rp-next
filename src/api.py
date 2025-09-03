@@ -25,10 +25,52 @@ network_data = {
     'thinking_active': False,
     'thinking_buffer': "",
     'thinking_started': False,
-    'ready': False  # CDP readiness flag
+    'ready': False,  # CDP readiness flag
+    'censored': False,  # Anti-censorship flag
+    'censorship_detected': False  # Track if censorship was detected in stream
 }
 
 # Note for self: STOP CONFUSING THE NETWORK PARAMETER NAMES
+
+def detect_censorship(json_data: dict) -> bool:
+    """
+    Detect DeepSeek censorship tokens in streaming data
+    Returns True if censorship is detected, False otherwise
+    """
+    try:
+        # Primary detection: Check for CONTENT_FILTER status
+        if 'v' in json_data:
+            content_value = json_data['v']
+            
+            # Handle batch operations that contain censorship indicators
+            if (json_data.get('p') == 'response' and 
+                json_data.get('o') == 'BATCH' and 
+                isinstance(content_value, list)):
+                
+                for item in content_value:
+                    if isinstance(item, dict):
+                        # Check for CONTENT_FILTER status
+                        if (item.get('p') == 'status' and 
+                            item.get('v') == 'CONTENT_FILTER'):
+                            return True
+                        
+                        # Check for TEMPLATE_RESPONSE fragments (secondary indicator)
+                        if (item.get('p') == 'fragments' and 
+                            isinstance(item.get('v'), list)):
+                            for fragment in item['v']:
+                                if (isinstance(fragment, dict) and 
+                                    fragment.get('type') == 'TEMPLATE_RESPONSE'):
+                                    return True
+            
+            # Handle direct status updates
+            elif (json_data.get('p') == 'response/status' and 
+                  content_value == 'CONTENT_FILTER'):
+                return True
+        
+        return False
+    except Exception as e:
+        print(f"Error in censorship detection: {e}")
+        return False
 
 # =============================================================================================================================
 # Authentication Functions
@@ -435,6 +477,8 @@ def deepseek_network_response(
         network_data['thinking_buffer'] = ""
         network_data['thinking_started'] = False
         network_data['ready'] = False  # Reset readiness flag
+        network_data['censored'] = False  # Reset anti-censorship flag
+        network_data['censorship_detected'] = False  # Reset censorship detection flag
         # ^^ CDP READINESS FLAG ^^
         
         # Enable network interception
@@ -501,6 +545,11 @@ def deepseek_network_response(
                         if interrupted() or time.time() - timeout_start > max_total_time:
                             break
                         
+                        # Check for censorship detection - stop streaming if detected
+                        if network_data['censorship_detected']:
+                            finish_event_received = True
+                            break
+                        
                         # Process new stream data
                         stream_buffer = network_data['stream_buffer']
                         current_buffer_length = len(stream_buffer)
@@ -539,7 +588,9 @@ def deepseek_network_response(
                     if network_data['error']:
                         yield create_response_streaming(f"Error: {network_data['error']}", pipeline, model)
                     
-                    state.show_message("[color:white]- [color:green]Network response completed.")
+                    # Show completion message with censorship status
+                    completion_message = "Network response completed (censored)" if network_data['censorship_detected'] else "Network response completed."
+                    state.show_message(f"[color:white]- [color:green]{completion_message}")
                     
                 except GeneratorExit:
                     deepseek.disable_network_interception(state.driver)
@@ -562,6 +613,9 @@ def deepseek_network_response(
             while not network_data['completed']:
                 if interrupted() or time.time() - start_time > timeout:
                     break
+                # Check for censorship - complete early if detected
+                if network_data['censorship_detected']:
+                    break
                 time.sleep(0.1)
             
             if network_data['error']:
@@ -570,10 +624,16 @@ def deepseek_network_response(
                 # Combine all stream data
                 state.show_message(f"[color:cyan]Combining {len(network_data['stream_buffer'])} stream items...")
                 response_text = combine_network_stream_data(network_data['stream_buffer'], send_thoughts)
-                state.show_message(f"[color:cyan]Final combined response length: {len(response_text)}")
+                
+                # Log censorship detection
+                if network_data['censorship_detected']:
+                    state.show_message(f"[color:yellow]Censorship detected - response truncated at {len(response_text)} characters")
+                else:
+                    state.show_message(f"[color:cyan]Final combined response length: {len(response_text)}")
             
             deepseek.disable_network_interception(state.driver)
-            state.show_message("[color:white]- [color:green]Network response completed.")
+            completion_message = "Network response completed (censored)" if network_data['censorship_detected'] else "Network response completed."
+            state.show_message(f"[color:white]- [color:green]{completion_message}")
             return create_response_jsonify(response_text, pipeline, model)
     
     except Exception as e:
@@ -1001,6 +1061,8 @@ def network_request():
             network_data['thinking_active'] = False
             network_data['thinking_buffer'] = ""
             network_data['thinking_started'] = False
+            network_data['censored'] = False
+            network_data['censorship_detected'] = False
             # Note: Don't reset 'ready' here as this endpoint is called after readiness is confirmed
             print(f"[color:cyan]Network request intercepted: {data.get('requestId', 'unknown')}")
         return jsonify({"status": "received"}), 200
@@ -1054,7 +1116,43 @@ def network_stream_data():
     try:
         data = request.get_json()
         if data and 'data' in data:
-            # Always append to buffer - streaming mode determined by response generator
+            # Optimization because burned CPUs are not healthy CPUs.
+            stream_content = data['data']
+            should_check_censorship = False
+            
+            # Only parse and check if the content looks like it might contain censorship indicators
+            if (stream_content.startswith('{') and 
+                ('CONTENT_FILTER' in stream_content or 
+                 'TEMPLATE_RESPONSE' in stream_content or
+                 '"o": "BATCH"' in stream_content or
+                 '"p": "response"' in stream_content)):
+                should_check_censorship = True
+            
+            if should_check_censorship:
+                try:
+                    import json
+                    json_data = json.loads(stream_content)
+                    
+                    # Check if this data contains censorship indicators
+                    if detect_censorship(json_data):
+                        network_data['censorship_detected'] = True
+                        network_data['completed'] = True  # Mark as completed to end stream
+                        state = get_state_manager()
+                        state.show_message("[color:yellow]Censorship detected - truncating response")
+                        
+                        # Don't add the censorship content to stream buffer
+                        # Trigger finish event to end streaming gracefully
+                        network_data['events'].append({
+                            'type': 'event',
+                            'event': 'finish',
+                            'timestamp': time.time() * 1000
+                        })
+                        return jsonify({"status": "censorship_detected"}), 200
+                except Exception as e:
+                    # If parsing fails, continue with normal processing
+                    print(f"Error checking censorship in stream data: {e}")
+            
+            # Normal processing - append to buffer if not censored
             network_data['stream_buffer'].append({
                 'type': 'data',
                 'content': data['data'],
