@@ -1330,9 +1330,8 @@ def run_services() -> None:
 
             # Start TryCloudflare tunnel if enabled
             tunnel_enabled = state.get_config_value("tunnel.enabled", False)
-            auto_start_tunnel = state.get_config_value("tunnel.auto_start", True)
             
-            if tunnel_enabled and auto_start_tunnel:
+            if tunnel_enabled:
                 state.show_message("[color:cyan]Starting TryCloudflare tunnel...")
                 try:
                     # Start tunnel in background

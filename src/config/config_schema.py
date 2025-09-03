@@ -312,14 +312,6 @@ def get_config_schema() -> List[ConfigSection]:
                     help_text="Automatically create a public tunnel URL using TryCloudflare for external access"
                 ),
                 ConfigField(
-                    key="tunnel.auto_start",
-                    label="Auto-start Tunnel:",
-                    field_type=ConfigFieldType.SWITCH,
-                    default=True,
-                    depends_on="tunnel.enabled",
-                    help_text="Automatically start tunnel when API server starts"
-                ),
-                ConfigField(
                     key=None,
                     label="Browser Configuration",
                     field_type=ConfigFieldType.DIVIDER,

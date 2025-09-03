@@ -52,8 +52,7 @@ Once you have `cloudflared` installed, enabling the tunnel is super simple:
 2. Navigate to **Advanced Settings**
 3. Find the **Network Settings** section
 4. Toggle **Enable TryCloudflare Tunnel** to ON
-5. Leave **Auto-start Tunnel** enabled (recommended)
-6. Click **Save**
+5. Click **Save**
 
 That's it! When you start IntenseRP Next, it will automatically create a tunnel and display the public URL in the console.
 
