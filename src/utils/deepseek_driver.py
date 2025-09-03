@@ -204,7 +204,7 @@ def get_last_message_raw_html(driver: Driver) -> Optional[str]:
     try:
         time.sleep(0.2)
         
-        messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
+        messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown') and not(ancestor::*[contains(@class, 'ds-think-content')])]")
         
         if messages:
             return messages[-1].get_attribute("innerHTML")
@@ -226,7 +226,7 @@ def get_last_message(driver: Driver, pipeline=None) -> Optional[str]:
     try:
         time.sleep(0.2)
         
-        messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
+        messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown') and not(ancestor::*[contains(@class, 'ds-think-content')])]")
         
         if messages:
             last_message_html = messages[-1].get_attribute("innerHTML")
@@ -331,7 +331,7 @@ def disable_network_interception(driver: Driver) -> bool:
 
 def active_generate_response(driver: Driver) -> bool:
     try:
-        button = driver.wait_for_element_present("//div[@role='button' and contains(@class, '_7436101')]//div[contains(@class, '_480132b')]", by="xpath", timeout=60)
+        button = driver.wait_for_element_present("//div[@role='button' and contains(@class, '_7436101')]", by="xpath", timeout=60)
         return button
     except Exception as e:
         print(f"Error generating response: {e}")
@@ -354,7 +354,7 @@ def wait_for_response_completion(driver: Driver, pipeline=None, max_wait_time: f
         while time.time() - start_time < max_wait_time:
             # Get raw HTML and hash it for comparison
             try:
-                messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown ds-markdown--block')]")
+                messages = driver.find_elements("xpath", "//div[contains(@class, 'ds-markdown') and not(ancestor::*[contains(@class, 'ds-think-content')])]")
                 if messages:
                     current_html = messages[-1].get_attribute("innerHTML")
                     current_hash = _get_content_hash(current_html)
@@ -362,7 +362,7 @@ def wait_for_response_completion(driver: Driver, pipeline=None, max_wait_time: f
                     if current_hash == last_content_hash:
                         stable_count += 1
                         # Content hash has been stable for multiple checks
-                        if stable_count >= 2:  # Reduced from 3 since hash-based is more reliable
+                        if stable_count >= 3:  # Balanced stability requirement
                             if last_content is None:
                                 last_content = get_last_message(driver, pipeline)
                             return last_content or ""
@@ -388,6 +388,24 @@ def is_response_generating(driver: Driver) -> bool:
         button = driver.find_element("xpath", "//div[@role='button' and contains(@class, '_7436101')]")
         return button.get_attribute("aria-disabled") == "false"
     except Exception:
+        return False
+
+def wait_for_generation_to_start(driver: Driver, timeout: float = 10.0) -> bool:
+    """Wait for response generation to actually start (stop button appears) after sending message"""
+    try:
+        start_time = time.time()
+        
+        # First wait for loading phase to complete and generation to start
+        while time.time() - start_time < timeout:
+            if is_response_generating(driver):
+                return True  # Generation has started
+            time.sleep(0.1)
+        
+        # Timeout - generation never started
+        return False
+        
+    except Exception as e:
+        print(f"Error waiting for generation to start: {e}")
         return False
 
 # =============================================================================================================================

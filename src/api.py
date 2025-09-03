@@ -337,6 +337,12 @@ def deepseek_response(
             return safe_interrupt_response()
 
         state.show_message("[color:white]- [color:cyan]Awaiting response.")
+        
+        # Wait for generation to actually start (stop button appears) after loading phase
+        if not deepseek.wait_for_generation_to_start(state.driver):
+            state.show_message("[color:white]- [color:red]Response generation did not start.")
+            return create_response("Response generation timeout.", streaming, pipeline, model)
+        
         last_sent_position = 0
         last_content_hash = None
         stable_content = None
