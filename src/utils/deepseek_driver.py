@@ -49,29 +49,80 @@ def login(driver: Driver, email: str, password: str) -> None:
 # =============================================================================================================================
 
 def _close_sidebar(driver: Driver) -> None:
+    """Close the sidebar if it's currently open"""
     try:
+        # Check if sidebar exists and is open
         sidebar = driver.find_element("class name", "dc04ec1d")
         
-        """
-        if "a02af2e6" not in sidebar.get_attribute("class"):
-            driver.click(".ds-icon-button")
-            time.sleep(1)
-        """
-
-        # Find and click the button that has _17e543b in the class list
-        button = sidebar.find_element("class name", "_17e543b")
-        driver.execute_script("arguments[0].click();", button)
-    except Exception:
+        # Check if sidebar is in closed state by looking for specific class patterns
+        sidebar_classes = sidebar.get_attribute("class")
+        
+        # If sidebar contains the closed state class, don't try to close it
+        if "a02af2e6" in sidebar_classes:
+            return
+        
+        # Find the sidebar close button - look for the button with the sidebar panel icon
+        close_button = sidebar.find_element("xpath", ".//div[@role='button' and contains(@class, '_17e543b') and contains(@class, '_7d1f5e2')]")
+        driver.execute_script("arguments[0].click();", close_button)
+        
+        # Wait a moment for the sidebar to close
+        time.sleep(0.5)
+        
+    except Exception as e:
+        # Sidebar might already be closed or element not found
         pass
 
 def new_chat(driver: Driver) -> None:
+    """Start a new chat by clicking the appropriate new chat button based on sidebar state"""
     try:
-        boton = driver.find_element("xpath", "//div[contains(@class, 'a084f19e')]")
-        driver.execute_script("arguments[0].click();", boton)
+        # Check if the button area exists (indicates sidebar is closed)
+        # Use a short timeout since the button area might take a moment to appear
+        try:
+            button_area = driver.find_element("class name", "e5bf614e")
+            # Button area exists - sidebar is closed
+            # Find all buttons with the shared classes within the button area
+            buttons = button_area.find_elements("xpath", ".//div[contains(@class, '_17e543b') and contains(@class, '_4f3769f')]")
+            
+            if len(buttons) >= 2:
+                # Click the SECOND button (index 1) - this is the new chat button
+                # The first button (index 0) opens the sidebar
+                new_chat_btn = buttons[1]
+                driver.execute_script("arguments[0].click();", new_chat_btn)
+                print("New chat started using button area (sidebar closed)")
+            else:
+                print(f"Warning: Expected 2 buttons in button area, found {len(buttons)}")
+                # Fallback - try any new chat button
+                boton = driver.find_element("xpath", "//div[contains(@class, 'a084f19e')]")
+                driver.execute_script("arguments[0].click();", boton)
+                
+        except Exception:
+            # Button area not found - sidebar is open
+            # Use the sidebar new chat button
+            try:
+                new_chat_btn = driver.find_element("xpath", "//div[contains(@class, '_5a8ac7a') and contains(@class, 'a084f19e') and .//span[text()='New chat']]")
+                driver.execute_script("arguments[0].click();", new_chat_btn)
+                print("New chat started using sidebar button (sidebar open)")
+            except Exception:
+                # Fallback for open sidebar - try the general new chat class
+                new_chat_btn = driver.find_element("xpath", "//div[contains(@class, 'a084f19e')]")
+                driver.execute_script("arguments[0].click();", new_chat_btn)
+                print("New chat started using fallback (sidebar open)")
+        
+        # Wait a moment for the new chat to initialize
+        time.sleep(0.5)
+        
         # Clear content cache when starting new chat
         _clear_content_cache()
-    except Exception:
-        pass
+        
+    except Exception as e:
+        print(f"Error starting new chat: {e}")
+        # Ultimate fallback - try the old method
+        try:
+            boton = driver.find_element("xpath", "//div[contains(@class, 'a084f19e')]")
+            driver.execute_script("arguments[0].click();", boton)
+            _clear_content_cache()
+        except Exception:
+            pass
 
 def _check_and_reload_page(driver: Driver) -> None:
     try:
