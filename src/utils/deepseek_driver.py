@@ -206,8 +206,7 @@ def _send_chat_file(driver: Driver, text: str) -> bool:
 def _send_chat_text(driver: Driver, text: str) -> bool:
     try:
         def attempt_send():
-            chat_input = driver.wait_for_element_present("chat-input", by="id", timeout=15)
-            
+            chat_input = driver.wait_for_element_present("//textarea[@placeholder='Message DeepSeek']", by="xpath", timeout=15)
             for _ in range(3):
                 chat_input.clear()
                 driver.execute_script("arguments[0].value = arguments[1];", chat_input, text)
