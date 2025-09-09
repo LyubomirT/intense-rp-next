@@ -206,7 +206,7 @@ def _send_chat_file(driver: Driver, text: str) -> bool:
 def _send_chat_text(driver: Driver, text: str) -> bool:
     try:
         def attempt_send():
-            chat_input = driver.wait_for_element_present("chat-input", by="id", timeout=15)
+            chat_input = driver.wait_for_element_present("_27c9245", by="class name", timeout=15)
             
             for _ in range(3):
                 chat_input.clear()
@@ -515,7 +515,7 @@ def refresh_page(driver: Driver) -> bool:
         
         # Verify page loaded successfully by looking for chat interface
         try:
-            chat_input = driver.find_element("id", "chat-input")
+            chat_input = driver.find_element("class name", "_27c9245")
             if chat_input:
                 print("[color:green]Page refresh successful - chat interface ready")
                 return True
