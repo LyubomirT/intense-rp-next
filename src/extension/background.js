@@ -86,6 +86,8 @@ async function startCDPInterception(tabId) {
     // Set up event listeners
     chrome.debugger.onEvent.addListener(onCDPEvent);
     
+    debugLog(`🔧 CDP fully attached and listening for requests at ${Date.now()}`);
+    
     // Signal readiness to API - CDP is now fully attached and ready
     fetch(`${localApiUrl}/network/ready`, {
       method: 'POST',
@@ -195,11 +197,18 @@ function onCDPEvent(source, method, params) {
 function handleRequestWillBeSent(params) {
   const url = params.request.url;
 
-  // debugLog(`📤 Request: ${params.requestId} - ${url} (current target: ${targetRequestId})`);
-
-  // ONLY track the actual streaming endpoint, ignore all other DeepSeek API calls
-  if (url.includes('/api/v0/chat/completion')) {
-    debugLog(`🟡 REAL DeepSeek STREAMING request detected - SETTING TARGET: ${params.requestId}`);
+  // ONLY track the actual streaming endpoints, ignore all other DeepSeek API calls
+  const isCompletionEndpoint = url.includes('/api/v0/chat/completion');
+  const isRegenerateEndpoint = url.includes('/api/v0/chat/regenerate') || url.includes('/regenerate');
+  
+  if (isCompletionEndpoint || isRegenerateEndpoint) {
+    const endpointType = isRegenerateEndpoint ? 'REGENERATE' : 'COMPLETION';
+    debugLog(`\n--- New DeepSeek ${endpointType} Request ---`);
+    debugLog(`🟡 ${endpointType} request detected`);
+    debugLog(`➡️ Request URL: ${url}`);
+    debugLog(`➡️ Request ID: ${params.requestId}`);
+    debugLog(`➡️ Method: ${params.request.method}`);
+    debugLog(`---------------------------------------------\n`);
     targetRequestId = params.requestId;
     completionTriggered = false; // Reset completion flag for new request
     

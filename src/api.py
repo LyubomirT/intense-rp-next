@@ -7,6 +7,7 @@ from typing import Generator
 from waitress import serve
 from core import get_state_manager, StateEvent
 from pipeline.message_pipeline import MessagePipeline, ProcessingError
+from utils.message_dump_manager import get_dump_manager
 from functools import wraps
 import time
 
@@ -314,17 +315,50 @@ def deepseek_response(
         if interrupted():
             return safe_interrupt_response()
 
-        deepseek.configure_chat(state.driver, deepthink, search)
-        state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
+        # Check for Clean Regeneration feature
+        clean_regeneration_enabled = state.get_config_value("models.deepseek.clean_regeneration", False)
+        used_regeneration = False
+        
+        if clean_regeneration_enabled:
+            try:
+                dump_manager = get_dump_manager()
+                
+                # Compare current message with previous dump
+                if dump_manager.compare_dumps(formatted_message):
+                    state.show_message("[color:white]- [color:cyan]Identical message detected, attempting regeneration...")
+                    
+                    # Check if regenerate button is available and not censored
+                    if deepseek.can_use_regenerate_button(state.driver):
+                        # Use regeneration instead of new chat (DOM scraping doesn't need early CDP)
+                        if deepseek.click_regenerate_button(state.driver):
+                            used_regeneration = True
+                            state.show_message("[color:white]- [color:green]Using regeneration instead of new chat.")
+                        else:
+                            state.show_message("[color:white]- [color:yellow]Regeneration failed, falling back to new chat.")
+                    else:
+                        state.show_message("[color:white]- [color:yellow]Regenerate button unavailable/censored, using new chat.")
+                else:
+                    state.show_message("[color:white]- [color:cyan]Message content changed, proceeding with new chat.")
+            except Exception as e:
+                state.show_message(f"[color:white]- [color:yellow]Clean Regeneration error: {e}, using new chat.")
+        
+        # Only configure new chat if we didn't use regeneration
+        if not used_regeneration:
+            deepseek.configure_chat(state.driver, deepthink, search)
+            state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
 
         if interrupted():
             return safe_interrupt_response()
 
-        if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
-            state.show_message("[color:white]- [color:red]Could not paste prompt.")
-            return create_response("Could not paste prompt.", streaming, pipeline, model)
+        # Only send new message if we didn't use regeneration
+        if not used_regeneration:
+            if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
+                state.show_message("[color:white]- [color:red]Could not paste prompt.")
+                return create_response("Could not paste prompt.", streaming, pipeline, model)
 
-        state.show_message("[color:white]- [color:green]Prompt pasted and sent.")
+            state.show_message("[color:white]- [color:green]Prompt pasted and sent.")
+        else:
+            state.show_message("[color:white]- [color:green]Regeneration initiated.")
 
         if interrupted():
             return safe_interrupt_response()
@@ -403,6 +437,14 @@ def deepseek_response(
                     if closing:
                         yield create_response_streaming(closing, pipeline, model)
                     
+                    # Update dumps after successful generation (only if Clean Regeneration is enabled)
+                    if clean_regeneration_enabled:
+                        try:
+                            dump_manager = get_dump_manager()
+                            dump_manager.update_dumps_after_success()
+                        except Exception as e:
+                            print(f"Warning: Could not update dumps after success: {e}")
+                    
                     state.show_message("[color:white]- [color:green]Completed.")
                 except GeneratorExit:
                     deepseek.new_chat(state.driver)
@@ -422,6 +464,14 @@ def deepseek_response(
             response_text = final_text if final_text else "Error receiving response."
             closing = pipeline.get_closing_symbol(final_text) if final_text else ""
             response = response_text + closing
+            
+            # Update dumps after successful generation (only if Clean Regeneration is enabled)
+            if clean_regeneration_enabled:
+                try:
+                    dump_manager = get_dump_manager()
+                    dump_manager.update_dumps_after_success()
+                except Exception as e:
+                    print(f"Warning: Could not update dumps after success: {e}")
             
             state.show_message("[color:white]- [color:green]Completed.")
             return create_response_jsonify(response, pipeline, model)
@@ -472,6 +522,30 @@ def deepseek_network_response(
         if interrupted():
             return safe_interrupt_response()
 
+        # Check for Clean Regeneration feature and start CDP early if needed
+        clean_regeneration_enabled = state.get_config_value("models.deepseek.clean_regeneration", False)
+        used_regeneration = False
+        regeneration_possible = False
+        
+        if clean_regeneration_enabled:
+            try:
+                dump_manager = get_dump_manager()
+                
+                # Compare current message with previous dump
+                if dump_manager.compare_dumps(formatted_message):
+                    state.show_message("[color:white]- [color:cyan]Identical message detected, checking if regeneration is possible...")
+                    
+                    # Check if regenerate button is available and not censored (but don't click yet)
+                    if deepseek.can_use_regenerate_button(state.driver):
+                        regeneration_possible = True
+                        state.show_message("[color:white]- [color:green]Regeneration possible, starting CDP interception early...")
+                    else:
+                        state.show_message("[color:white]- [color:yellow]Regenerate button unavailable/censored, using new chat.")
+                else:
+                    state.show_message("[color:white]- [color:cyan]Message content changed, proceeding with new chat.")
+            except Exception as e:
+                state.show_message(f"[color:white]- [color:yellow]Clean Regeneration error: {e}, using new chat.")
+
         # Reset network data for new request
         network_data['request_data'] = None
         network_data['response_started'] = False
@@ -487,9 +561,12 @@ def deepseek_network_response(
         network_data['censorship_detected'] = False  # Reset censorship detection flag
         # ^^ CDP READINESS FLAG ^^
         
-        # Enable network interception
+        # Enable network interception (early if regeneration is possible)
         deepseek.enable_network_interception(state.driver)
-        state.show_message("[color:white]- [color:cyan]CDP network interception starting...")
+        if regeneration_possible:
+            state.show_message("[color:white]- [color:cyan]CDP network interception starting (early for regeneration)...")
+        else:
+            state.show_message("[color:white]- [color:cyan]CDP network interception starting...")
 
         # Wait for extension to signal readiness
         readiness_timeout = 10.0  # 10 second timeout
@@ -500,24 +577,46 @@ def deepseek_network_response(
             time.sleep(0.1)  # Check every 100ms
             
         if network_data['ready']:
-            state.show_message("[color:green]CDP ready! Adding 500ms buffer before proceeding...")
-            time.sleep(0.5)  # Additional buffer for extra safety
+            if regeneration_possible:
+                state.show_message("[color:green]CDP ready! Now clicking regenerate button...")
+                # No extra buffer needed - CDP is ready, click immediately
+            else:
+                state.show_message("[color:green]CDP ready! Adding 500ms buffer before proceeding...")
+                time.sleep(0.5)  # Additional buffer for extra safety
         else:
             state.show_message("[color:yellow]CDP readiness timeout - proceeding anyway (may lose first chunk)")
 
-        # Configure chat and send message
-        deepseek.configure_chat(state.driver, deepthink, search)
-        state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
+        # Now that CDP is ready, click regenerate button if possible
+        if regeneration_possible:
+            try:
+                if deepseek.click_regenerate_button(state.driver):
+                    used_regeneration = True
+                    state.show_message("[color:white]- [color:green]Regenerate button clicked - CDP should catch the request.")
+                else:
+                    state.show_message("[color:white]- [color:yellow]Regeneration click failed, falling back to new chat.")
+                    regeneration_possible = False
+            except Exception as e:
+                state.show_message(f"[color:white]- [color:yellow]Error clicking regenerate: {e}, falling back to new chat.")
+                regeneration_possible = False
 
+        # Configure chat and send message (only if not using regeneration)
+        if not used_regeneration:
+            deepseek.configure_chat(state.driver, deepthink, search)
+            state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
+        
         if interrupted():
             return safe_interrupt_response()
 
-        if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
-            state.show_message("[color:white]- [color:red]Could not paste prompt.")
-            deepseek.disable_network_interception(state.driver)
-            return create_response("Could not paste prompt.", streaming, pipeline, model)
+        # Only send new message if we didn't use regeneration
+        if not used_regeneration:
+            if not deepseek.send_chat_message(state.driver, formatted_message, text_file, prefix_content):
+                state.show_message("[color:white]- [color:red]Could not paste prompt.")
+                deepseek.disable_network_interception(state.driver)
+                return create_response("Could not paste prompt.", streaming, pipeline, model)
 
-        state.show_message("[color:white]- [color:green]Prompt pasted and sent.")
+            state.show_message("[color:white]- [color:green]Prompt pasted and sent.")
+        else:
+            state.show_message("[color:white]- [color:green]Regeneration initiated - waiting for network response.")
 
         if interrupted():
             return safe_interrupt_response()
@@ -594,6 +693,14 @@ def deepseek_network_response(
                     if network_data['error']:
                         yield create_response_streaming(f"Error: {network_data['error']}", pipeline, model)
                     
+                    # Update dumps after successful generation (only if Clean Regeneration is enabled)
+                    if clean_regeneration_enabled:
+                        try:
+                            dump_manager = get_dump_manager()
+                            dump_manager.update_dumps_after_success()
+                        except Exception as e:
+                            print(f"Warning: Could not update dumps after success: {e}")
+                    
                     # Show completion message with censorship status
                     completion_message = "Network response completed (censored)" if network_data['censorship_detected'] else "Network response completed."
                     state.show_message(f"[color:white]- [color:green]{completion_message}")
@@ -636,6 +743,14 @@ def deepseek_network_response(
                     state.show_message(f"[color:yellow]Censorship detected - response truncated at {len(response_text)} characters")
                 else:
                     state.show_message(f"[color:cyan]Final combined response length: {len(response_text)}")
+            
+            # Update dumps after successful generation (only if Clean Regeneration is enabled)
+            if clean_regeneration_enabled:
+                try:
+                    dump_manager = get_dump_manager()
+                    dump_manager.update_dumps_after_success()
+                except Exception as e:
+                    print(f"Warning: Could not update dumps after success: {e}")
             
             deepseek.disable_network_interception(state.driver)
             completion_message = "Network response completed (censored)" if network_data['censorship_detected'] else "Network response completed."
@@ -1283,6 +1398,13 @@ def run_services() -> None:
     state = get_state_manager()
     
     try:
+        # Clean up msgdump directory on startup for safety
+        try:
+            dump_manager = get_dump_manager()
+            dump_manager.cleanup_dump_directory()
+        except Exception as e:
+            print(f"Warning: Could not cleanup msgdump directory on startup: {e}")
+        
         state.last_response = 0
         current_driver_id = state.increment_driver_id()
         close_selenium()
@@ -1390,6 +1512,13 @@ def monitor_driver(driver_id: int) -> None:
 def close_selenium() -> None:
     state = get_state_manager()
     try:
+        # Clean up msgdump directory on exit for safety
+        try:
+            dump_manager = get_dump_manager()
+            dump_manager.cleanup_dump_directory()
+        except Exception as e:
+            print(f"Warning: Could not cleanup msgdump directory on exit: {e}")
+        
         if state.driver:
             # Stop refresh timer before closing driver
             try:

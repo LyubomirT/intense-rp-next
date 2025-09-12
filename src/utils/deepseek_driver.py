@@ -45,6 +45,88 @@ def login(driver: Driver, email: str, password: str) -> None:
         print(f"Error logging in: {e}")
 
 # =============================================================================================================================
+# Clean Regeneration functionality
+# =============================================================================================================================
+
+def can_use_regenerate_button(driver: Driver) -> bool:
+    """
+    Check if the regenerate button is available and not censored.
+    
+    Returns:
+        bool: True if regenerate button can be used, False if censored or not available
+    """
+    try:
+        # Find the container for message controls
+        container = driver.find_element("class name", "_965abe9")
+        
+        # Find all components with the regenerate button classes within the container
+        buttons = container.find_elements("xpath", ".//div[contains(@class, '_17e543b') and contains(@class, 'db183363')]")
+        
+        if len(buttons) < 2:
+            # Not enough buttons found, regenerate button not available
+            return False
+        
+        # The second button (index 1) is the regenerate button
+        regenerate_button = buttons[1]
+        
+        # Check if the button is disabled due to censorship
+        aria_disabled = regenerate_button.get_attribute("aria-disabled")
+        
+        if aria_disabled == "true":
+            print("[color:yellow]Regenerate button is disabled (likely due to censorship)")
+            return False
+        
+        print("[color:green]Regenerate button is available and enabled")
+        return True
+        
+    except Exception as e:
+        print(f"[color:yellow]Could not detect regenerate button: {e}")
+        return False
+
+def click_regenerate_button(driver: Driver) -> bool:
+    """
+    Click the regenerate button to regenerate the last response.
+    
+    Returns:
+        bool: True if button was clicked successfully, False otherwise
+    """
+    try:
+        # Record activity since user is regenerating response
+        record_activity()
+        
+        # Find the container for message controls
+        container = driver.find_element("class name", "_965abe9")
+        
+        # Find all components with the regenerate button classes within the container
+        buttons = container.find_elements("xpath", ".//div[contains(@class, '_17e543b') and contains(@class, 'db183363')]")
+        
+        if len(buttons) < 2:
+            print("[color:red]Regenerate button not found - insufficient buttons in container")
+            return False
+        
+        # The second button (index 1) is the regenerate button
+        regenerate_button = buttons[1]
+        
+        # Double-check that it's not disabled
+        aria_disabled = regenerate_button.get_attribute("aria-disabled")
+        if aria_disabled == "true":
+            print("[color:red]Regenerate button is disabled (censorship detected)")
+            return False
+        
+        # Click the regenerate button
+        driver.execute_script("arguments[0].click();", regenerate_button)
+        
+        # Wait a moment for the regeneration to start
+        time.sleep(0.5)
+        
+        print("[color:green]Regenerate button clicked successfully")
+        return True
+        
+    except Exception as e:
+        print(f"[color:red]Error clicking regenerate button: {e}")
+        return False
+
+# =============================================================================================================================
 # Reset and configure chat
 # =============================================================================================================================
 

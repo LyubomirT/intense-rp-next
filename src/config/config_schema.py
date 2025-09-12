@@ -116,6 +116,13 @@ def get_config_schema() -> List[ConfigSection]:
                     default=False,
                     help_text="Use network interception instead of DOM scraping (Chrome/Edge)"
                 ),
+                ConfigField(
+                    key="models.deepseek.clean_regeneration",
+                    label="Clean Regeneration:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Compare message contents and use regenerate button instead of new chat when identical"
+                ),
             ]
         ),
         
