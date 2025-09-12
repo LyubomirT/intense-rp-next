@@ -58,6 +58,12 @@ def get_config_schema() -> List[ConfigSection]:
             title="DeepSeek Settings",
             fields=[
                 ConfigField(
+                    key=None,
+                    label="Authentication",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
+                ),
+                ConfigField(
                     key="models.deepseek.email",
                     label="Email:",
                     field_type=ConfigFieldType.TEXT,
@@ -79,6 +85,12 @@ def get_config_schema() -> List[ConfigSection]:
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
                     help_text="Automatically login using saved credentials"
+                ),
+                ConfigField(
+                    key=None,
+                    label="DeepSeek Core",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
                 ),
                 ConfigField(
                     key="models.deepseek.text_file",
@@ -108,6 +120,12 @@ def get_config_schema() -> List[ConfigSection]:
                     field_type=ConfigFieldType.SWITCH,
                     default=False,
                     help_text="Enable web search capability"
+                ),
+                ConfigField(
+                    key=None,
+                    label="Bridge Behavior",
+                    field_type=ConfigFieldType.DIVIDER,
+                    default=None
                 ),
                 ConfigField(
                     key="models.deepseek.intercept_network",
