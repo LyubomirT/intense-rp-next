@@ -47,7 +47,7 @@ I've completely reimagined the original project with a focus on **reliability**,
 - 🛠️ GLIBC 2.18+
 - 📁 The application package in [Releases](https://github.com/LyubomirT/intense-rp-next/releases)
 
-Currently, we have both Windows and Linux binaries available (as of v1.1.5). However, they're still in beta, so please report any issues you encounter, I'll try to fix them as soon as possible.
+Currently, we have both Windows and Linux binaries available (as of v1.1.5). I'm not sure about Mac support yet, but if there's enough demand, I might look into it. I don't have a Mac to test on, so in the current state of things, dedicated Mac support is almost completely out of the question.
 
 **For Source Code:**
 - 🐍 Python 3.12+ from [python.org](https://www.python.org/)
@@ -77,7 +77,7 @@ Currently, we have both Windows and Linux binaries available (as of v1.1.5). How
 
 ### 🎭 Enhanced Features
 
-**DeepThink (R1) Mode**: Just add `{{r1}}` or `[r1]` to your message to enable reasoning mode
+**DeepThink (CoT) Mode**: Just add `{{r1}}` or `[r1]` to your message to enable reasoning mode
 
 **Web Search**: Include `{{search}}` or `[search]` to let DeepSeek search the web
 
@@ -85,16 +85,13 @@ Currently, we have both Windows and Linux binaries available (as of v1.1.5). How
 
 ## 📊 Future Plans
 
-IntenseRP Next is not stopping here! More stuff is coming in very soon:
+I believe that IntenseRP Next is feature-complete for now, but I'm still open to suggestions and ideas. Here are some features I'm considering for future releases:
 
-| Feature | Status | Priority |
-|---------|---------|----------|
-| 🔄 **Immediate Streaming for CDP** | Complete ✅ | High |
-| 🖥️ **Switch to Qt6** | Research | Medium |
-| 🐧 **Linux Binaries** | Complete ✅ | High |
-| 🔄 **Auto-updater for Binaries** | Planning | Medium |
-| 🌐 **Cloudflare Tunnels Support** | Research | Medium |
-| 📡 **Local Network Availability** | Planned | Medium |
+| **Feature** | **Status** | **Notes** |
+|-------------|------------|-----------|
+| Clean Regeneration | ✅ Completed | Use the regenerate button when prompts match previous ones |
+| CLI Mode | 🛠️ In Progress | A command-line interface for more experienced users |
+| Prompt Injection Modifiers | 🛠️ In Progress | Override the default way IntenseRP Next formats system prompts |
 
 ## 🐛 Known Issues & Solutions
 
@@ -102,7 +99,7 @@ IntenseRP Next is not stopping here! More stuff is coming in very soon:
 
 Likely caused by Cloudflare's challenges. Most of the times this happens when you frequently log in and out of DeepSeek. Technically, the best ways to fix this are:
 - **Use Persistent Profiles**: Enable persistent profiles in the settings to keep your session alive. ALSO, this lets the browser store cookies and session data, which helps with Cloudflare challenges.
-- **Use Undetected Chromedriver**: This works with Chrome only for now. IntenseRP automatically enables undetected Chrome mode, which helps bypass Cloudflare's bot detection.
+- **Use Chrome or a Chromium-based Browser**: Except Edge. IntenseRP Next automatically applies `undetected-chromedriver` for those, so that Cloudflare doesn't throw a turnstile or verification loop at you.
 
 ### Network Interception Broken Or Unstable
 
