@@ -1,7 +1,7 @@
 import re
 from typing import Dict, Any
 from processors.base_processor import BaseProcessor
-from models.message_models import ChatRequest, CharacterInfo, MessageRole
+from models.message_models import ChatRequest, CharacterInfo, MessageRole, Message
 
 
 class CharacterProcessor(BaseProcessor):
@@ -292,7 +292,6 @@ class MessageFormatter:
         # If we have prefix content, add it as a fake assistant message
         if request.has_prefix():
             # Create a fake assistant message for the prefix
-            from models.message_models import Message, MessageRole
             fake_assistant_msg = Message(role=MessageRole.ASSISTANT, content=request.prefix_content, original_role="assistant")
             
             # Get both role and name for template substitution
@@ -357,7 +356,6 @@ class MessageFormatter:
         # If we have prefix content, add it as a fake assistant message
         if request.has_prefix():
             # Create a fake assistant message for the prefix
-            from models.message_models import Message, MessageRole
             fake_assistant_msg = Message(role=MessageRole.ASSISTANT, content=request.prefix_content, original_role="assistant")
             
             # Use assistant template for the prefix
