@@ -243,6 +243,35 @@ def get_config_schema() -> List[ConfigSection]:
         ),
         
         ConfigSection(
+            id="injection_settings",
+            title="Injection Settings", 
+            fields=[
+                ConfigField(
+                    key="injection.enabled",
+                    label="Inject Prompt:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=True,
+                    help_text="Enable custom system prompt injection at the top of each submission to DeepSeek"
+                ),
+                ConfigField(
+                    key="injection.system_prompt",
+                    label="System Prompt:",
+                    field_type=ConfigFieldType.TEXTAREA,
+                    default="[Important Information]",
+                    help_text="Custom system prompt template. Use {username} and {asstname} for character names. This text appears before the message content."
+                ),
+                ConfigField(
+                    key="injection.reset_prompt",
+                    label="Reset to Default",
+                    field_type=ConfigFieldType.BUTTON,
+                    default=None,
+                    command="reset_system_prompt",
+                    help_text="Reset the system prompt to the default value"
+                ),
+            ]
+        ),
+        
+        ConfigSection(
             id="logging_settings", 
             title="Logging Settings",
             fields=[

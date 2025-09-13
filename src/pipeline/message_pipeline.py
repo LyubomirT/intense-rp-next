@@ -37,7 +37,13 @@ class MessagePipeline:
     
     def format_for_api(self, request: ChatRequest) -> str:
         """Format processed request for API consumption"""
-        return MessageFormatter.format_for_api(request)
+        # Create formatter with config
+        formatter = MessageFormatter(self.config.get('config_manager') if self.config else None)
+        
+        # Extract character info from request if available
+        character_info = getattr(request, '_character_info', None)
+        
+        return formatter.format_for_api(request, character_info)
     
     def process_response_content(self, html_content: str) -> str:
         """Process HTML response content to clean markdown"""

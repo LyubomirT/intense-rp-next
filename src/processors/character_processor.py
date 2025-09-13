@@ -40,6 +40,9 @@ class CharacterProcessor(BaseProcessor):
         # Process the combined content (like original logic)
         processed_content = self._process_combined_content(combined_content, character_info, request)
         
+        # Store character info on request for later use
+        request._character_info = character_info
+        
         # Apply new formatting system if configured
         if self.config_manager:
             formatter = MessageFormatter(self.config_manager)
@@ -183,28 +186,65 @@ class MessageFormatter:
     def __init__(self, config_manager=None):
         self.config_manager = config_manager
     
-    @staticmethod
-    def format_for_api(request: ChatRequest) -> str:
-        """Format messages for API consumption"""
+    def format_for_api(self, request: ChatRequest, character_info: CharacterInfo = None) -> str:
+        """Format messages for API consumption with configurable prompt injection"""
         
-        # If we have processed content, use it directly
+        # Extract character info if not provided
+        if character_info is None:
+            character_info = CharacterInfo()
+        
+        # Get the message content
+        content = ""
         if hasattr(request, '_processed_content'):
-            return f"[Important Information]\n{request._processed_content}"
+            content = request._processed_content
+        else:
+            # Fallback to individual message processing
+            formatted_messages = []
+            
+            for message in request.messages:
+                if message.content.strip():  # Only include non-empty messages
+                    # Use user name if available (STMP-style), otherwise fall back to display role
+                    if message.role == MessageRole.USER and message.has_user_name():
+                        role_display = message.get_user_name()
+                    else:
+                        role_display = message.get_display_role()
+                    formatted_messages.append(f"{role_display}: {message.content}")
+            
+            content = "\n\n".join(formatted_messages).strip()
         
-        # Fallback to individual message processing
-        formatted_messages = []
+        # Handle prompt injection based on configuration
+        injection_enabled = self._get_config_value('injection.enabled', True)
         
-        for message in request.messages:
-            if message.content.strip():  # Only include non-empty messages
-                # Use user name if available (STMP-style), otherwise fall back to display role
-                if message.role == MessageRole.USER and message.has_user_name():
-                    role_display = message.get_user_name()
-                else:
-                    role_display = message.get_display_role()
-                formatted_messages.append(f"{role_display}: {message.content}")
+        if not injection_enabled:
+            # No prompt injection - return content directly
+            return content
         
-        content = "\n\n".join(formatted_messages)
-        return f"[Important Information]\n{content.strip()}"
+        # Get custom system prompt template
+        system_prompt_template = self._get_config_value('injection.system_prompt', '[Important Information]')
+        
+        # Apply placeholder substitutions
+        system_prompt = self._apply_injection_placeholders(system_prompt_template, character_info, request)
+        
+        # Return formatted content with system prompt
+        if system_prompt.strip():
+            return f"{system_prompt}\n{content}"
+        else:
+            return content
+    
+    def _apply_injection_placeholders(self, template: str, character_info: CharacterInfo, request: ChatRequest) -> str:
+        """Apply placeholder substitutions to system prompt template"""
+        if not template:
+            return template
+        
+        # Replace {username} with user name
+        username = character_info.user_name or "User"
+        template = template.replace("{username}", username)
+        
+        # Replace {asstname} with character/assistant name
+        asstname = character_info.character_name or "Assistant"
+        template = template.replace("{asstname}", asstname)
+        
+        return template
     
     def format_messages(self, request: ChatRequest, character_info: CharacterInfo) -> str:
         """Format messages based on current configuration"""

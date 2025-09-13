@@ -278,6 +278,47 @@ def generate_api_key() -> None:
     except Exception as e:
         print(f"[color:red]Error generating API key: {e}")
 
+def reset_system_prompt() -> None:
+    """Reset the system prompt to default value"""
+    state = get_state_manager()
+    
+    try:
+        # Get reference to current UI generator
+        current_ui_generator = getattr(state, 'current_ui_generator', None)
+        if not current_ui_generator:
+            print("[color:red]Error: Settings window not available")
+            return
+        
+        # Find the injection settings frame
+        injection_frame = None
+        for section_id, frame in current_ui_generator.frames.items():
+            if section_id == "injection_settings":
+                injection_frame = frame
+                break
+        
+        if not injection_frame:
+            print("[color:red]Error: Injection settings not found")
+            return
+        
+        # Get the system prompt textarea widget
+        system_prompt_widget = injection_frame.get_widget("injection.system_prompt")
+        if not system_prompt_widget:
+            print("[color:red]Error: System prompt textarea not found") 
+            return
+        
+        # Reset to default value
+        default_prompt = "[Important Information]"
+        
+        # Update textarea
+        system_prompt_widget.delete("0.0", "end")
+        system_prompt_widget.insert("0.0", default_prompt)
+        
+        print(f"[color:green]System prompt reset to default: {default_prompt}")
+        print("[color:cyan]Remember to save your settings to apply the changes!")
+        
+    except Exception as e:
+        print(f"[color:red]Error resetting system prompt: {e}")
+
 def browse_browser_path() -> None:
     """Browse for a custom browser executable path"""
     state = get_state_manager()
@@ -337,6 +378,7 @@ def open_config_window() -> None:
             'clear_browser_data': clear_browser_data,
             'generate_api_key': generate_api_key,
             'browse_browser_path': browse_browser_path,
+            'reset_system_prompt': reset_system_prompt,
         }
         
         # Create UI generator
