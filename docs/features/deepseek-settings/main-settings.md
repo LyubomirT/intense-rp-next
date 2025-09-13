@@ -93,6 +93,15 @@ You can enable this globally with this toggle, or use it selectively by adding `
 !!! warning "Potential Delays"
     Enabling search can make responses take longer to generate, as DeepSeek needs to perform web searches and process the results. Use selectively if speed is important.
 
+## Clean Regeneration
+
+When enabled, Clean Regeneration makes IntenseRP Next smarter about handling identical requests. If you send the exact same content as your previous request (like hitting regenerate in SillyTavern), IntenseRP Next will use DeepSeek's regenerate button instead of starting a completely new chat.
+
+This is more efficient and preserves the conversation context, rather than wiping the chat history and starting fresh each time.
+
+!!! tip "Caveat"
+    This might not work perfectly, or sometimes not at all, depending on any issues with DeepSeek's regenerate functionality. That usually is because of censorship, button unavailability, or other factors outside of IntenseRP Next's control. If that's the case, it will fall back to starting a new chat.
+
 ## Network Interception
 
 The **Intercept Network** toggle enables the Chrome/Edge extension-based network interception feature, which significantly improves response capture reliability.
@@ -109,6 +118,7 @@ For most users, we recommend the following DeepSeek settings configuration:
 - Enable :material-thought-bubble: **Deepthink** if you prefer the writing style of the V3.1 Think model
 - Enable :material-send: **Send Thoughts** so that you can stop the model if it goes astray
 - Enable :fontawesome-solid-magnifying-glass: **Search** selectively if you frequently ask about current events or factual information
+- Enable :material-refresh: **Clean Regeneration** for more efficient regenerations (recommended for most users)
 - Enable :material-network: **Network Interception** if you're using Chrome/Edge (highly recommended)
 
 Remember that you can always adjust these settings later based on what works best for you and your roleplay style.

@@ -74,6 +74,9 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
 ??? question "Should I use network interception?"
     If you're using Chrome or Edge, absolutely yes. Network interception provides more reliable streaming, better handling of formatted content, and captures features like reasoning thoughts that DOM scraping misses. The only reason not to use it is if you're on a browser that doesn't support it (Firefox, Safari).
 
+??? question "What is Clean Regeneration and should I enable it?"
+    Clean Regeneration makes IntenseRP Next more efficient when you regenerate responses. Instead of starting a new chat every time you send the same content (like hitting regenerate in SillyTavern), it uses DeepSeek's regenerate button to preserve conversation context. This is generally recommended for all users as it's more efficient and maintains better conversation flow. The feature automatically falls back to new chats if regeneration fails due to censorship or other issues, so there's no downside to enabling it.
+
 ??? question "What do the different formatting presets actually do?"
     Formatting presets control how messages appear when sent to DeepSeek. "Classic (Name)" uses character names like "John: Hello" which feels natural for roleplay. "Wrapped" uses XML-style tags for clearer boundaries. "Divided" adds visual separators. The preset doesn't affect how messages appear in SillyTavern, only how they're formatted for DeepSeek to understand.
 
