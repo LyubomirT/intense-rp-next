@@ -307,7 +307,7 @@ def reset_system_prompt() -> None:
             return
         
         # Reset to default value
-        default_prompt = "[Important Information]"
+        default_prompt = "[Important Instructions]"
         
         # Update textarea
         system_prompt_widget.delete("0.0", "end")

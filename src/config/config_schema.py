@@ -257,7 +257,7 @@ def get_config_schema() -> List[ConfigSection]:
                     key="injection.system_prompt",
                     label="System Prompt:",
                     field_type=ConfigFieldType.TEXTAREA,
-                    default="[Important Information]",
+                    default="[Important Instructions]",
                     help_text="Custom system prompt template. Use {username} and {asstname} for character names. This text appears before the message content."
                 ),
                 ConfigField(

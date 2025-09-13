@@ -220,7 +220,7 @@ class MessageFormatter:
             return content
         
         # Get custom system prompt template
-        system_prompt_template = self._get_config_value('injection.system_prompt', '[Important Information]')
+        system_prompt_template = self._get_config_value('injection.system_prompt', '[Important Instructions]')
         
         # Apply placeholder substitutions
         system_prompt = self._apply_injection_placeholders(system_prompt_template, character_info, request)
