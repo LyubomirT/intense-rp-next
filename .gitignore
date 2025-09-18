@@ -1,0 +1,40 @@
+# User configuration and sensitive data
+src/save/
+!src/save/.gitkeep
+
+# Message dumps (may contain personal conversations)
+src/msgdump/*.txt
+!src/msgdump/.gitkeep
+
+# Runtime files
+src/downloaded_files/*.lock
+*.lock
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
