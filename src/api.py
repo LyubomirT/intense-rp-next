@@ -6,7 +6,8 @@ import socket, time, threading, json
 from typing import Generator
 from waitress import serve
 from core import get_state_manager, StateEvent
-from pipeline.message_pipeline import MessagePipeline, ProcessingError
+from pipeline.message_pipeline import MessagePipeline
+from processors.base_processor import ProcessingError
 from utils.message_dump_manager import get_dump_manager
 from functools import wraps
 import time
@@ -220,6 +221,18 @@ def bot_response() -> Response:
         # Process the request
         try:
             processed_request = pipeline.process_request(data)
+
+            # Continue conversation logic - simplified to just send current message
+            continue_conversation_enabled = state.get_config_value("models.deepseek.continue_conversation", False)
+
+            if continue_conversation_enabled:
+                # When enabled, just send the current message - no checks needed
+                processed_request._should_continue_conversation = True
+                state.show_message("[color:white]- [color:green]Continue conversation enabled - sending only current message.")
+            else:
+                processed_request._should_continue_conversation = False
+                state.show_message("[color:white]- [color:cyan]Continue conversation disabled - sending full conversation history.")
+
             formatted_message = pipeline.format_for_api(processed_request)
         except ProcessingError as e:
             print(f"Error processing request: {e}")
@@ -259,7 +272,8 @@ def bot_response() -> Response:
                 pipeline,
                 processed_request.prefix_content,
                 send_thoughts,
-                processed_request.model
+                processed_request.model,
+                processed_request._should_continue_conversation
             )
         else:
             return deepseek_response(
@@ -271,7 +285,8 @@ def bot_response() -> Response:
                 processed_request.use_text_file,
                 pipeline,
                 processed_request.prefix_content,
-                processed_request.model
+                processed_request.model,
+                processed_request._should_continue_conversation
             )
     except Exception as e:
         print(f"Error receiving JSON from Sillytavern: {e}")
@@ -286,7 +301,8 @@ def deepseek_response(
     text_file: bool,
     pipeline: MessagePipeline,
     prefix_content: str = None,
-    model: str = "intense-rp-next-1"
+    model: str = "intense-rp-next-1",
+    should_continue_conversation: bool = False
 ) -> Response:
     state = get_state_manager()
 
@@ -300,7 +316,9 @@ def deepseek_response(
         return current_id != state.last_response or state.driver is None or client_disconnected()
 
     def safe_interrupt_response() -> Response:
-        deepseek.new_chat(state.driver)
+        # Only create new chat if we're not continuing conversation
+        if not should_continue_conversation:
+            deepseek.new_chat(state.driver)
         return create_response("", streaming, pipeline, model)
 
     try:
@@ -342,10 +360,24 @@ def deepseek_response(
             except Exception as e:
                 state.show_message(f"[color:white]- [color:yellow]Clean Regeneration error: {e}, using new chat.")
         
+        # The sync decision was already made in the API layer - we just need to use it
+        # Check if we should continue conversation (the decision was already stored globally)
+        continue_conversation_enabled = state.get_config_value("models.deepseek.continue_conversation", False)
+
+        # Use the sync decision that was passed as a parameter
+        # should_continue_conversation is already available as a function parameter
+
+        # Simple chat configuration based on continue conversation setting
         # Only configure new chat if we didn't use regeneration
         if not used_regeneration:
-            deepseek.configure_chat(state.driver, deepthink, search)
-            state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
+            if should_continue_conversation:
+                # Continue conversation enabled - use existing chat
+                deepseek.configure_existing_chat(state.driver, deepthink, search)
+                state.show_message("[color:white]- [color:cyan]Using existing conversation.")
+            else:
+                # Continue conversation disabled - create new chat
+                deepseek.configure_chat(state.driver, deepthink, search)
+                state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
 
         if interrupted():
             return safe_interrupt_response()
@@ -491,7 +523,8 @@ def deepseek_network_response(
     pipeline: MessagePipeline,
     prefix_content: str = None,
     send_thoughts: bool = True,
-    model: str = "intense-rp-next-1"
+    model: str = "intense-rp-next-1",
+    should_continue_conversation: bool = False
 ) -> Response:
     """Handle DeepSeek response using network interception instead of DOM scraping"""
     state = get_state_manager()
@@ -506,7 +539,9 @@ def deepseek_network_response(
         return current_id != state.last_response or state.driver is None or client_disconnected()
 
     def safe_interrupt_response() -> Response:
-        deepseek.new_chat(state.driver)
+        # Only create new chat if we're not continuing conversation
+        if not should_continue_conversation:
+            deepseek.new_chat(state.driver)
         deepseek.disable_network_interception(state.driver)
         return create_response("", streaming, pipeline, model)
 
@@ -556,7 +591,6 @@ def deepseek_network_response(
         network_data['thinking_active'] = False
         network_data['thinking_buffer'] = ""
         network_data['thinking_started'] = False
-        network_data['ready'] = False  # Reset readiness flag
         network_data['censored'] = False  # Reset anti-censorship flag
         network_data['censorship_detected'] = False  # Reset censorship detection flag
         # ^^ CDP READINESS FLAG ^^
@@ -601,9 +635,15 @@ def deepseek_network_response(
 
         # Configure chat and send message (only if not using regeneration)
         if not used_regeneration:
-            deepseek.configure_chat(state.driver, deepthink, search)
-            state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
-        
+            if should_continue_conversation:
+                # Continue conversation enabled - use existing chat
+                deepseek.configure_existing_chat(state.driver, deepthink, search)
+                state.show_message("[color:white]- [color:cyan]Using existing conversation.")
+            else:
+                # Continue conversation disabled - create new chat
+                deepseek.configure_chat(state.driver, deepthink, search)
+                state.show_message("[color:white]- [color:cyan]Chat reset and configured.")
+
         if interrupted():
             return safe_interrupt_response()
 
@@ -1091,11 +1131,6 @@ def parse_network_stream_data(data: str, send_thoughts: bool = True) -> str:
                                             network_data['thinking_buffer'] = ""
                                             network_data['thinking_started'] = True
                                         network_data['thinking_buffer'] += str(item['v'])
-                                    else:
-                                        # Track thinking state but don't accumulate content
-                                        if not network_data['thinking_active']:
-                                            network_data['thinking_active'] = True
-                                            network_data['thinking_started'] = True
                                 elif item_path == 'response/content':
                                     regular_content_found = True
                                     # If we were in thinking mode, flush it first (only if send_thoughts is enabled)
@@ -1541,3 +1576,4 @@ def close_selenium() -> None:
             state.driver = None
     except Exception:
         pass
+

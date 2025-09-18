@@ -193,7 +193,18 @@ class MessageFormatter:
         if character_info is None:
             character_info = CharacterInfo()
         
-        # Get the message content
+        # Check if "Continue Conversation" mode is enabled and sync decision was already made
+        continue_conversation = self._get_config_value('models.deepseek.continue_conversation', False)
+
+        # Use the sync decision that was already made in the API layer (if available)
+        should_continue_conversation = getattr(request, '_should_continue_conversation', False)
+
+        if continue_conversation and should_continue_conversation:
+            # In continue conversation mode, only send the current input (last user message)
+            print("[color:green]Continue Conversation mode: Sending only current input")
+            return self._format_current_input_only(request, character_info)
+
+        # Normal mode or bypassed mode: get the full message content
         content = ""
         if hasattr(request, '_processed_content'):
             content = request._processed_content
@@ -231,6 +242,37 @@ class MessageFormatter:
         else:
             return content
     
+    def _format_current_input_only(self, request: ChatRequest, character_info: CharacterInfo) -> str:
+        """Format only the current input (last user message) for continue conversation mode"""
+
+        # Find the last user message
+        last_user_message = None
+        for message in reversed(request.messages):
+            if message.role == MessageRole.USER:
+                last_user_message = message
+                break
+
+        if not last_user_message or not last_user_message.content.strip():
+            return ""
+
+        # Get just the content of the last user message without role prefixes
+        current_input = last_user_message.content.strip()
+
+        # Remove any DATA1/DATA2 markers from the current input
+        current_input = re.sub(r'DATA1:\s*"[^"]*"', "", current_input)
+        current_input = re.sub(r'DATA2:\s*"[^"]*"', "", current_input)
+
+        # Remove other control markers
+        current_input = re.sub(r"({{r1}}|\[r1\]|\(r1\))", "", current_input, flags=re.IGNORECASE)
+        current_input = re.sub(r"({{search}}|\[search\])", "", current_input, flags=re.IGNORECASE)
+
+        # Clean up extra whitespace
+        current_input = re.sub(r"\n{3,}", "\n\n", current_input).strip()
+
+        # In continue conversation mode, we don't want system prompt injection
+        # since the conversation context already exists in the chat
+        return current_input
+
     def _apply_injection_placeholders(self, template: str, character_info: CharacterInfo, request: ChatRequest) -> str:
         """Apply placeholder substitutions to system prompt template"""
         if not template:
@@ -413,3 +455,4 @@ class MessageFormatter:
         if user_messages:
             return user_messages[-1].content
         return ""
+

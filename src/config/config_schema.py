@@ -141,6 +141,13 @@ def get_config_schema() -> List[ConfigSection]:
                     default=False,
                     help_text="Compare message contents and use regenerate button instead of new chat when identical"
                 ),
+                ConfigField(
+                    key="models.deepseek.continue_conversation",
+                    label="Continue Conversation:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    help_text="Send messages to existing conversation instead of creating new chat each time"
+                ),
             ]
         ),
         
