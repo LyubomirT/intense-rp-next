@@ -197,10 +197,10 @@ function onCDPEvent(source, method, params) {
 function handleRequestWillBeSent(params) {
   const url = params.request.url;
 
-  // ONLY track the actual streaming endpoints, ignore all other DeepSeek API calls
+  // ONLY track the actual confirmed streaming endpoints
   const isCompletionEndpoint = url.includes('/api/v0/chat/completion');
-  const isRegenerateEndpoint = url.includes('/api/v0/chat/regenerate') || url.includes('/regenerate');
-  
+  const isRegenerateEndpoint = url.includes('/api/v0/chat/regenerate');
+
   if (isCompletionEndpoint || isRegenerateEndpoint) {
     const endpointType = isRegenerateEndpoint ? 'REGENERATE' : 'COMPLETION';
     debugLog(`\n--- New DeepSeek ${endpointType} Request ---`);

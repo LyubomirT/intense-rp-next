@@ -57,28 +57,49 @@ def can_use_regenerate_button(driver: Driver) -> bool:
     """
     try:
         # Find the container for message controls
-        container = driver.find_element("class name", "_965abe9")
-        
+        container = driver.find_element("css selector", "._965abe9")
+
         # Find all components with the regenerate button classes within the container
         buttons = container.find_elements("xpath", ".//div[contains(@class, '_17e543b') and contains(@class, 'db183363')]")
-        
-        if len(buttons) < 2:
-            # Not enough buttons found, regenerate button not available
+
+        if len(buttons) == 0:
+            print("[color:yellow]No buttons found in container")
             return False
-        
-        # The second button (index 1) is the regenerate button
-        regenerate_button = buttons[1]
-        
+
+        # Find the regenerate button by checking SVG content
+        regenerate_button = None
+        for i, button in enumerate(buttons):
+            try:
+                # Find svg element first, then path child
+                svg = button.find_element("tag name", "svg")
+                svg_path = svg.find_element("tag name", "path")
+                path_d = svg_path.get_attribute("d")
+
+                # Regenerate button has path starting with "M7.92142"
+                if path_d and "M7.92142" in path_d:
+                    regenerate_button = button
+                    break
+            except Exception:
+                continue
+
+        # Fallback: use second button if SVG detection failed
+        if regenerate_button is None:
+            if len(buttons) >= 2:
+                regenerate_button = buttons[1]
+            else:
+                print("[color:yellow]Regenerate button not found")
+                return False
+
         # Check if the button is disabled due to censorship
         aria_disabled = regenerate_button.get_attribute("aria-disabled")
-        
+
         if aria_disabled == "true":
             print("[color:yellow]Regenerate button is disabled (likely due to censorship)")
             return False
-        
+
         print("[color:green]Regenerate button is available and enabled")
         return True
-        
+
     except Exception as e:
         print(f"[color:yellow]Could not detect regenerate button: {e}")
         return False
@@ -86,42 +107,71 @@ def can_use_regenerate_button(driver: Driver) -> bool:
 def click_regenerate_button(driver: Driver) -> bool:
     """
     Click the regenerate button to regenerate the last response.
-    
+
     Returns:
         bool: True if button was clicked successfully, False otherwise
     """
     try:
         # Record activity since user is regenerating response
         record_activity()
-        
+
         # Find the container for message controls
-        container = driver.find_element("class name", "_965abe9")
-        
+        container = driver.find_element("css selector", "._965abe9")
+
         # Find all components with the regenerate button classes within the container
         buttons = container.find_elements("xpath", ".//div[contains(@class, '_17e543b') and contains(@class, 'db183363')]")
-        
-        if len(buttons) < 2:
-            print("[color:red]Regenerate button not found - insufficient buttons in container")
+
+        if len(buttons) == 0:
+            print("[color:yellow]No buttons found in container")
             return False
-        
-        # The second button (index 1) is the regenerate button
-        regenerate_button = buttons[1]
-        
+
+        # Find the regenerate button by checking SVG content
+        regenerate_button = None
+        for i, button in enumerate(buttons):
+            try:
+                # Find svg element first, then path child
+                svg = button.find_element("tag name", "svg")
+                svg_path = svg.find_element("tag name", "path")
+                path_d = svg_path.get_attribute("d")
+
+                # Regenerate button has path starting with "M7.92142"
+                if path_d and "M7.92142" in path_d:
+                    regenerate_button = button
+                    break
+            except Exception:
+                continue
+
+        # Fallback: use second button if SVG detection failed
+        if regenerate_button is None:
+            if len(buttons) >= 2:
+                regenerate_button = buttons[1]
+            else:
+                print("[color:yellow]Regenerate button not found")
+                return False
+
         # Double-check that it's not disabled
         aria_disabled = regenerate_button.get_attribute("aria-disabled")
         if aria_disabled == "true":
             print("[color:red]Regenerate button is disabled (censorship detected)")
             return False
-        
-        # Click the regenerate button
-        driver.execute_script("arguments[0].click();", regenerate_button)
-        
-        # Wait a moment for the regeneration to start
-        time.sleep(0.5)
-        
+
+        # Click the regenerate button using the inner div
+        try:
+            inner_div = regenerate_button.find_element("css selector", "._001e3bb")
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", inner_div)
+            time.sleep(0.2)
+            inner_div.click()
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"[color:red]Error clicking regenerate button: {e}")
+            return False
+
+        # Wait for regeneration to start
+        time.sleep(1.0)
+
         print("[color:green]Regenerate button clicked successfully")
         return True
-        
+
     except Exception as e:
         print(f"[color:red]Error clicking regenerate button: {e}")
         return False
