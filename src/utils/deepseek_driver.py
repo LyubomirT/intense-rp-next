@@ -695,24 +695,14 @@ def start_refresh_timer() -> None:
             else:
                 print("[color:red]Cannot refresh - no browser driver available")
         
-        def grace_period_callback():
+        def grace_period_callback(actual_idle_minutes: int, actual_grace_period: int):
             """Callback for when grace period starts."""
             # Only show grace period message if grace period is enabled
             use_grace_period = state.get_config_value("refresh_timer.use_grace_period", True)
             if not use_grace_period:
                 return  # Don't show grace period message if it's disabled
-            
-            try:
-                idle_timeout = int(state.get_config_value("refresh_timer.idle_timeout", 5))
-            except (ValueError, TypeError):
-                idle_timeout = 5
-            
-            try:
-                grace_period = int(state.get_config_value("refresh_timer.grace_period", 25))
-            except (ValueError, TypeError):
-                grace_period = 25
-            
-            print(f"[color:orange]No activity for {idle_timeout} minutes. Page will refresh in {grace_period} seconds unless activity is detected.")
+
+            print(f"[color:orange]No activity for {actual_idle_minutes} minutes. Page will refresh in {actual_grace_period} seconds unless activity is detected.")
         
         # Start the timer
         start_timer(refresh_callback, grace_period_callback)

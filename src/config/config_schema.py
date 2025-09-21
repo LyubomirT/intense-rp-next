@@ -470,6 +470,14 @@ def get_config_schema() -> List[ConfigSection]:
                     depends_on="refresh_timer.enabled",
                     help_text="When enabled, warns before refreshing. When disabled, refreshes immediately after idle timeout."
                 ),
+                ConfigField(
+                    key="refresh_timer.humanize_timing",
+                    label="Humanize Timing:",
+                    field_type=ConfigFieldType.SWITCH,
+                    default=False,
+                    depends_on="refresh_timer.enabled",
+                    help_text="Add slight randomization (±5 seconds) to refresh intervals to make timing less predictable"
+                ),
             ]
         ),
     ]

@@ -5,6 +5,7 @@ Handles automatic page refresh when idle to prevent session timeouts
 
 import threading
 import time
+import random
 from typing import Optional, Callable
 from core import get_state_manager
 
@@ -27,11 +28,34 @@ class RefreshTimer:
         self._last_activity_time = time.time()
         self._is_running = False
         self._in_grace_period = False
-        
+
         # Callbacks
         self._refresh_callback: Optional[Callable] = None
         self._grace_period_start_callback: Optional[Callable] = None
-        
+
+    def _apply_humanization(self, value: int, min_value: int) -> int:
+        """
+        Apply humanization randomization to a timing value.
+
+        Args:
+            value: Base timing value in seconds
+            min_value: Minimum allowed value in seconds
+
+        Returns:
+            Randomized value that respects the minimum bound
+        """
+        state = get_state_manager()
+        humanize_enabled = state.get_config_value("refresh_timer.humanize_timing", False)
+
+        if not humanize_enabled:
+            return value
+
+        # Apply ±5 second randomization
+        randomized = value + random.randint(-5, 5)
+
+        # Ensure we don't go below the minimum
+        return max(randomized, min_value)
+
     def start(self, refresh_callback: Callable, grace_period_start_callback: Optional[Callable] = None) -> None:
         """
         Start the refresh timer.
@@ -119,15 +143,17 @@ class RefreshTimer:
             use_grace_period = state.get_config_value("refresh_timer.use_grace_period", True)
             idle_timeout_seconds = idle_timeout_minutes * 60
             time_since_activity = time.time() - self._last_activity_time
-            
+
             if self._in_grace_period:
                 try:
                     grace_period_seconds = int(state.get_config_value("refresh_timer.grace_period", 25))
                 except (ValueError, TypeError):
                     grace_period_seconds = 25  # Default fallback
+                grace_period_seconds = self._apply_humanization(grace_period_seconds, 5)  # Min 5 seconds
                 grace_time_elapsed = time.time() - self._grace_period_start_time
                 return max(0, grace_period_seconds - grace_time_elapsed)
             else:
+                idle_timeout_seconds = self._apply_humanization(idle_timeout_seconds, 60)  # Min 1 minute
                 return max(0, idle_timeout_seconds - time_since_activity)
     
     def _timer_loop(self) -> None:
@@ -139,14 +165,16 @@ class RefreshTimer:
                         self._perform_refresh()
                         break  # Stop after refreshing
                     
-                    # Check every 5 seconds
-                    if self._stop_event.wait(timeout=5.0):
+                    # Check every 5 seconds (with humanization if enabled)
+                    check_interval = self._apply_humanization(5, 1)  # Min 1 second
+                    if self._stop_event.wait(timeout=float(check_interval)):
                         break
                         
                 except Exception as e:
                     print(f"Error in refresh timer loop: {e}")
                     # Continue the loop despite errors
-                    if self._stop_event.wait(timeout=5.0):
+                    check_interval = self._apply_humanization(5, 1)  # Min 1 second
+                    if self._stop_event.wait(timeout=float(check_interval)):
                         break
                         
         except Exception as e:
@@ -174,8 +202,10 @@ class RefreshTimer:
             
             # Check if grace period is enabled
             use_grace_period = state.get_config_value("refresh_timer.use_grace_period", True)
-            
+
             idle_timeout_seconds = idle_timeout_minutes * 60
+            grace_period_seconds = self._apply_humanization(grace_period_seconds, 5)  # Min 5 seconds
+            idle_timeout_seconds = self._apply_humanization(idle_timeout_seconds, 60)  # Min 1 minute
             time_since_activity = time.time() - self._last_activity_time
             
             if not self._in_grace_period:
@@ -195,7 +225,9 @@ class RefreshTimer:
                         # Call grace period callback if provided
                         if self._grace_period_start_callback:
                             try:
-                                self._grace_period_start_callback()
+                                # Pass both humanized idle timeout (in minutes) and grace period (in seconds)
+                                actual_idle_minutes = idle_timeout_seconds // 60
+                                self._grace_period_start_callback(actual_idle_minutes, grace_period_seconds)
                             except Exception as e:
                                 print(f"Error in grace period start callback: {e}")
                         
