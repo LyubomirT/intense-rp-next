@@ -105,10 +105,6 @@ The version check is a simple request to the GitHub repository and doesn't send 
 
 These features are planned for future releases:
 
-### :material-tunnel: Cloudflare Tunnels
-
-Will allow you to expose your IntenseRP Next instance to the internet securely through Cloudflare's tunnel service. This eliminates the need for port forwarding or dealing with dynamic IP addresses when accessing IntenseRP Next remotely.
-
 ### :material-format-list-checks: IP Whitelist
 
 Will restrict connections to specific IP addresses or ranges. Will be very useful for API key authentication if you want to have a very secure setup. Only requests from whitelisted IPs will be allowed to connect to IntenseRP Next.

@@ -6,8 +6,8 @@ icon: material/arrow-right-bold
 
 Switching to IntenseRP Next is straightforward, whether you're coming from the original IntenseRP API or updating from an earlier version of IntenseRP Next. The main thing to remember is that your settings and saved data can move with you - you just need to copy one folder.
 
-!!! info "Auto-updater Coming Soon"
-    We're working on an automatic updater that will handle migrations between IntenseRP Next versions for you. Until then, the manual process below takes just a minute or two.
+!!! info "Auto-Update"
+    If you were running a Windows-built version of the original IntenseRP API (NOT from source), it would be much easier for you to grab the `-updater` package shipped in releases. This will automatically download and install the latest IntenseRP Next version for you, while also preserving your settings (`save` folder).
 
 ## From the Original IntenseRP API
 

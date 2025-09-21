@@ -92,7 +92,7 @@ Got questions about IntenseRP Next? This page covers the most common ones, organ
     No. IntenseRP Next doesn't collect, transmit, or store any usage data, conversations, or personal information beyond what you explicitly configure (like your DeepSeek credentials for auto-login). The only external connection besides DeepSeek is a version check against GitHub, which only downloads a version number.
 
 ??? question "Can others on my network see my conversations?"
-    By default, IntenseRP Next only accepts connections from localhost (your own computer). If you enable "Show IP" and connect from other devices, those connections are unencrypted HTTP. For maximum privacy, keep the default localhost-only configuration. Future versions will add authentication and HTTPS options.
+    By default, IntenseRP Next only accepts connections from localhost (your own computer). If you enable "Show IP" and connect from other devices, those connections are unencrypted HTTP. Optionally, you can use a reverse proxy with HTTPS for secure remote access, or a remote tunnel service like Cloudflare Tunnels (already included in Advanced Settings).
 
 ??? question "What about the browser extension for network interception?"
     The extension only activates on DeepSeek's domain and only captures API responses meant for IntenseRP Next. It doesn't track your browsing, collect data, or interfere with other sites. The extension is loaded from your local IntenseRP Next installation, not from any external source.
