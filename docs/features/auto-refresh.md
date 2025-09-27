@@ -91,6 +91,15 @@ Controls whether you get that warning period or not. With this off, the page ref
 !!! tip "Keep It On"
     Unless you have a specific reason, leave the grace period enabled. It's much less jarring to get a warning than to have the page suddenly refresh while you're thinking about your next message.
 
+### :material-dice-6: Humanize Timing
+
+Adds subtle randomization (±5 seconds) to refresh intervals to make the timing less predictable and more natural.
+
+When enabled, each refresh cycle gets slightly different timing - sometimes your 5-minute idle timeout might be 4 minutes 57 seconds, other times it could be 5 minutes 3 seconds. This applies to both the idle timeout and grace period.
+
+!!! info "Why Randomize?"
+    Predictable timing patterns can sometimes trigger detection systems or just feel too robotic. The randomization makes refresh behavior feel more natural while still maintaining the safety benefits of auto refresh.
+
 ## Recommended Settings
 
 For most users, these settings work great:
@@ -101,6 +110,7 @@ For most users, these settings work great:
 | **Idle Timeout** | 5 minutes | Good balance of safety and convenience |
 | **Grace Period** | 25 seconds | Enough time to cancel if needed |
 | **Use Grace Period** | :material-toggle-switch: ON | Gives you control over when refreshes happen |
+| **Humanize Timing** | :material-toggle-switch-off: OFF | Optional - enables more natural timing patterns |
 
 !!! example "Heavy User Settings"
     If you're doing marathon roleplay sessions or leaving IntenseRP Next running all day:
@@ -171,4 +181,3 @@ For everyone else, auto refresh is a set-it-and-forget-it feature that prevents 
 
     - Forced refreshes when the memory "runs out"
     - Better notifications for upcoming refreshes (not just console messages)
-    - Optional "humanization" for refresh intervals
