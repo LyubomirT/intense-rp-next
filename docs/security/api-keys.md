@@ -32,26 +32,30 @@ When enabled, you will be able to use these two additional features:
 
 ### :material-format-list-text: Managing API Keys
 
-The **API Keys** textarea allows you to manage all valid API keys for your instance. Each key should be on its own line:
+The **API Keys** section allows you to manage named API key pairs for your instance. Each entry consists of a descriptive name and its corresponding API key:
 
-```
-intense-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-intense-x9y8z7w6v5u4t3s2r1q0p9o8n7m6l5k4
-intense-m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0
-```
+| Key Name | API Key |
+|----------|---------|
+| sillytavern-main | intense-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6 |
+| BACKUP | intense-x9y8z7w6v5u4t3s2r1q0p9o8n7m6l5k4 |
+| Sillier Tavern | intense-m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0 |
 
-You can add keys manually if you have them from another source, but the easiest way is to use the built-in generator.
+The **Key Name** helps you identify what each API key is used for, or who uses it (useful if someone abuses it). You can add entries manually or use the built-in generator for convenience.
 
 ### :material-plus-circle: Generating New API Keys
 
-Click the **Generate API Key** button to create a new secure API key. The system will:
+Click the **Generate API Key** button to create a new secure API key pair. The system will:
 
-1. Generate a cryptographically secure random key using the format `intense-<32_random_characters>`
-2. Automatically add it to your API Keys list
-3. Save the updated configuration
+1. Generate a descriptive name using adjectives (like "happy-ultra-mighty-key")
+2. Generate a cryptographically secure random key using the format `intense-<32_random_characters>`
+3. Automatically add the name-key pair to your API Keys list
+4. Validate that the key is unique and at least 16 characters long
+
+!!! info "Automatic Naming"
+    Generated key names use a fun 3-adjective format like "intense-githubious-silly-key" or "mighty-meta-ultra-key". This makes it easy to identify keys while keeping things interesting. You can also edit the names manually after generation if you prefer more descriptive names.
 
 !!! info "API Key Format"
-    All **generated** IntenseRP Next API keys follow the format `intense-` followed by 32 random alphanumeric characters. This doesn't apply to manually added keys, which can be any string you choose as long as it's longer than 16 characters and unique.
+    All **generated** IntenseRP Next API keys follow the format `intense-` followed by 32 random alphanumeric characters. Manually added keys can be any string as long as they're at least 16 characters long and unique.
 
 ### :material-content-copy: Using API Keys
 
@@ -68,12 +72,10 @@ SillyTavern will automatically include the API key as a Bearer token in all requ
 
 ### :material-shield-check: Best Practices
 
-!!! important "Association"
-    Currently, a new feature to associate names with API keys is being worked on for you to recognize better which key belongs to which user or application. Until then, it's a good idea to keep a separate record of what each key is used for.
-
-- Keep your API keys secret - treat them like passwords (because they literally are!)
-- Regularly rotate keys if you suspect they may have been compromised
-- Remove unused keys from the API Keys list to reduce risk
+- **Use descriptive names**: Take advantage of the name association feature to clearly identify what each key is used for (e.g., "sillytavern-main", "John's Brother", "Not A Hacker")
+- **Keep your API keys secret**: Treat them like passwords - never share them in public or store them in unsecured locations
+- **Regularly rotate keys**: Generate new keys periodically and remove old ones, especially if you suspect they may have been compromised
+- **Remove unused keys**: Delete API key pairs you no longer need to reduce potential security risks
 
 ### :material-network: Network Security
 
@@ -177,4 +179,4 @@ API key authentication pairs perfectly with the **Show IP** feature in Advanced 
 
 ---
 
-Soon enough, we will also add support for IP whitelisting, associations (see above), and Cloudflare tunnel integration to improve security even further.
+In the future, for extra security, I'll add support for IP whitelisting so that only specific IP addresses can connect even if they have a valid API key. Right now you're limited to TryCloudflare tunnels (built into SillyTavern and IntenseRP Next) and the `Show IP` option for secure remote access.
