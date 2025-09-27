@@ -17,6 +17,7 @@ class ConfigFieldType(Enum):
     BUTTON = "button"
     TEXTAREA = "textarea"
     DIVIDER = "divider"
+    DICT = "dict"
 
 
 @dataclass
@@ -40,6 +41,7 @@ class ConfigField:
     command: Optional[Callable] = None      # For buttons/switches with callbacks
     depends_on: Optional[str] = None        # Conditional field (key that must be True)
     highlight_errors: bool = True           # Whether to show visual error highlighting for this field
+    width_ratio: Optional[float] = None     # For DICT fields: key field width ratio (0.0-1.0)
 
 
 @dataclass

@@ -204,7 +204,7 @@ def _save_widget(obj: ctk.CTkBaseClass, widget_id: str, widget: ctk.CTkBaseClass
 def _get_widget(obj: ctk.CTkBaseClass, widget_id: str) -> Optional[ctk.CTkBaseClass]:
     return getattr(obj, "_widgets", {}).get(widget_id)
 
-def _get_widget_value(obj: ctk.CTkBaseClass, widget_id: str) -> Optional[str]:
+def _get_widget_value(obj: ctk.CTkBaseClass, widget_id: str):
     widget = getattr(obj, "_widgets", {}).get(widget_id)
     if widget and hasattr(widget, "get"):
         # Handle CTkTextbox widgets differently

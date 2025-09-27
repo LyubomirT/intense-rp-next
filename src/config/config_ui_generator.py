@@ -83,6 +83,8 @@ class ConfigUIGenerator:
                 self._create_button_field(frame, field, row)
             elif field.field_type == ConfigFieldType.TEXTAREA:
                 self._create_textarea_field(frame, field, row)
+            elif field.field_type == ConfigFieldType.DICT:
+                self._create_dict_field(frame, field, row)
             elif field.field_type == ConfigFieldType.DIVIDER:
                 self._create_divider_field(frame, field, row)
             
@@ -257,7 +259,43 @@ class ConfigUIGenerator:
                 custom_content = self.config_manager.get_hidden_var(hidden_key, "{name}: {content}")
                 textbox.delete("0.0", "end")
                 textbox.insert("0.0", custom_content)
-    
+
+    def _create_dict_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
+        """Create a dictionary field with key-value pairs"""
+        import customtkinter as ctk
+        from utils.font_loader import get_font_tuple
+        from utils.gui_builder import create_tooltip
+
+        current_value = self.config_manager.get(field.key, field.default)
+        if not isinstance(current_value, dict):
+            current_value = {}
+
+        # Create main container frame
+        container_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        container_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=8, padx=15)
+        container_frame.grid_columnconfigure(1, weight=1)
+
+        # Create label
+        label = ctk.CTkLabel(container_frame, text=field.label, font=get_font_tuple("Blinker", 14))
+        label.grid(row=0, column=0, padx=(0, 15), pady=8, sticky="nw")
+
+        # Create dict widget container
+        dict_container = ctk.CTkFrame(container_frame, fg_color=("white", "gray17"), border_color="gray", border_width=1)
+        dict_container.grid(row=0, column=1, sticky="ew", pady=8)
+        dict_container.grid_columnconfigure(0, weight=1)
+
+        # Create DictWidget instance
+        dict_widget = DictWidget(dict_container, field, current_value)
+        dict_widget.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+
+        # Add tooltip if provided
+        if field.help_text:
+            create_tooltip(dict_container, field.help_text)
+
+        # Save the widget with the field key
+        frame._widgets = getattr(frame, '_widgets', {})
+        frame._widgets[field.key] = dict_widget
+
     def _create_divider_field(self, frame: gui_builder.ConfigFrame, field: ConfigField, row: int) -> None:
         """Create a divider field for visual separation"""
         import customtkinter as ctk
@@ -634,6 +672,9 @@ class ConfigUIGenerator:
                         # For switches, convert to boolean for conditional checks
                         if field.field_type == ConfigFieldType.SWITCH:
                             current[keys[-1]] = bool(widget_value)
+                        elif field.field_type == ConfigFieldType.DICT:
+                            # For DICT fields, widget_value is already a dictionary
+                            current[keys[-1]] = widget_value if isinstance(widget_value, dict) else {}
                         else:
                             current[keys[-1]] = widget_value
         
@@ -669,17 +710,20 @@ class ConfigUIGenerator:
         # By default, validate the field
         return True
     
-    def _convert_ui_value(self, field: ConfigField, ui_value: str) -> Any:
-        """Convert UI string value to appropriate type"""
+    def _convert_ui_value(self, field: ConfigField, ui_value) -> Any:
+        """Convert UI value to appropriate type"""
         if field.field_type == ConfigFieldType.SWITCH:
             return bool(ui_value)
+        elif field.field_type == ConfigFieldType.DICT:
+            # For DICT fields, ui_value is already a dictionary from DictWidget.get()
+            return ui_value if isinstance(ui_value, dict) else {}
         elif field.validation == "file_size":
             # Parse the human-readable format to bytes for storage (original behavior)
             from config.config_validators import ConfigValidator
-            return ConfigValidator._parse_file_size(ui_value.strip())
+            return ConfigValidator._parse_file_size(str(ui_value).strip())
         elif field.validation == "max_files":
             # Convert to integer for storage (original behavior)
-            return int(ui_value.strip())
+            return int(str(ui_value).strip())
         elif field.field_type == ConfigFieldType.DROPDOWN and field.key == "console.font_size":
             return int(ui_value)
         else:
@@ -710,10 +754,15 @@ class ConfigUIGenerator:
                 continue
             
             for field in section.fields:
-                if field.key and field.field_type in [ConfigFieldType.TEXT, ConfigFieldType.PASSWORD, ConfigFieldType.TEXTAREA]:
+                if field.key and field.field_type in [ConfigFieldType.TEXT, ConfigFieldType.PASSWORD, ConfigFieldType.TEXTAREA, ConfigFieldType.DICT]:
                     widget = frame.get_widget(field.key)
                     if widget:
-                        widget.configure(border_color="gray")
+                        if field.field_type == ConfigFieldType.DICT:
+                            # For DICT widgets, reset the container border
+                            if hasattr(widget, 'master') and hasattr(widget.master, 'configure'):
+                                widget.master.configure(border_color="gray")
+                        else:
+                            widget.configure(border_color="gray")
     
     def _mark_field_error_by_message(self, error_message: str) -> None:
         """Legacy fallback method for marking field errors by message (deprecated)"""
@@ -759,15 +808,20 @@ class ConfigUIGenerator:
                 if field.key == field_key:
                     widget = frame.get_widget(field_key)
                     
-                    if widget and hasattr(widget, 'configure'):
-                        widget.configure(border_color="red")
-                        
-                        # For textarea, make border thicker to be more visible
-                        if field.field_type == ConfigFieldType.TEXTAREA:
-                            try:
-                                widget.configure(border_width=2)
-                            except Exception:
-                                pass  # Ignore if border_width not supported
+                    if widget:
+                        if field.field_type == ConfigFieldType.DICT:
+                            # For DICT widgets, highlight the container border
+                            if hasattr(widget, 'master') and hasattr(widget.master, 'configure'):
+                                widget.master.configure(border_color="red", border_width=2)
+                        elif hasattr(widget, 'configure'):
+                            widget.configure(border_color="red")
+
+                            # For textarea, make border thicker to be more visible
+                            if field.field_type == ConfigFieldType.TEXTAREA:
+                                try:
+                                    widget.configure(border_width=2)
+                                except Exception:
+                                    pass  # Ignore if border_width not supported
                     return
     
     def _show_validation_errors(self, errors: list) -> None:
@@ -804,3 +858,157 @@ class ConfigUIGenerator:
                     print(f"  - {error.message}")
                 else:
                     print(f"  - {error}")
+
+
+class DictWidget(gui_builder.ctk.CTkFrame):
+    """Custom widget for editing dictionary key-value pairs"""
+
+    def __init__(self, parent, field: ConfigField, initial_value: dict):
+        super().__init__(parent, fg_color="transparent")
+        self.field = field
+        self.pairs = []  # List of (key_entry, value_entry, remove_button, row_frame) tuples
+        self.current_row = 0
+
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+
+        # Initialize with current dictionary values
+        for key, value in initial_value.items():
+            self._add_pair(key, value)
+
+        # Add the "Add New" button
+        self._create_add_button()
+
+    def _create_add_button(self):
+        """Create the Add New button"""
+        add_button = gui_builder.ctk.CTkButton(
+            self,
+            text="+ Add New",
+            font=get_font_tuple("Blinker", 12),
+            height=28,
+            fg_color=("gray80", "gray25"),
+            hover_color=("gray70", "gray35"),
+            text_color=("gray20", "gray80"),
+            command=lambda: self._add_pair("", "")
+        )
+        add_button.grid(row=self.current_row, column=0, sticky="w", pady=(5, 0))
+        self.add_button = add_button
+
+    def _add_pair(self, key: str = "", value: str = ""):
+        """Add a new key-value pair row"""
+        # Remove the add button temporarily
+        if hasattr(self, 'add_button'):
+            self.add_button.grid_remove()
+
+        # Create frame for this pair
+        pair_frame = gui_builder.ctk.CTkFrame(self, fg_color="transparent")
+        pair_frame.grid(row=self.current_row, column=0, sticky="ew", pady=2)
+        pair_frame.grid_columnconfigure(0, weight=0)  # Key entry
+        pair_frame.grid_columnconfigure(1, weight=1)  # Value entry (gets remaining space)
+        pair_frame.grid_columnconfigure(2, weight=0)  # Remove button
+
+        # Determine width ratio
+        width_ratio = self.field.width_ratio if self.field.width_ratio is not None else 0.3
+        # Clamp width ratio between 0.1 and 0.9 for sanity
+        width_ratio = max(0.1, min(0.9, width_ratio))
+
+        # Calculate key entry width (approximate)
+        key_width = int(200 * width_ratio)  # Base width of 200, scaled by ratio
+
+        # Create key entry
+        key_entry = gui_builder.ctk.CTkEntry(
+            pair_frame,
+            placeholder_text="Key",
+            font=get_font_tuple("Blinker", 12),
+            width=key_width,
+            border_color="gray"
+        )
+        key_entry.grid(row=0, column=0, padx=(0, 5), pady=2, sticky="w")
+        key_entry.insert(0, key)
+
+        # Create value entry
+        value_entry = gui_builder.ctk.CTkEntry(
+            pair_frame,
+            placeholder_text="Value",
+            font=get_font_tuple("Blinker", 12),
+            border_color="gray"
+        )
+        value_entry.grid(row=0, column=1, padx=(0, 5), pady=2, sticky="ew")
+        value_entry.insert(0, value)
+
+        # Create remove button
+        remove_button = gui_builder.ctk.CTkButton(
+            pair_frame,
+            text="×",
+            font=get_font_tuple("Blinker", 12, "bold"),
+            width=28,
+            height=28,
+            fg_color=("red", "darkred"),
+            hover_color=("darkred", "red"),
+            command=lambda: self._remove_pair(len(self.pairs))  # Capture current index
+        )
+        remove_button.grid(row=0, column=2, pady=2)
+
+        # Store the pair
+        pair_index = len(self.pairs)
+        self.pairs.append((key_entry, value_entry, remove_button, pair_frame))
+
+        # Update remove button command with correct index
+        remove_button.configure(command=lambda idx=pair_index: self._remove_pair(idx))
+
+        self.current_row += 1
+
+        # Re-add the add button
+        self._create_add_button()
+
+    def _remove_pair(self, index: int):
+        """Remove a key-value pair at the given index"""
+        if 0 <= index < len(self.pairs):
+            key_entry, value_entry, remove_button, pair_frame = self.pairs[index]
+
+            # Destroy the widgets
+            pair_frame.destroy()
+
+            # Remove from pairs list
+            self.pairs.pop(index)
+
+            # Update remove button commands for remaining pairs
+            for i, (k_entry, v_entry, r_button, p_frame) in enumerate(self.pairs):
+                r_button.configure(command=lambda idx=i: self._remove_pair(idx))
+
+            # Repack remaining pairs and add button
+            self._repack_pairs()
+
+    def _repack_pairs(self):
+        """Repack all pairs to fix grid positions after removal"""
+        # Remove add button
+        if hasattr(self, 'add_button'):
+            self.add_button.grid_remove()
+
+        # Repack all pairs
+        for i, (key_entry, value_entry, remove_button, pair_frame) in enumerate(self.pairs):
+            pair_frame.grid(row=i, column=0, sticky="ew", pady=2)
+
+        self.current_row = len(self.pairs)
+
+        # Re-add the add button
+        self._create_add_button()
+
+    def get(self) -> dict:
+        """Get the current dictionary value"""
+        result = {}
+        for key_entry, value_entry, _, _ in self.pairs:
+            key = key_entry.get().strip()
+            value = value_entry.get().strip()
+            if key and value:  # Only include pairs where both key and value are non-empty
+                result[key] = value
+        return result
+
+    def get_all_pairs(self) -> list:
+        """Get all pairs including empty ones (for validation)"""
+        pairs = []
+        for key_entry, value_entry, _, _ in self.pairs:
+            key = key_entry.get().strip()
+            value = value_entry.get().strip()
+            pairs.append((key, value))
+        return pairs

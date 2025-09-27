@@ -24,6 +24,7 @@ class ConfigValidator:
             'browser_path': self._validate_browser_path,
             'refresh_idle_timeout': self._validate_refresh_idle_timeout,
             'refresh_grace_period': self._validate_refresh_grace_period,
+            'dict': self._validate_dict,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[ValidationError]:
@@ -341,6 +342,75 @@ class ConfigValidator:
             return []
         except ValueError:
             return [f"{field.label} Grace period must be a valid number"]
+
+    def _validate_dict(self, field: ConfigField, value) -> List[str]:
+        """Validate dictionary field"""
+        # Handle both dict values (from DictWidget.get()) and DictWidget instances (for validation during editing)
+        if hasattr(value, 'get_all_pairs'):
+            # This is a DictWidget instance, get all pairs for validation
+            pairs = value.get_all_pairs()
+            dict_value = {}
+
+            errors = []
+            seen_keys = set()
+
+            for i, (key, val) in enumerate(pairs, 1):
+                # Check for empty keys or values
+                if not key and not val:
+                    continue  # Skip completely empty pairs
+
+                if not key:
+                    errors.append(f"{field.label} Row {i}: Key cannot be empty")
+                    continue
+
+                if not val:
+                    errors.append(f"{field.label} Row {i}: Value cannot be empty")
+                    continue
+
+                # Check for duplicate keys
+                if key in seen_keys:
+                    errors.append(f"{field.label} Row {i}: Duplicate key '{key}'")
+                    continue
+
+                seen_keys.add(key)
+                dict_value[key] = val
+
+            return errors
+
+        elif isinstance(value, dict):
+            # This is a dictionary value, validate it
+            errors = []
+            seen_keys = set()
+
+            for key, val in value.items():
+                if not isinstance(key, str) or not isinstance(val, str):
+                    errors.append(f"{field.label} Keys and values must be strings")
+                    continue
+
+                key = key.strip()
+                val = val.strip()
+
+                if not key:
+                    errors.append(f"{field.label} Key cannot be empty")
+                    continue
+
+                if not val:
+                    errors.append(f"{field.label} Value cannot be empty for key '{key}'")
+                    continue
+
+                if key in seen_keys:
+                    errors.append(f"{field.label} Duplicate key '{key}'")
+                    continue
+
+                seen_keys.add(key)
+
+            return errors
+
+        elif value is None or value == {}:
+            # Empty dictionary is valid
+            return []
+        else:
+            return [f"{field.label} Must be a dictionary"]
 
     @staticmethod
     def format_file_size(size_bytes: int) -> str:
