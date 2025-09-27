@@ -15,6 +15,9 @@
 
 </div>
 
+>[!NOTE]
+> A v2.0 version is currently in progress, that will be a complete rewrite of the entire project altogether with a FastAPI-based backend and a PySide6 front-end. The new version will be much more modular, easier to maintain and extend, and will have much better performance. Stay tuned for more updates!
+
 ## 🔥 What's New in IntenseRP Next
 
 I've completely reimagined the original project with a focus on **reliability**, **user experience**, and **modern architecture**. As of recently, the project is finally **stable** enough for daily use. Here are the main things that have changed:
