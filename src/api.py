@@ -80,21 +80,36 @@ def detect_censorship(json_data: dict) -> bool:
 def get_valid_api_keys():
     """Get list of valid API keys from configuration"""
     state = get_state_manager()
-    api_keys_text = state.get_config_value("security.api_keys", "")
-    
-    if not api_keys_text or not api_keys_text.strip():
+    api_keys_config = state.get_config_value("security.api_keys", {})
+
+    if not api_keys_config or not isinstance(api_keys_config, dict):
         return []
-    
-    # Parse API keys from textarea (one per line)
-    lines = api_keys_text.strip().split('\n')
+
+    # Extract API key values from the name:key dictionary
     valid_keys = []
-    
-    for line in lines:
-        key = line.strip()
-        if key and len(key) >= 16:  # Only include non-empty keys with minimum length
-            valid_keys.append(key)
-    
+    for name, key in api_keys_config.items():
+        if key and isinstance(key, str) and len(key.strip()) >= 16:
+            valid_keys.append(key.strip())
+
     return valid_keys
+
+def get_api_key_name(provided_key):
+    """Get the name associated with an API key for logging purposes"""
+    if not provided_key:
+        return "unknown"
+
+    state = get_state_manager()
+    api_keys_config = state.get_config_value("security.api_keys", {})
+
+    if not api_keys_config or not isinstance(api_keys_config, dict):
+        return "unknown"
+
+    # Find the name for the provided key
+    for name, key in api_keys_config.items():
+        if key and isinstance(key, str) and key.strip() == provided_key.strip():
+            return name
+
+    return "unknown"
 
 def is_api_auth_enabled():
     """Check if API authentication is enabled"""
@@ -142,6 +157,7 @@ def require_auth(f):
         
         # Validate API key
         if not validate_api_key(api_key):
+            print(f"[color:yellow]Authentication failed: Invalid API key provided")
             return jsonify({
                 "error": {
                     "message": "Invalid API key. Please check your Bearer token.",
@@ -149,8 +165,12 @@ def require_auth(f):
                     "code": "invalid_api_key"
                 }
             }), 401
-        
-        # Authentication successful, proceed with original function
+
+        # Authentication successful - log with key name for security
+        key_name = get_api_key_name(api_key)
+        print(f"[color:green]API request authenticated successfully using key: '{key_name}'")
+
+        # Proceed with original function
         return f(*args, **kwargs)
     
     return decorated_function

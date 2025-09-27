@@ -568,12 +568,18 @@ class ConfigUIGenerator:
                 
                 for field in section.fields:
                     if field.validation and field.key:
-                        widget_value = frame.get_widget_value(field.key)
-                        if widget_value is not None:
+                        # For DICT fields, we need the widget instance for validation
+                        if field.field_type == ConfigFieldType.DICT:
+                            widget = frame.get_widget(field.key)
+                            validation_value = widget if widget else None
+                        else:
+                            validation_value = frame.get_widget_value(field.key)
+
+                        if validation_value is not None:
                             # Check if we should validate this field based on current UI state
                             if self._should_validate_field_ui(field, ui_config):
-                                # Validate the user input (string format)
-                                errors = self.config_manager.validator.validate_field(field, widget_value, ui_config)
+                                # Validate the user input
+                                errors = self.config_manager.validator.validate_field(field, validation_value, ui_config)
                                 validation_errors.extend(errors)
             
             if validation_errors:
@@ -760,7 +766,7 @@ class ConfigUIGenerator:
                         if field.field_type == ConfigFieldType.DICT:
                             # For DICT widgets, reset the container border
                             if hasattr(widget, 'master') and hasattr(widget.master, 'configure'):
-                                widget.master.configure(border_color="gray")
+                                widget.master.configure(border_color="gray", border_width=1)
                         else:
                             widget.configure(border_color="gray")
     
@@ -811,6 +817,7 @@ class ConfigUIGenerator:
                     if widget:
                         if field.field_type == ConfigFieldType.DICT:
                             # For DICT widgets, highlight the container border
+                            # The widget is the DictWidget, and its master is the dict_container
                             if hasattr(widget, 'master') and hasattr(widget.master, 'configure'):
                                 widget.master.configure(border_color="red", border_width=2)
                         elif hasattr(widget, 'configure'):
@@ -881,6 +888,13 @@ class DictWidget(gui_builder.ctk.CTkFrame):
 
     def _create_add_button(self):
         """Create the Add New button"""
+        # Clean up existing button first
+        if hasattr(self, 'add_button') and self.add_button:
+            try:
+                self.add_button.destroy()
+            except:
+                pass  # Button may already be destroyed
+
         add_button = gui_builder.ctk.CTkButton(
             self,
             text="+ Add New",
@@ -912,8 +926,11 @@ class DictWidget(gui_builder.ctk.CTkFrame):
         # Clamp width ratio between 0.1 and 0.9 for sanity
         width_ratio = max(0.1, min(0.9, width_ratio))
 
-        # Calculate key entry width (approximate)
-        key_width = int(200 * width_ratio)  # Base width of 200, scaled by ratio
+        # Calculate key entry width (better sizing for 35/65 split)
+        if width_ratio <= 0.35:
+            key_width = 150  # Give more space for key names
+        else:
+            key_width = int(250 * width_ratio)  # Use larger base for bigger ratios
 
         # Create key entry
         key_entry = gui_builder.ctk.CTkEntry(
@@ -981,9 +998,13 @@ class DictWidget(gui_builder.ctk.CTkFrame):
 
     def _repack_pairs(self):
         """Repack all pairs to fix grid positions after removal"""
-        # Remove add button
-        if hasattr(self, 'add_button'):
-            self.add_button.grid_remove()
+        # Properly clean up existing add button
+        if hasattr(self, 'add_button') and self.add_button:
+            try:
+                self.add_button.destroy()
+            except:
+                pass  # Button may already be destroyed
+            self.add_button = None
 
         # Repack all pairs
         for i, (key_entry, value_entry, remove_button, pair_frame) in enumerate(self.pairs):

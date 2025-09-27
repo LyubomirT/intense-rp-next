@@ -25,6 +25,7 @@ class ConfigValidator:
             'refresh_idle_timeout': self._validate_refresh_idle_timeout,
             'refresh_grace_period': self._validate_refresh_grace_period,
             'dict': self._validate_dict,
+            'dict_api_keys': self._validate_dict_api_keys,
         }
     
     def validate_field(self, field: ConfigField, value: Any, config_data: dict = None) -> List[ValidationError]:
@@ -64,10 +65,10 @@ class ConfigValidator:
             dump_enabled = config_data.get("console", {}).get("dump_enabled", False)
             return dump_enabled
         
-        # API keys should only be validated if API authentication is enabled
+        # API keys should be validated if they contain any data, regardless of auth state
+        # This allows users to configure and validate keys before enabling authentication
         if field.key == "security.api_keys":
-            api_auth_enabled = config_data.get("security", {}).get("api_auth_enabled", False)
-            return api_auth_enabled
+            return True  # Always validate API keys to catch half-filled pairs
         
         # Browser path should only be validated if Custom Chromium browser is selected
         if field.key == "browser_path":
@@ -403,6 +404,103 @@ class ConfigValidator:
                     continue
 
                 seen_keys.add(key)
+
+            return errors
+
+        elif value is None or value == {}:
+            # Empty dictionary is valid
+            return []
+        else:
+            return [f"{field.label} Must be a dictionary"]
+
+    def _validate_dict_api_keys(self, field: ConfigField, value) -> List[str]:
+        """Validate dictionary-based API keys with special rules"""
+        # Handle both dict values (from DictWidget.get()) and DictWidget instances (for validation during editing)
+        if hasattr(value, 'get_all_pairs'):
+            # This is a DictWidget instance, get all pairs for validation
+            pairs = value.get_all_pairs()
+            dict_value = {}
+
+            errors = []
+            seen_keys = set()
+            seen_api_keys = set()
+
+            for i, (name, api_key) in enumerate(pairs, 1):
+                # Check for empty names or api_keys
+                if not name and not api_key:
+                    continue  # Skip completely empty pairs
+
+                if not name:
+                    errors.append(f"{field.label} Row {i}: Key name cannot be empty")
+                    continue
+
+                if not api_key:
+                    errors.append(f"{field.label} Row {i}: API key cannot be empty")
+                    continue
+
+                # Check API key length (minimum 16 characters for security)
+                if len(api_key.strip()) < 16:
+                    errors.append(f"{field.label} Row {i}: API key '{name}' is too short (minimum 16 characters)")
+                    continue
+
+                # Check for duplicate key names
+                if name in seen_keys:
+                    errors.append(f"{field.label} Row {i}: Duplicate key name '{name}'")
+                    continue
+
+                # Check for duplicate API key values
+                if api_key in seen_api_keys:
+                    errors.append(f"{field.label} Row {i}: Duplicate API key value for '{name}'")
+                    continue
+
+                seen_keys.add(name)
+                seen_api_keys.add(api_key)
+                dict_value[name] = api_key
+
+            return errors
+
+        elif isinstance(value, dict):
+            # This is a dictionary value, validate it
+            errors = []
+            seen_keys = set()
+            seen_api_keys = set()
+
+            if not value:  # Empty dict is allowed
+                return []
+
+            for name, api_key in value.items():
+                if not isinstance(name, str) or not isinstance(api_key, str):
+                    errors.append(f"{field.label} Key names and API keys must be strings")
+                    continue
+
+                name = name.strip()
+                api_key = api_key.strip()
+
+                if not name:
+                    errors.append(f"{field.label} Key name cannot be empty")
+                    continue
+
+                if not api_key:
+                    errors.append(f"{field.label} API key cannot be empty for '{name}'")
+                    continue
+
+                # Check API key length (minimum 16 characters for security)
+                if len(api_key) < 16:
+                    errors.append(f"{field.label} API key '{name}' is too short (minimum 16 characters)")
+                    continue
+
+                # Check for duplicate key names
+                if name in seen_keys:
+                    errors.append(f"{field.label} Duplicate key name '{name}'")
+                    continue
+
+                # Check for duplicate API key values
+                if api_key in seen_api_keys:
+                    errors.append(f"{field.label} Duplicate API key value for '{name}'")
+                    continue
+
+                seen_keys.add(name)
+                seen_api_keys.add(api_key)
 
             return errors
 

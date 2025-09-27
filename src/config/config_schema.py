@@ -317,11 +317,12 @@ def get_config_schema() -> List[ConfigSection]:
                 ConfigField(
                     key="security.api_keys",
                     label="API Keys:",
-                    field_type=ConfigFieldType.TEXTAREA,
-                    default="",
-                    validation="api_keys",
+                    field_type=ConfigFieldType.DICT,
+                    default={},
+                    validation="dict_api_keys",
                     depends_on="security.api_auth_enabled",
-                    help_text="List of valid API keys (one per line). Requests must include Authorization: Bearer <key>"
+                    width_ratio=0.35,
+                    help_text="Named API keys for authentication. Key name is for identification, value is the actual API key. Requests must include Authorization: Bearer <key>"
                 ),
                 ConfigField(
                     key="security.generate_api_key",

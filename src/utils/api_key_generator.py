@@ -5,20 +5,28 @@ Generates secure API keys with the format: intense-<random_string>
 
 import secrets
 import string
-from typing import List, Set
+import random
+from typing import List, Set, Tuple
 
 
 class APIKeyGenerator:
     """Generates secure API keys for IntenseRP API authentication"""
-    
+
     # Characters for key generation (alphanumeric)
     KEY_CHARS = string.ascii_letters + string.digits
-    
+
     # Key format configuration
     PREFIX = "intense-"
     RANDOM_LENGTH = 32  # Length of random part
     TOTAL_MIN_LENGTH = 16  # Minimum total length for validation
-    
+
+    # These are for random key name generation
+    ADJECTIVES = [
+        "intense", "mighty", "merciless", "fierce", "octotastic", "silly", "brave",
+        "stealthy", "quick", "wise", "happy", "random", "meta", "ultra", "hyper",
+        "lucky", "fancy", "super", "mega", "giga", "titanic", "githubious"
+    ]
+
     @classmethod
     def generate_key(cls) -> str:
         """
@@ -34,7 +42,49 @@ class APIKeyGenerator:
         random_part = ''.join(secrets.choice(cls.KEY_CHARS) for _ in range(cls.RANDOM_LENGTH))
         
         return f"{cls.PREFIX}{random_part}"
-    
+
+    @classmethod
+    def generate_key_name(cls, existing_names: Set[str] = None) -> str:
+        """
+        Generate a descriptive key name using 3 adjectives + "key"
+
+        Args:
+            existing_names: Set of existing names to avoid duplicates
+
+        Returns:
+            str: Generated key name like "blazing-swift-mighty-key"
+        """
+        if existing_names is None:
+            existing_names = set()
+
+        max_attempts = 100
+        for _ in range(max_attempts):
+            # Pick 3 random adjectives
+            selected_adjectives = random.sample(cls.ADJECTIVES, 3)
+            key_name = "-".join(selected_adjectives) + "-key"
+
+            if key_name not in existing_names:
+                return key_name
+
+        # Fallback: use timestamp if we can't generate a unique name
+        import time
+        return f"key-{int(time.time())}"
+
+    @classmethod
+    def generate_key_pair(cls, existing_names: Set[str] = None) -> Tuple[str, str]:
+        """
+        Generate a key name and API key pair
+
+        Args:
+            existing_names: Set of existing names to avoid duplicates
+
+        Returns:
+            Tuple[str, str]: (key_name, api_key)
+        """
+        key_name = cls.generate_key_name(existing_names)
+        api_key = cls.generate_key()
+        return key_name, api_key
+
     @classmethod
     def generate_multiple_keys(cls, count: int) -> List[str]:
         """
@@ -130,15 +180,64 @@ class APIKeyGenerator:
         content = current_content.rstrip()
         return f"{content}\n{new_key}"
 
+    @classmethod
+    def add_key_to_dict(cls, current_dict: dict, key_name: str = None, api_key: str = None) -> dict:
+        """
+        Add a new key to existing API keys dictionary
+
+        Args:
+            current_dict: Current API keys dictionary
+            key_name: Name for the key (if None, generates one)
+            api_key: API key value (if None, generates one)
+
+        Returns:
+            dict: Updated API keys dictionary
+        """
+        if current_dict is None:
+            current_dict = {}
+
+        existing_names = set(current_dict.keys())
+
+        # Generate key pair if not provided
+        if key_name is None or api_key is None:
+            generated_name, generated_key = cls.generate_key_pair(existing_names)
+            key_name = key_name or generated_name
+            api_key = api_key or generated_key
+
+        # Make sure key name is unique
+        original_name = key_name
+        counter = 1
+        while key_name in existing_names:
+            key_name = f"{original_name}-{counter}"
+            counter += 1
+
+        # Create new dict with the added key
+        new_dict = current_dict.copy()
+        new_dict[key_name] = api_key
+
+        return new_dict
+
 
 # Convenience functions for direct use
 def generate_api_key() -> str:
     """Generate a single API key"""
     return APIKeyGenerator.generate_key()
 
+def generate_api_key_pair(existing_names: Set[str] = None) -> Tuple[str, str]:
+    """Generate a key name and API key pair"""
+    return APIKeyGenerator.generate_key_pair(existing_names)
+
+def generate_api_key_name(existing_names: Set[str] = None) -> str:
+    """Generate a descriptive key name"""
+    return APIKeyGenerator.generate_key_name(existing_names)
+
 def generate_multiple_api_keys(count: int) -> List[str]:
     """Generate multiple API keys"""
     return APIKeyGenerator.generate_multiple_keys(count)
+
+def add_key_to_dict(current_dict: dict, key_name: str = None, api_key: str = None) -> dict:
+    """Add a new key to existing API keys dictionary"""
+    return APIKeyGenerator.add_key_to_dict(current_dict, key_name, api_key)
 
 def is_intense_api_key(key: str) -> bool:
     """Check if key matches IntenseRP format"""

@@ -232,49 +232,46 @@ def clear_browser_data() -> None:
         print(f"[color:red]Error clearing browser data: {e}")
 
 def generate_api_key() -> None:
-    """Generate a new API key and add it to the textarea"""
+    """Generate a new API key pair and add it to the dictionary widget"""
     state = get_state_manager()
-    
+
     try:
         # Get reference to current UI generator
         current_ui_generator = getattr(state, 'current_ui_generator', None)
         if not current_ui_generator:
             print("[color:red]Error: Settings window not available")
             return
-        
+
         # Find the security settings frame
         security_frame = None
         for section_id, frame in current_ui_generator.frames.items():
             if section_id == "security_settings":
                 security_frame = frame
                 break
-        
+
         if not security_frame:
             print("[color:red]Error: Security settings not found")
             return
-        
-        # Get the API keys textarea widget
+
+        # Get the API keys dict widget
         api_keys_widget = security_frame.get_widget("security.api_keys")
         if not api_keys_widget:
-            print("[color:red]Error: API keys textarea not found") 
+            print("[color:red]Error: API keys widget not found")
             return
-        
-        # Generate new API key
-        new_key = api_key_gen.generate_api_key()
-        
-        # Get current content from textarea
-        current_content = api_keys_widget.get("0.0", "end-1c")
-        
-        # Add new key to content
-        updated_content = api_key_gen.APIKeyGenerator.add_key_to_textarea(current_content, new_key)
-        
-        # Update textarea
-        api_keys_widget.delete("0.0", "end")
-        api_keys_widget.insert("0.0", updated_content)
-        
-        print(f"[color:green]Generated new API key: {new_key}")
-        print("[color:cyan]Key added to the list above. Remember to save your settings!")
-        
+
+        # Get current dictionary from widget
+        current_dict = api_keys_widget.get()
+        existing_names = set(current_dict.keys())
+
+        # Generate new key pair with descriptive name
+        key_name, api_key = api_key_gen.generate_api_key_pair(existing_names)
+
+        # Add the new key pair to the widget
+        api_keys_widget._add_pair(key_name, api_key)
+
+        print(f"[color:green]Generated new API key: '{key_name}'")
+        print("[color:cyan]Key pair added to the list above. Remember to save your settings!")
+
     except Exception as e:
         print(f"[color:red]Error generating API key: {e}")
 

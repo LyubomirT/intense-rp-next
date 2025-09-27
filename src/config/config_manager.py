@@ -58,7 +58,10 @@ class ConfigManager:
         
         # Handle backward compatibility for formatting presets
         merged_config = self._migrate_formatting_presets(merged_config)
-        
+
+        # Handle backward compatibility for API keys migration (textarea to dict)
+        merged_config = self._migrate_api_keys(merged_config)
+
         return merged_config
     
     def _migrate_formatting_presets(self, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,9 +86,47 @@ class ConfigManager:
             
         except Exception as e:
             print(f"Error migrating formatting presets: {e}")
-        
+
         return config
-    
+
+    def _migrate_api_keys(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Migrate old textarea-based API keys to new dict format"""
+        try:
+            security = config.get('security', {})
+            api_keys = security.get('api_keys', None)
+
+            # Check if we have old format (string) that needs migration
+            if isinstance(api_keys, str) and api_keys.strip():
+                print("Migrating API keys from old textarea format to new named key format...")
+
+                # Parse old format (newline-separated keys)
+                lines = api_keys.strip().split('\n')
+                migrated_keys = {}
+
+                for i, line in enumerate(lines, 1):
+                    key = line.strip()
+                    if key and len(key) >= 16:  # Only include valid keys
+                        key_name = str(i)  # Use sequential numbers as names
+                        migrated_keys[key_name] = key
+
+                # Update config with new dict format
+                if 'security' not in config:
+                    config['security'] = {}
+                config['security']['api_keys'] = migrated_keys
+
+                print(f"Migrated {len(migrated_keys)} API key(s) to named format")
+
+            elif api_keys is None or api_keys == "":
+                # First time setup or empty - set to empty dict with two default empty pairs
+                if 'security' not in config:
+                    config['security'] = {}
+                config['security']['api_keys'] = {}
+
+        except Exception as e:
+            print(f"Error migrating API keys: {e}")
+
+        return config
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation (e.g., 'models.deepseek.email')"""
         keys = key.split('.')
