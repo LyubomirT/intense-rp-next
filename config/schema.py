@@ -962,6 +962,8 @@ SCHEMA = [
                 type=SettingType.DROPDOWN,
                 default="Gemini 2.5 Flash",
                 options=[
+                    "Gemma 4 31B IT",
+                    "Gemma 4 26B A4B IT",
                     "Gemini 3.1 Pro",
                     "Gemini 3.1 Flash Lite",
                     "Gemini 3 Flash",

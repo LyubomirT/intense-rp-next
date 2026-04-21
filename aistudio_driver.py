@@ -241,16 +241,28 @@ class AIStudioDriver(BaseDriver):
         flags=re.IGNORECASE,
     )
     LOWEST_LEVEL_BY_MODEL: Dict[str, str] = {
+        "gemma-4-31b-it": "Minimal",
+        "gemma-4-26b-a4b-it": "Minimal",
         "gemini-3.1-pro-preview": "Low",
         "gemini-3.1-flash-lite-preview": "Minimal",
         "gemini-3-flash-preview": "Minimal",
     }
     THINKING_LEVELS_BY_MODEL: Dict[str, tuple[str, ...]] = {
+        "gemma-4-31b-it": ("Minimal", "High"),
+        "gemma-4-26b-a4b-it": ("Minimal", "High"),
         "gemini-3.1-pro-preview": ("Low", "Medium", "High"),
         "gemini-3.1-flash-lite-preview": ("Minimal", "Low", "Medium", "High"),
         "gemini-3-flash-preview": ("Minimal", "Low", "Medium", "High"),
     }
     MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
+        "Gemma 4 31B IT": {
+            "base_id": "gemma-4-31b-it",
+            "selector_id": "model-carousel-row-models/gemma-4-31b-it",
+        },
+        "Gemma 4 26B A4B IT": {
+            "base_id": "gemma-4-26b-a4b-it",
+            "selector_id": "model-carousel-row-models/gemma-4-26b-a4b-it",
+        },
         "Gemini 3.1 Pro": {
             "base_id": "gemini-3.1-pro-preview",
             "selector_id": "model-carousel-row-models/gemini-3.1-pro-preview",
@@ -934,25 +946,26 @@ class AIStudioDriver(BaseDriver):
             Logger.warning("Google AI Studio: model selector did not appear.")
             return False
 
-    async def _click_gemini_model_family(self) -> bool:
+    async def _click_model_family(self, family: str) -> bool:
         if not self.page:
             return False
 
         try:
             clicked = await self.page.evaluate(
-                "() => {"
+                "(targetFamily) => {"
                 "  const root = document.querySelector(\"[data-test-id='model-carousel-in-selector']\");"
                 "  if (!root) return false;"
                 "  const buttons = Array.from(root.querySelectorAll('button'));"
                 "  for (const btn of buttons) {"
                 "    const text = (btn.textContent || '').toString().replace(/\\s+/g, ' ').trim().toLowerCase();"
-                "    if (text === 'gemini') {"
+                "    if (text === targetFamily) {"
                 "      btn.click();"
                 "      return true;"
                 "    }"
                 "  }"
                 "  return false;"
-                "}"
+                "}",
+                family.lower()
             )
         except Exception:
             clicked = False
@@ -1007,11 +1020,15 @@ class AIStudioDriver(BaseDriver):
         if not await self._open_model_selector():
             return
 
-        await self._click_gemini_model_family()
-        if not await self._click_model_option(desired_selector):
-            Logger.warning(
-                f"Google AI Studio: target model '{desired_label}' was not found in the picker."
-            )
+        family = desired_base.lower().split("-")[0]
+        tabs_to_try = [family, "all"] if family in ("gemini", "gemma") else ["all"]
+
+        for tab in tabs_to_try:
+            await self._click_model_family(tab)
+            if await self._click_model_option(desired_selector):
+                break
+        else:
+            Logger.warning(f"Google AI Studio: target model '{desired_label}' was not found in the picker.")
             return
 
         deadline = time.time() + 5.0

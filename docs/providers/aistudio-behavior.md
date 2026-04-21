@@ -38,6 +38,8 @@ Google AI Studio has a real Gemini model picker in the web UI:
 
 Currently supported:
 
+- `Gemma 4 31B IT`
+- `Gemma 4 26B A4B IT`
 - `Gemini 3.1 Pro`
 - `Gemini 3.1 Flash Lite`
 - `Gemini 3 Flash`
